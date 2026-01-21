@@ -50,10 +50,10 @@ export default function LandingPage() {
         <section className="pt-40 pb-24 overflow-hidden bg-[radial-gradient(circle_at_top_right,var(--color-primary)_0%,transparent_40%)] opacity-95">
           <div className="container mx-auto px-4 text-center">
             <h1 className="text-6xl md:text-8xl font-bold tracking-tighter mb-8 max-w-5xl mx-auto leading-[0.95]">
-              Cualquier <span className="text-primary italic">web</span>.<br />Cualquier <span className="text-primary italic">catálogo</span>.
+              De cualquier <span className="text-primary italic">web</span> a un <span className="text-primary italic">catálogo</span> profesional.
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto mb-14 leading-relaxed font-light">
-              Olvida el "copiar y pegar". Kattlog extrae fotos, precios y descripciones de <span className="text-foreground font-semibold">cualquier tienda online del mundo</span> para crear presentaciones impecables en minutos.
+              Diseña catálogos impecables capturando productos desde cualquier enlace del mundo. Sin perder horas, con resultados de alta gama.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-24">
               <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-12 py-8 text-xl shadow-2xl shadow-primary/30 transition-all hover:scale-105 active:scale-95 group">
@@ -79,8 +79,8 @@ export default function LandingPage() {
               <div className="absolute -inset-1 bg-gradient-to-r from-primary/50 to-primary/10 blur-2xl rounded-3xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
               <div className="rounded-2xl border border-white/20 shadow-2xl overflow-hidden bg-white/5 backdrop-blur-sm p-3 skew-y-1 group-hover:skew-y-0 transition-all duration-1000">
                 <img
-                  src="/hero_v2.png"
-                  alt="Kattlog Interface"
+                  src="/hero_v3.png"
+                  alt="Kattlog Interface Mockup"
                   className="rounded-xl w-full h-auto"
                 />
               </div>
@@ -124,7 +124,7 @@ export default function LandingPage() {
                 </div>
                 <div className="col-span-2 p-8 rounded-3xl bg-primary text-primary-foreground">
                   <p className="text-xl font-medium leading-relaxed italic">
-                    "Es como magia. Pego el link de una butaca y en 3 segundos la tengo en mi proyecto con su precio real y descripción."
+                    "Antes tardaba 5h de trabajo en hacer un catálogo, con Kattlog los hago en minutos. Es una herramienta indispensable para mi estudio."
                   </p>
                   <p className="mt-4 text-sm font-bold uppercase tracking-widest opacity-80">— Marta R., Interiorista Senior</p>
                 </div>
