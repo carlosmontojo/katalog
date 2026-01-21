@@ -53,7 +53,7 @@ export default function LandingPage() {
               De cualquier <span className="text-primary italic">web</span> a un <span className="text-primary italic">catálogo</span> profesional.
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto mb-14 leading-relaxed font-light">
-              Diseña catálogos impecables capturando productos desde cualquier enlace del mundo. Sin perder horas, con resultados de alta gama.
+              Diseña catálogos impecables capturando productos desde cualquier enlace del mundo. Sin perder horas, con resultados profesionales.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-24">
               <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-12 py-8 text-xl shadow-2xl shadow-primary/30 transition-all hover:scale-105 active:scale-95 group">
