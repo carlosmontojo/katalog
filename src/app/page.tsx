@@ -75,15 +75,13 @@ export default function LandingPage() {
             </div>
 
             {/* Main Mockup */}
-            <div className="relative max-w-6xl mx-auto group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-primary/50 to-primary/10 blur-2xl rounded-3xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
-              <div className="rounded-2xl border border-white/20 shadow-2xl overflow-hidden bg-white/5 backdrop-blur-sm p-3 skew-y-1 group-hover:skew-y-0 transition-all duration-1000">
-                <img
-                  src="/hero_final.png"
-                  alt="Kattlog Moodboard"
-                  className="rounded-xl w-full h-auto object-cover max-h-[600px]"
-                />
-              </div>
+            <div className="relative w-full mt-20">
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent blur-3xl opacity-20"></div>
+              <img
+                src="/hero_final.png"
+                alt="Kattlog Moodboard"
+                className="w-full h-auto max-h-[70vh] object-cover shadow-2xl"
+              />
             </div>
           </div>
         </section>
