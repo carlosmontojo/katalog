@@ -35,39 +35,39 @@
 
 @layer base {
   :root {
-    --background: 40 20% 88%;
-    /* #e8e4d9 - Beige */
-    --foreground: 0 0% 10%;
-    /* #1a1a1a - Dark Text */
+    --background: 34 32% 91%;
+    /* #ede9e3 - Soft Beige */
+    --foreground: 20 20% 12%;
+    /* #241f1c - Warm Coffee */
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
+    --card-foreground: 20 20% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
+    --popover-foreground: 20 20% 12%;
 
-    --primary: 30 80% 35%;
-    /* #b45309 - Accent Gold */
-    --primary-foreground: 40 20% 98%;
+    --primary: 25 40% 30%;
+    /* #6b4423 - Rich Brown */
+    --primary-foreground: 34 32% 98%;
 
-    --secondary: 40 10% 80%;
-    --secondary-foreground: 0 0% 10%;
+    --secondary: 34 25% 82%;
+    /* #d6cec5 - Muted Taupe */
+    --secondary-foreground: 20 20% 12%;
 
-    --muted: 40 10% 80%;
-    --muted-foreground: 0 0% 40%;
+    --muted: 34 25% 82%;
+    --muted-foreground: 20 20% 40%;
 
-    --accent: 40 20% 85%;
-    --accent-foreground: 0 0% 10%;
+    --accent: 34 30% 86%;
+    --accent-foreground: 20 20% 12%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 40 10% 80%;
-    --input: 40 10% 80%;
-    --ring: 30 80% 35%;
+    --border: 34 20% 75%;
+    --input: 34 20% 75%;
+    --ring: 25 40% 30%;
 
     --radius: 0.25rem;
-    /* More square corners for a minimalist look */
   }
 
   .dark {

@@ -98,9 +98,9 @@ export default function LandingPage() {
             <div className="flex flex-col lg:flex-row items-center gap-24">
               <div className="lg:w-1/2">
                 <div className="text-primary text-sm font-bold tracking-widest uppercase mb-4 italic">Tecnología de Extracción</div>
-                <h2 className="text-4xl md:text-6xl font-bold mb-8 italic tracking-tighter leading-none">Compatible con el <span className="text-primary underline">100%</span> de las tiendas online.</h2>
+                <h2 className="text-4xl md:text-6xl font-bold mb-8 italic tracking-tighter leading-none">Compatible con <span className="text-primary underline">cualquier</span> tienda online.</h2>
                 <p className="text-lg opacity-70 mb-10 leading-relaxed">
-                  No importa si es una gran multinacional o una tienda de nicho. Nuestra IA analiza el contenido de la web, identifica los productos y extrae todos los detalles por ti.
+                  No importa si es una gran multinacional o una tienda de nicho. Nuestra IA analiza el contenido de la web, identifica los productos y extrae todos los detalles por ti de forma automática.
                 </p>
                 <div className="grid grid-cols-2 gap-8">
                   <div className="space-y-4">
@@ -118,17 +118,17 @@ export default function LandingPage() {
               <div className="lg:w-1/2 grid grid-cols-2 gap-4">
                 <div className="p-8 rounded-3xl bg-white/5 border border-white/10 flex flex-col items-center justify-center text-center group hover:bg-white/10 transition-colors">
                   <Globe className="w-12 h-12 text-primary mb-4" />
-                  <div className="text-2xl font-bold italic tracking-tighter uppercase">Infinito</div>
-                  <div className="text-xs opacity-50 uppercase tracking-widest">Tiendas Soportadas</div>
+                  <div className="text-2xl font-bold italic tracking-tighter uppercase">Universal</div>
+                  <div className="text-xs opacity-50 uppercase tracking-widest">Webs Soportadas</div>
                 </div>
                 <div className="p-8 rounded-3xl bg-white/5 border border-white/10 flex flex-col items-center justify-center text-center group hover:bg-white/10 transition-colors">
                   <LucideImage className="w-12 h-12 text-primary mb-4" />
-                  <div className="text-2xl font-bold italic tracking-tighter uppercase">Sin Fondo</div>
-                  <div className="text-xs opacity-50 uppercase tracking-widest">Recorte con IA</div>
+                  <div className="text-2xl font-bold italic tracking-tighter uppercase">Automático</div>
+                  <div className="text-xs opacity-50 uppercase tracking-widest">Extracción por IA</div>
                 </div>
                 <div className="col-span-2 p-8 rounded-3xl bg-primary text-primary-foreground">
                   <p className="text-xl font-medium leading-relaxed italic">
-                    "Es como magia. Pego el link de una butaca japonesa y en 3 segundos la tengo en mi moodboard sin fondo y con su precio real."
+                    "Es como magia. Pego el link de una butaca y en 3 segundos la tengo en mi proyecto con su precio real y descripción."
                   </p>
                   <p className="mt-4 text-sm font-bold uppercase tracking-widest opacity-80">— Marta R., Interiorista Senior</p>
                 </div>
@@ -211,8 +211,8 @@ export default function LandingPage() {
                 />
                 <div className="absolute -top-10 -left-10 bg-primary text-primary-foreground p-8 rounded-2xl shadow-2xl rotate-[-12deg] z-20">
                   <Sparkles className="w-10 h-10 mb-2" />
-                  <div className="text-2xl font-bold tracking-tighter italic uppercase">Creatividad</div>
-                  <div className="text-xs opacity-80 uppercase tracking-widest">Sin Límites</div>
+                  <div className="text-2xl font-bold tracking-tighter italic uppercase italic">Exclusividad</div>
+                  <div className="text-xs opacity-80 uppercase tracking-widest">De Diseño</div>
                 </div>
               </div>
             </div>
