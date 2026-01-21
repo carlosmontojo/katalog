@@ -49,10 +49,6 @@ export default function LandingPage() {
         {/* Hero Section */}
         <section className="pt-40 pb-24 overflow-hidden bg-[radial-gradient(circle_at_top_right,var(--color-primary)_0%,transparent_40%)] opacity-95">
           <div className="container mx-auto px-4 text-center">
-            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary/10 border border-primary/20 text-primary mb-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-              <Sparkles className="w-4 h-4 fill-primary" />
-              <span className="text-xs font-bold tracking-[0.2em] uppercase italic">Inteligencia Artificial Universal</span>
-            </div>
             <h1 className="text-6xl md:text-8xl font-bold tracking-tighter mb-8 max-w-5xl mx-auto leading-[0.95]">
               Cualquier <span className="text-primary italic">web</span>.<br />Cualquier <span className="text-primary italic">catálogo</span>.
             </h1>
@@ -83,7 +79,7 @@ export default function LandingPage() {
               <div className="absolute -inset-1 bg-gradient-to-r from-primary/50 to-primary/10 blur-2xl rounded-3xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
               <div className="rounded-2xl border border-white/20 shadow-2xl overflow-hidden bg-white/5 backdrop-blur-sm p-3 skew-y-1 group-hover:skew-y-0 transition-all duration-1000">
                 <img
-                  src="/hero.png"
+                  src="/hero_v2.png"
                   alt="Kattlog Interface"
                   className="rounded-xl w-full h-auto"
                 />
@@ -118,13 +114,13 @@ export default function LandingPage() {
               <div className="lg:w-1/2 grid grid-cols-2 gap-4">
                 <div className="p-8 rounded-3xl bg-white/5 border border-white/10 flex flex-col items-center justify-center text-center group hover:bg-white/10 transition-colors">
                   <Globe className="w-12 h-12 text-primary mb-4" />
-                  <div className="text-2xl font-bold italic tracking-tighter uppercase">Universal</div>
-                  <div className="text-xs opacity-50 uppercase tracking-widest">Webs Soportadas</div>
+                  <div className="text-2xl font-bold italic tracking-tighter uppercase">Automático</div>
+                  <div className="text-xs opacity-50 uppercase tracking-widest">Extracción por IA</div>
                 </div>
                 <div className="p-8 rounded-3xl bg-white/5 border border-white/10 flex flex-col items-center justify-center text-center group hover:bg-white/10 transition-colors">
                   <LucideImage className="w-12 h-12 text-primary mb-4" />
-                  <div className="text-2xl font-bold italic tracking-tighter uppercase">Automático</div>
-                  <div className="text-xs opacity-50 uppercase tracking-widest">Extracción por IA</div>
+                  <div className="text-2xl font-bold italic tracking-tighter uppercase">Instantáneo</div>
+                  <div className="text-xs opacity-50 uppercase tracking-widest">Soporte Universal</div>
                 </div>
                 <div className="col-span-2 p-8 rounded-3xl bg-primary text-primary-foreground">
                   <p className="text-xl font-medium leading-relaxed italic">
@@ -183,11 +179,11 @@ export default function LandingPage() {
               <div className="lg:w-1/2">
                 <h2 className="text-5xl font-bold mb-8 italic tracking-tighter leading-tight">Diseña <span className="text-primary">Moodboards</span> Artísticos.</h2>
                 <p className="text-lg text-muted-foreground mb-12 leading-relaxed">
-                  Visualiza espacios, combina texturas y crea collages inspiradores. Arrastra, escala y rota productos con total libertad creativa para convencer a tus clientes.
+                  Visualiza espacios, combina texturas y crea moodboards inspiradores. Arrastra, escala y rota productos con total libertad para convencer a tus clientes finales.
                 </p>
                 <ul className="space-y-6">
                   {[
-                    'Editor de collage profesional libre',
+                    'Editor de moodboards profesional libre',
                     'Capas ilimitadas y orden de z-index',
                     'Añade textos y anotaciones personalizadas',
                     'Recorte automático de fondo para cada pieza'
@@ -199,7 +195,7 @@ export default function LandingPage() {
                   ))}
                 </ul>
                 <Button asChild size="lg" className="mt-12 bg-foreground text-background hover:bg-foreground/90 rounded-full px-8 font-bold">
-                  <Link href="/login">Empezar mi primer collage</Link>
+                  <Link href="/login">Empezar mi primer moodboard</Link>
                 </Button>
               </div>
               <div className="lg:w-1/2 relative space-y-4">
@@ -209,11 +205,6 @@ export default function LandingPage() {
                   className="w-full h-auto rounded-2xl shadow-2xl border border-white/50 rotate-3 hover:rotate-0 transition-transform duration-1000"
                   alt="Ejemplo de Moodboard artístico"
                 />
-                <div className="absolute -top-10 -left-10 bg-primary text-primary-foreground p-8 rounded-2xl shadow-2xl rotate-[-12deg] z-20">
-                  <Sparkles className="w-10 h-10 mb-2" />
-                  <div className="text-2xl font-bold tracking-tighter italic uppercase italic">Exclusividad</div>
-                  <div className="text-xs opacity-80 uppercase tracking-widest">De Diseño</div>
-                </div>
               </div>
             </div>
           </div>
