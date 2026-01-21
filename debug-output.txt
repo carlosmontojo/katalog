@@ -1,0 +1,33 @@
+
+--- Debugging https://www.sklum.com/es/muebles ---
+[Hybrid Scraper] Starting with Puppeteer...
+[Puppeteer] Starting scrape for: https://www.sklum.com/es/muebles
+[Puppeteer] Navigating to https://www.sklum.com/es/muebles...
+[Puppeteer] Response status: 404
+[Puppeteer] Scrolling to load content...
+[Puppeteer] Success! HTML size: 87415 bytes, Duration: 7481ms
+[Hybrid Scraper] Puppeteer result: success=true, htmlLength=87415, statusCode=404, isSoft404=true
+[Hybrid Scraper] ⚠️  Puppeteer insufficient or blocked, trying Firecrawl fallback...
+Firecrawl Error: Error: FIRECRAWL_API_KEY is not set
+    at scrapeUrl (/Users/eduardopomares/.gemini/antigravity/scratch/katalog/src/lib/firecrawl.ts:18:19)
+    at scrapeUrlHybrid (/Users/eduardopomares/.gemini/antigravity/scratch/katalog/src/lib/hybrid-scraper.ts:63:35)
+    at async debug (/Users/eduardopomares/.gemini/antigravity/scratch/katalog/debug-sklum-structure.ts:11:30)
+[Hybrid Scraper] Firecrawl result: success=false, htmlLength=0
+[Hybrid Scraper] ❌ Both Puppeteer and Firecrawl failed
+HTML length: 87415
+Saved HTML to sklum-debug.html
+
+--- Navigation Extraction ---
+[extractCategoriesFromDom] Found 3 navigation elements
+[extractCategoriesFromDom] Total categories found: 1
+[extractCategoriesFromDom] Final categories: [ 'Sklum' ]
+Found 1 categories
+First 5: [ 'Sklum' ]
+
+--- Product Density Check ---
+[DOM Parser] WINNER:  with 0 items.
+[DOM Parser] Found 0 candidates, 0 after deduplication
+[DOM Parser] Sample candidates: []
+Found 0 potential products
+
+DECISION: Low product density -> SHOW CATEGORIES

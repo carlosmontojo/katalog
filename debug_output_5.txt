@@ -1,0 +1,12 @@
+Fetching https://www.maisonsdumonde.com/ES/es/c/sofas-y-sillones...
+Error in runDebug: TypeError: app.scrapeUrl is not a function
+    at runDebug (/Users/eduardopomares/.gemini/antigravity/scratch/katalog/debug-category.js:108:40)
+    at Object.<anonymous> (/Users/eduardopomares/.gemini/antigravity/scratch/katalog/debug-category.js:312:1)
+    at Module._compile (node:internal/modules/cjs/loader:1562:14)
+    at Object..js (node:internal/modules/cjs/loader:1699:10)
+    at Module.load (node:internal/modules/cjs/loader:1313:32)
+    at Function._load (node:internal/modules/cjs/loader:1123:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:217:24)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:170:5)
+    at node:internal/main/run_main_module:36:49
