@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from "@/components/ui/checkbox"
 import { ProductDetailModal } from './product-detail-modal'
 import { getStoreName } from '@/lib/utils/url'
+import { ManualProductForm } from './manual-product-form'
+import { Globe, Type } from 'lucide-react'
 
 interface UrlInputProps {
     projectId: string
@@ -22,6 +24,7 @@ interface Category {
 export function UrlInput({ projectId }: UrlInputProps) {
     const [url, setUrl] = useState('')
     const [loading, setLoading] = useState(false)
+    const [mode, setMode] = useState<'url' | 'manual'>('url')
     const [step, setStep] = useState<'input' | 'category' | 'preview'>('input')
     const [categories, setCategories] = useState<Category[]>([])
     const [selectedCategoryName, setSelectedCategoryName] = useState<string>('')
@@ -142,27 +145,61 @@ export function UrlInput({ projectId }: UrlInputProps) {
         <div className="flex flex-col gap-8 p-8 bg-background border-none rounded-sm">
             {step === 'input' && (
                 <div className="flex flex-col gap-6">
-                    <div className="flex flex-col gap-2">
-                        <h2 className="text-xl font-medium tracking-[0.05em] text-foreground uppercase">Add Products</h2>
-                        <p className="text-xs text-slate-400 tracking-[0.05em]">Paste a URL from any store. Our AI will detect categories and extract products.</p>
+                    <div className="flex items-center justify-between border-b border-slate-200/50 pb-4">
+                        <div className="flex flex-col gap-1">
+                            <h2 className="text-lg font-medium tracking-[0.05em] text-foreground uppercase">Añadir Productos</h2>
+                            <p className="text-xs text-slate-400 tracking-[0.05em]">Importa productos desde una web o añádelos manualmente.</p>
+                        </div>
+                        <div className="flex bg-slate-100 p-1 rounded-sm">
+                            <button
+                                onClick={() => setMode('url')}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all ${mode === 'url' ? 'bg-white shadow-sm text-foreground' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                <Globe className="w-3.5 h-3.5" />
+                                URL
+                            </button>
+                            <button
+                                onClick={() => setMode('manual')}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all ${mode === 'manual' ? 'bg-white shadow-sm text-foreground' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                <Type className="w-3.5 h-3.5" />
+                                Manual
+                            </button>
+                        </div>
                     </div>
-                    <div className="flex gap-4">
-                        <Input
-                            placeholder="Paste URL (e.g., https://store.com/sofas)"
-                            value={url}
-                            onChange={(e) => setUrl(e.target.value)}
-                            disabled={loading}
-                            className="h-12 bg-white border-slate-200/50 rounded-sm focus-visible:ring-slate-200 text-sm tracking-[0.05em]"
+
+                    {mode === 'url' ? (
+                        step === 'input' && (
+                            <div className="flex flex-col gap-6">
+                                <div className="flex gap-4">
+                                    <Input
+                                        placeholder="Pega la URL de cualquier tienda (ej: Sklum, Westwing...)"
+                                        value={url}
+                                        onChange={(e) => setUrl(e.target.value)}
+                                        disabled={loading}
+                                        className="h-12 bg-white border-slate-200/50 rounded-sm focus-visible:ring-slate-200 text-sm tracking-[0.05em]"
+                                    />
+                                    <Button
+                                        onClick={handleAnalyze}
+                                        disabled={loading || !url}
+                                        className="h-12 px-8 bg-foreground text-background hover:bg-foreground/90 rounded-sm text-[10px] font-bold uppercase tracking-[0.2em]"
+                                    >
+                                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                                        Analizar
+                                    </Button>
+                                </div>
+                            </div>
+                        )
+                    ) : (
+                        <ManualProductForm
+                            projectId={projectId}
+                            onSuccess={() => {
+                                alert("Producto añadido correctamente");
+                                setMode('url');
+                            }}
+                            onCancel={() => setMode('url')}
                         />
-                        <Button
-                            onClick={handleAnalyze}
-                            disabled={loading || !url}
-                            className="h-12 px-8 bg-foreground text-background hover:bg-foreground/90 rounded-sm text-[10px] font-bold uppercase tracking-[0.2em]"
-                        >
-                            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                            Analyze
-                        </Button>
-                    </div>
+                    )}
                 </div>
             )}
 
