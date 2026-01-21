@@ -79,9 +79,9 @@ export default function LandingPage() {
               <div className="absolute -inset-1 bg-gradient-to-r from-primary/50 to-primary/10 blur-2xl rounded-3xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
               <div className="rounded-2xl border border-white/20 shadow-2xl overflow-hidden bg-white/5 backdrop-blur-sm p-3 skew-y-1 group-hover:skew-y-0 transition-all duration-1000">
                 <img
-                  src="/hero_v3.png"
-                  alt="Kattlog Interface Mockup"
-                  className="rounded-xl w-full h-auto"
+                  src="/hero_final.png"
+                  alt="Kattlog Moodboard"
+                  className="rounded-xl w-full h-auto object-cover max-h-[600px]"
                 />
               </div>
             </div>
