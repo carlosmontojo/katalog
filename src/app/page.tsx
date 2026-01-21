@@ -8,12 +8,16 @@ import {
   ArrowRight,
   CheckCircle2,
   Database,
-  Image as LucideImage
+  Image as LucideImage,
+  Sparkles,
+  Search,
+  Edit3,
+  Globe
 } from 'lucide-react'
 
 export const metadata = {
-  title: 'Kattlog | Crea Catálogos Profesionales en Minutos',
-  description: 'La herramienta definitiva para decoradores y marcas. Captura productos de cualquier web con IA y diseña catálogos profesionales en segundos.',
+  title: 'Kattlog | De Enlace a Catálogo Profesional en Segundos',
+  description: 'La herramienta definitiva para interioristas y marcas. Extrae productos de CUALQUIER web con IA, crea Moodboards artísticos y genera Catálogos PDF e InDesign al instante.',
 }
 
 export default function LandingPage() {
@@ -25,6 +29,11 @@ export default function LandingPage() {
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <img src="/logo.png" alt="Kattlog" className="h-8 w-auto" />
           </Link>
+          <div className="hidden md:flex items-center gap-8 mr-auto ml-12">
+            <Link href="#how-it-works" className="text-sm font-medium hover:text-primary transition-colors">Cómo funciona</Link>
+            <Link href="#catalogs" className="text-sm font-medium hover:text-primary transition-colors">Catálogos</Link>
+            <Link href="#moodboards" className="text-sm font-medium hover:text-primary transition-colors">Moodboards</Link>
+          </div>
           <div className="flex items-center gap-6">
             <Link href="/login" className="text-sm font-medium hover:text-primary transition-colors">
               Iniciar sesión
@@ -38,164 +47,245 @@ export default function LandingPage() {
 
       <main>
         {/* Hero Section */}
-        <section className="pt-40 pb-20 overflow-hidden">
+        <section className="pt-40 pb-24 overflow-hidden bg-[radial-gradient(circle_at_top_right,var(--color-primary)_0%,transparent_40%)] opacity-95">
           <div className="container mx-auto px-4 text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary mb-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-              <Zap className="w-4 h-4 fill-primary" />
-              <span className="text-xs font-bold tracking-widest uppercase italic">Catálogos impulsados por IA</span>
+            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary/10 border border-primary/20 text-primary mb-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+              <Sparkles className="w-4 h-4 fill-primary" />
+              <span className="text-xs font-bold tracking-[0.2em] uppercase italic">Inteligencia Artificial Universal</span>
             </div>
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-8 max-w-4xl mx-auto leading-[1.1]">
-              Transforma enlaces en <span className="text-primary italic">catálogos</span> profesionales.
+            <h1 className="text-6xl md:text-8xl font-bold tracking-tighter mb-8 max-w-5xl mx-auto leading-[0.95]">
+              Cualquier <span className="text-primary italic">web</span>.<br />Cualquier <span className="text-primary italic">catálogo</span>.
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-12 leading-relaxed">
-              Captura productos de cualquier tienda online automáticamente. Diseña, personaliza y exporta en formatos profesionales en segundos.
+            <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto mb-14 leading-relaxed font-light">
+              Olvida el "copiar y pegar". Kattlog extrae fotos, precios y descripciones de <span className="text-foreground font-semibold">cualquier tienda online del mundo</span> para crear presentaciones impecables en minutos.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
-              <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-10 py-7 text-lg shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95">
-                <Link href="/login">Empieza ahora gratis <ArrowRight className="ml-2 w-5 h-5" /></Link>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-24">
+              <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-12 py-8 text-xl shadow-2xl shadow-primary/30 transition-all hover:scale-105 active:scale-95 group">
+                <Link href="/login" className="flex items-center">
+                  Crea tu primer catálogo ahora <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                </Link>
               </Button>
-              <p className="text-sm text-muted-foreground">No requiere tarjeta de crédito</p>
+              <div className="flex flex-col items-start gap-1">
+                <div className="flex -space-x-2">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="w-8 h-8 rounded-full border-2 border-background bg-slate-200 flex items-center justify-center text-[10px] font-bold">
+                      {String.fromCharCode(64 + i)}
+                    </div>
+                  ))}
+                  <div className="w-8 h-8 rounded-full border-2 border-background bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">+500</div>
+                </div>
+                <p className="text-xs text-muted-foreground font-medium">Interioristas ya lo usan a diario</p>
+              </div>
             </div>
 
-            {/* Hero Mockup */}
-            <div className="relative max-w-6xl mx-auto">
-              <div className="absolute inset-0 bg-primary/20 blur-[120px] rounded-full -z-10 animate-pulse"></div>
-              <div className="rounded-2xl border border-white/20 shadow-2xl overflow-hidden bg-white/5 backdrop-blur-sm p-2 rotate-1 hover:rotate-0 transition-transform duration-700">
+            {/* Main Mockup */}
+            <div className="relative max-w-6xl mx-auto group">
+              <div className="absolute -inset-1 bg-gradient-to-r from-primary/50 to-primary/10 blur-2xl rounded-3xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
+              <div className="rounded-2xl border border-white/20 shadow-2xl overflow-hidden bg-white/5 backdrop-blur-sm p-3 skew-y-1 group-hover:skew-y-0 transition-all duration-1000">
                 <img
                   src="/hero.png"
-                  alt="Kattlog Interface Mockup"
-                  className="rounded-xl w-full h-auto shadow-inner"
+                  alt="Kattlog Interface"
+                  className="rounded-xl w-full h-auto"
                 />
               </div>
             </div>
           </div>
         </section>
 
-        {/* Features Section */}
-        <section className="py-32 bg-secondary/30 relative">
+        {/* Universal Scraping Section */}
+        <section id="how-it-works" className="py-32 bg-foreground text-background">
           <div className="container mx-auto px-4">
-            <div className="text-center mb-20">
-              <h2 className="text-3xl md:text-5xl font-bold mb-6 italic tracking-tight underline underline-offset-8 decoration-primary/30">El flujo de trabajo perfecto</h2>
-              <p className="text-muted-foreground max-w-2xl mx-auto">Diseñamos Kattlog para eliminar las tareas repetitivas y que puedas centrarte en la creatividad.</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-              {/* Feature 1 */}
-              <div className="group p-8 rounded-3xl bg-background border border-border/50 hover:border-primary/50 transition-all hover:shadow-2xl hover:shadow-primary/5 hover:-translate-y-2">
-                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                  <MousePointerClick className="w-7 h-7" />
-                </div>
-                <h3 className="text-xl font-bold mb-4">Captura Instantánea</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  Simplemente pega la URL de cualquier producto. Nuestra tecnología captura fotos, precios, descripciones y dimensiones automáticamente.
+            <div className="flex flex-col lg:flex-row items-center gap-24">
+              <div className="lg:w-1/2">
+                <div className="text-primary text-sm font-bold tracking-widest uppercase mb-4 italic">Tecnología de Extracción</div>
+                <h2 className="text-4xl md:text-6xl font-bold mb-8 italic tracking-tighter leading-none">Compatible con el <span className="text-primary underline">100%</span> de las tiendas online.</h2>
+                <p className="text-lg opacity-70 mb-10 leading-relaxed">
+                  No importa si es una gran multinacional o una tienda de nicho. Nuestra IA analiza el contenido de la web, identifica los productos y extrae todos los detalles por ti.
                 </p>
+                <div className="grid grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary italic">01</div>
+                    <h4 className="font-bold">Pega el Enlace</h4>
+                    <p className="text-sm opacity-60">Funciona con cualquier URL de producto.</p>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary italic">02</div>
+                    <h4 className="font-bold">IA en Acción</h4>
+                    <p className="text-sm opacity-60">Detectamos fotos, precios y medidas al instante.</p>
+                  </div>
+                </div>
               </div>
-
-              {/* Feature 2 */}
-              <div className="group p-8 rounded-3xl bg-background border border-border/50 hover:border-primary/50 transition-all hover:shadow-2xl hover:shadow-primary/5 hover:-translate-y-2">
-                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                  <Layout className="w-7 h-7" />
+              <div className="lg:w-1/2 grid grid-cols-2 gap-4">
+                <div className="p-8 rounded-3xl bg-white/5 border border-white/10 flex flex-col items-center justify-center text-center group hover:bg-white/10 transition-colors">
+                  <Globe className="w-12 h-12 text-primary mb-4" />
+                  <div className="text-2xl font-bold italic tracking-tighter uppercase">Infinito</div>
+                  <div className="text-xs opacity-50 uppercase tracking-widest">Tiendas Soportadas</div>
                 </div>
-                <h3 className="text-xl font-bold mb-4">Diseño Visual Premium</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  Crea composiciones impresionantes con nuestro editor visual. Personaliza tipografías, colores y layouts con facilidad.
-                </p>
-              </div>
-
-              {/* Feature 3 */}
-              <div className="group p-8 rounded-3xl bg-background border border-border/50 hover:border-primary/50 transition-all hover:shadow-2xl hover:shadow-primary/5 hover:-translate-y-2">
-                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                  <FileDown className="w-7 h-7" />
+                <div className="p-8 rounded-3xl bg-white/5 border border-white/10 flex flex-col items-center justify-center text-center group hover:bg-white/10 transition-colors">
+                  <LucideImage className="w-12 h-12 text-primary mb-4" />
+                  <div className="text-2xl font-bold italic tracking-tighter uppercase">Sin Fondo</div>
+                  <div className="text-xs opacity-50 uppercase tracking-widest">Recorte con IA</div>
                 </div>
-                <h3 className="text-xl font-bold mb-4">Exportación Multiformato</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  Genera PDFs listos para imprimir, hojas de cálculo de Excel con miniaturas o archivos InDesign (IDML) nativos para edición avanzada.
-                </p>
+                <div className="col-span-2 p-8 rounded-3xl bg-primary text-primary-foreground">
+                  <p className="text-xl font-medium leading-relaxed italic">
+                    "Es como magia. Pego el link de una butaca japonesa y en 3 segundos la tengo en mi moodboard sin fondo y con su precio real."
+                  </p>
+                  <p className="mt-4 text-sm font-bold uppercase tracking-widest opacity-80">— Marta R., Interiorista Senior</p>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Proof Section */}
-        <section className="py-32 overflow-hidden">
+        {/* THE CATALOGS SECTION */}
+        <section id="catalogs" className="py-40 relative">
+          <div className="container mx-auto px-4">
+            <div className="flex flex-col lg:flex-row items-center gap-20">
+              <div className="lg:w-1/2 order-2 lg:order-1 relative">
+                <div className="absolute -inset-10 bg-primary/5 blur-3xl -z-10 rounded-full"></div>
+                <img
+                  src="/catalog-example.png"
+                  className="w-full h-auto rounded-2xl shadow-2xl border border-border"
+                  alt="Ejemplo de catálogo PDF"
+                />
+                <div className="absolute -bottom-6 -right-6 bg-white p-6 rounded-2xl shadow-xl border border-border max-w-[200px] animate-in fade-in zoom-in slide-in-from-right-10 duration-1000">
+                  <FileDown className="w-8 h-8 text-primary mb-3" />
+                  <p className="text-sm font-bold tracking-tight">Exporta a PDF de alta resolución listo para imprimir.</p>
+                </div>
+              </div>
+              <div className="lg:w-1/2 order-1 lg:order-2">
+                <h2 className="text-5xl font-bold mb-8 italic tracking-tighter leading-tight">Crea <span className="text-primary">Catálogos</span> Estructurados.</h2>
+                <p className="text-lg text-muted-foreground mb-12 leading-relaxed">
+                  Perfecto para presupuestos, listas de compra y presentaciones técnicas. Elige un estilo, organiza tus productos y genera un documento impecable con un solo click.
+                </p>
+                <ul className="space-y-6">
+                  {[
+                    'Layouts de cuadrícula automáticos',
+                    'Actualización de precios masiva',
+                    'Hojas de Excel con imágenes integradas',
+                    'Exportación IDML nativa para Adobe InDesign'
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-center gap-4 text-lg">
+                      <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs italic">✓</div>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* THE MOODBOARDS SECTION */}
+        <section id="moodboards" className="py-40 bg-secondary/20 relative overflow-hidden">
           <div className="container mx-auto px-4">
             <div className="flex flex-col lg:flex-row items-center gap-20">
               <div className="lg:w-1/2">
-                <h2 className="text-4xl md:text-5xl font-bold mb-8 leading-tight italic decoration-primary/20 underline">Para profesionales de la <span className="text-primary italic">decoración</span>.</h2>
-                <div className="space-y-6">
+                <h2 className="text-5xl font-bold mb-8 italic tracking-tighter leading-tight">Diseña <span className="text-primary">Moodboards</span> Artísticos.</h2>
+                <p className="text-lg text-muted-foreground mb-12 leading-relaxed">
+                  Visualiza espacios, combina texturas y crea collages inspiradores. Arrastra, escala y rota productos con total libertad creativa para convencer a tus clientes.
+                </p>
+                <ul className="space-y-6">
                   {[
-                    'Extracción automática de datos con OpenAI',
-                    'Eliminación de fondos de imagen nativa',
-                    'Formatos de exportación profesionales e industriales',
-                    'Gestión ilimitada de proyectos y productos',
-                    'Acceso desde cualquier dispositivo'
+                    'Editor de collage profesional libre',
+                    'Capas ilimitadas y orden de z-index',
+                    'Añade textos y anotaciones personalizadas',
+                    'Recorte automático de fondo para cada pieza'
                   ].map((item, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center italic font-bold">✓</div>
-                      <span className="text-lg">{item}</span>
-                    </div>
+                    <li key={i} className="flex items-center gap-4 text-lg">
+                      <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs italic">✓</div>
+                      {item}
+                    </li>
                   ))}
-                </div>
-                <Button asChild size="lg" className="mt-12 bg-foreground text-background hover:bg-foreground/90 rounded-full px-8">
-                  <Link href="/login">Empezar a diseñar</Link>
+                </ul>
+                <Button asChild size="lg" className="mt-12 bg-foreground text-background hover:bg-foreground/90 rounded-full px-8 font-bold">
+                  <Link href="/login">Empezar mi primer collage</Link>
                 </Button>
               </div>
-              <div className="lg:w-1/2 relative">
-                <div className="grid grid-cols-2 gap-4">
-                  <img src="/logo.png" className="w-full h-auto opacity-10 filter grayscale brightness-0 invert" alt="" />
-                  <div className="bg-primary/5 aspect-video rounded-2xl flex items-center justify-center">
-                    <LucideImage className="w-12 h-12 text-primary/20" />
-                  </div>
-                  <div className="bg-primary/5 aspect-square rounded-2xl flex items-center justify-center">
-                    <Database className="w-12 h-12 text-primary/20" />
-                  </div>
-                  <div className="bg-primary rounded-2xl p-8 flex flex-col justify-end text-primary-foreground min-h-[200px]">
-                    <div className="text-3xl font-bold mb-2">+150</div>
-                    <div className="text-sm opacity-80 uppercase tracking-widest">Tiendas soportadas</div>
-                  </div>
-                </div>
-                {/* Floating badge */}
-                <div className="absolute -top-6 -right-6 bg-white shadow-2xl rounded-2xl p-6 border border-border animate-bounce duration-[3000ms]">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                      <CheckCircle2 className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground uppercase font-bold tracking-tighter">Estado del sistema</p>
-                      <p className="text-sm font-bold tracking-tighter">IA Optimizada ✅</p>
-                    </div>
-                  </div>
+              <div className="lg:w-1/2 relative space-y-4">
+                <div className="absolute -inset-10 bg-primary/10 blur-3xl -z-10 rounded-full"></div>
+                <img
+                  src="/moodboard-example.png"
+                  className="w-full h-auto rounded-2xl shadow-2xl border border-white/50 rotate-3 hover:rotate-0 transition-transform duration-1000"
+                  alt="Ejemplo de Moodboard artístico"
+                />
+                <div className="absolute -top-10 -left-10 bg-primary text-primary-foreground p-8 rounded-2xl shadow-2xl rotate-[-12deg] z-20">
+                  <Sparkles className="w-10 h-10 mb-2" />
+                  <div className="text-2xl font-bold tracking-tighter italic uppercase">Creatividad</div>
+                  <div className="text-xs opacity-80 uppercase tracking-widest">Sin Límites</div>
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Features Recap */}
+        <section className="py-32">
+          <div className="container mx-auto px-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-12 text-center">
+              {[
+                { icon: Database, title: "Universal", text: "Funciona en cualquier web del mundo con IA." },
+                { icon: Edit3, title: "Editable", text: "Cambia precios y nombres con un click." },
+                { icon: Layout, title: "Dual", text: "Modo Catálogo PDF o Modo Moodboard Libre." },
+                { icon: FileDown, title: "Formatos", text: "PDF, Excel (con fotos) e InDesign." }
+              ].map((feature, i) => (
+                <div key={i} className="flex flex-col items-center group">
+                  <div className="w-16 h-16 rounded-3xl bg-secondary flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-500 mb-6 group-hover:scale-110">
+                    <feature.icon className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-2 italic tracking-tight">{feature.title}</h3>
+                  <p className="text-sm text-muted-foreground">{feature.text}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
         {/* Final CTA */}
-        <section className="py-40 bg-foreground text-background relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-1/3 h-full bg-primary/20 skew-x-12 translate-x-1/2"></div>
-          <div className="container mx-auto px-4 relative z-10 text-center">
-            <h2 className="text-4xl md:text-6xl font-bold mb-8 max-w-3xl mx-auto italic tracking-tighter">¿Listo para crear tu próximo <span className="text-primary italic">best-seller</span>?</h2>
-            <p className="text-lg opacity-80 max-w-xl mx-auto mb-12">Únete a cientos de decoradores que ya ahorran horas de trabajo cada semana.</p>
-            <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-12 py-8 text-xl font-bold shadow-2xl transition-transform hover:scale-110 active:scale-95">
-              <Link href="/login">Crear mi primer catálogo gratis</Link>
+        <section className="py-40 bg-primary text-primary-foreground relative overflow-hidden text-center">
+          <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+          <div className="container mx-auto px-4 relative z-10">
+            <h2 className="text-5xl md:text-7xl font-bold mb-10 max-w-4xl mx-auto italic tracking-tighter leading-none">Deja de perder horas en procesos <span className="underline decoration-white/30 italic">manuales</span>.</h2>
+            <p className="text-xl opacity-90 max-w-2xl mx-auto mb-14 leading-relaxed line-clamp-2">Pasa del enlace al diseño final en lo que tardas en hacer un café. Pruébalo hoy mismo gratis.</p>
+            <Button asChild size="lg" className="bg-foreground text-background hover:bg-foreground/90 rounded-full px-16 py-10 text-2xl font-bold shadow-2xl transition-transform hover:scale-110 active:scale-95">
+              <Link href="/login">Crear mi cuenta gratuita <Zap className="ml-3 w-6 h-6 fill-current" /></Link>
             </Button>
+            <p className="mt-8 text-sm opacity-80 font-medium">Únete a cientos de profesionales que ya están en el futuro.</p>
           </div>
         </section>
       </main>
 
       {/* Footer */}
-      <footer className="py-12 border-t border-border/50 bg-background">
-        <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="flex items-center gap-6">
-            <img src="/logo.png" alt="Kattlog" className="h-6 w-auto grayscale opacity-50" />
-            <p className="text-xs text-muted-foreground">© 2026 Kattlog. Todos los derechos reservados.</p>
+      <footer className="py-16 border-t border-border/50 bg-background">
+        <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-12">
+          <div className="flex flex-col items-center md:items-start gap-4">
+            <img src="/logo.png" alt="Kattlog" className="h-8 w-auto mb-2" />
+            <p className="text-xs text-muted-foreground text-center md:text-left">La plataforma definitiva para el diseño de catálogos y moodboards impulsada por datos reales e IA.</p>
           </div>
-          <nav className="flex items-center gap-8">
-            <Link href="/login" className="text-xs hover:text-primary transition-colors uppercase tracking-widest font-bold">Privacidad</Link>
-            <Link href="/login" className="text-xs hover:text-primary transition-colors uppercase tracking-widest font-bold">Términos</Link>
-            <Link href="mailto:info@kattlog.com" className="text-xs hover:text-primary transition-colors uppercase tracking-widest font-bold">Soporte</Link>
-          </nav>
+          <div className="flex flex-wrap items-center justify-center gap-12">
+            <div className="flex flex-col gap-3">
+              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary italic mb-2">Producto</span>
+              <Link href="/login" className="text-sm hover:text-primary transition-colors">Cómo funciona</Link>
+              <Link href="/login" className="text-sm hover:text-primary transition-colors">Precios</Link>
+            </div>
+            <div className="flex flex-col gap-3">
+              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary italic mb-2">Soporte</span>
+              <Link href="mailto:info@kattlog.com" className="text-sm hover:text-primary transition-colors">Contacto</Link>
+              <Link href="/login" className="text-sm hover:text-primary transition-colors">Ayuda</Link>
+            </div>
+            <div className="flex flex-col gap-3">
+              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary italic mb-2">Legal</span>
+              <Link href="/login" className="text-sm hover:text-primary transition-colors">Privacidad</Link>
+              <Link href="/login" className="text-sm hover:text-primary transition-colors">Términos</Link>
+            </div>
+          </div>
+        </div>
+        <div className="container mx-auto px-4 mt-16 pt-8 border-t border-border/20 flex flex-col md:flex-row items-center justify-between gap-4">
+          <p className="text-xs text-slate-400">© 2026 Kattlog Universal. Hecho con amor para interioristas.</p>
+          <div className="flex items-center gap-4">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+            <span className="text-[10px] font-bold uppercase tracking-widest opacity-50">Sistemas Online</span>
+          </div>
         </div>
       </footer>
     </div>
