@@ -36,6 +36,10 @@ export default function LoginPage() {
     }
 
     const handleSignUp = async () => {
+        if (!email || !password) {
+            setError('Please enter both email and password.')
+            return
+        }
         setLoading(true)
         setError(null)
 
