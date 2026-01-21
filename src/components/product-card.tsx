@@ -5,6 +5,7 @@ import { Trash2, Package, Eye } from "lucide-react"
 import { ProductEditDialog } from "./product-edit-dialog"
 import { ProductDetailModal } from "./product-detail-modal"
 import { Button } from "./ui/button"
+import { getStoreName } from "@/lib/utils/url"
 
 interface ProductCardProps {
     product: any
@@ -59,7 +60,7 @@ export function ProductCard({ product }: ProductCardProps) {
                             {product.title}
                         </h3>
                         <p className="text-[10px] text-slate-400 mt-0.5 italic tracking-[0.05em]">
-                            {product.brand || "True Vintage"}
+                            {product.brand || getStoreName(product.original_url)}
                         </p>
                     </div>
                     <div className="text-[11px] font-bold text-foreground tracking-[0.05em]">

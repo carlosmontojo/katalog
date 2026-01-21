@@ -7,6 +7,7 @@ import { inferCategoriesFromOpenAI, inferCategoryKeywords, analyzePageForCatalog
 import { scrapeUrlHybrid } from '@/lib/hybrid-scraper';
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { getStoreName } from '@/lib/utils/url';
 
 export async function detectCategories(url: string) {
     try {
@@ -241,6 +242,7 @@ export async function scrapeProducts(projectId: string, url: string, category: s
                 currency: pageContext.currency || 'EUR',
                 image_url: c.image_url,
                 original_url: c.product_url || url,
+                brand: pageContext.site_name || getStoreName(c.product_url || url),
                 category_id: null,
                 attributes: {},
                 ai_metadata: {

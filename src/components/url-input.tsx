@@ -8,6 +8,7 @@ import { Loader2, Plus, Check, ShoppingBag, Eye } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from "@/components/ui/checkbox"
 import { ProductDetailModal } from './product-detail-modal'
+import { getStoreName } from '@/lib/utils/url'
 
 interface UrlInputProps {
     projectId: string
@@ -271,7 +272,7 @@ export function UrlInput({ projectId }: UrlInputProps) {
                                             {product.title}
                                         </h3>
                                         <p className="text-[10px] text-slate-400 mt-0.5 italic tracking-[0.05em]">
-                                            {product.brand || "True Vintage"}
+                                            {product.brand || getStoreName(product.original_url)}
                                         </p>
                                     </div>
                                     <div className="text-[11px] font-bold text-foreground tracking-[0.05em]">
