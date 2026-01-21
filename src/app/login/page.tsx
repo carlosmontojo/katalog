@@ -68,21 +68,13 @@ export default function LoginPage() {
             <div className="absolute top-0 right-0 w-1/3 h-1/3 bg-primary/5 blur-[120px] rounded-full -z-10 animate-pulse"></div>
             <div className="absolute bottom-0 left-0 w-1/3 h-1/3 bg-primary/5 blur-[120px] rounded-full -z-10"></div>
 
-            <Link
-                href="/"
-                className="absolute top-8 left-8 flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors group"
-            >
-                <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                Volver a la home
-            </Link>
-
             <div className="w-full max-w-md">
                 <div className="flex flex-col items-center mb-10">
                     <Link href="/">
                         <img src="/logo.png" alt="Kattlog" className="h-12 w-auto mb-6 hover:scale-105 transition-transform" />
                     </Link>
-                    <h1 className="text-3xl font-bold tracking-tight text-foreground italic">Bienvenido de nuevo</h1>
-                    <p className="text-muted-foreground text-center mt-2">Accede a tus proyectos y catálogos de interiorismo.</p>
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground italic text-center">Software para Interioristas</h1>
+                    <p className="text-muted-foreground text-center mt-2 px-10">Crea catálogos y moodboards profesionales en minutos.</p>
                 </div>
 
                 <Card className="border-border/50 shadow-2xl bg-card/50 backdrop-blur-sm overflow-hidden rounded-3xl">

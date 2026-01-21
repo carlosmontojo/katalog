@@ -26,20 +26,20 @@ export default function LandingPage() {
       {/* Navigation */}
       <header className="fixed top-0 w-full z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
         <div className="container mx-auto px-4 h-20 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <img src="/logo.png" alt="Kattlog" className="h-8 w-auto" />
+          <Link href="/" className="flex-shrink-0 hover:opacity-80 transition-opacity">
+            <img src="/logo.png" alt="Kattlog" className="h-7 md:h-8 w-auto" />
           </Link>
           <div className="hidden md:flex items-center gap-8 mr-auto ml-12">
             <Link href="#how-it-works" className="text-sm font-medium hover:text-primary transition-colors">Cómo funciona</Link>
             <Link href="#catalogs" className="text-sm font-medium hover:text-primary transition-colors">Catálogos</Link>
             <Link href="#moodboards" className="text-sm font-medium hover:text-primary transition-colors">Moodboards</Link>
           </div>
-          <div className="flex items-center gap-6">
-            <Link href="/login" className="text-sm font-medium hover:text-primary transition-colors">
+          <div className="flex items-center gap-4 md:gap-6">
+            <Link href="/login" className="text-xs md:text-sm font-medium hover:text-primary transition-colors whitespace-nowrap">
               Iniciar sesión
             </Link>
-            <Button asChild className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-6">
-              <Link href="/login">Empezar gratis</Link>
+            <Button asChild size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-4 md:px-6 md:h-10">
+              <Link href="/login" className="text-xs md:text-sm">Empezar gratis</Link>
             </Button>
           </div>
         </div>
