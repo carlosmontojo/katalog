@@ -143,14 +143,38 @@ async function autoScroll(page: any) {
     await page.evaluate(async () => {
         await new Promise<void>((resolve) => {
             let totalHeight = 0;
-            const distance = 800;
+            const distance = 600;
             let lastHeight = document.documentElement.scrollHeight;
             let scrollAttempts = 0;
+            const maxAttempts = 5;
+            const maxScrollHeight = 80000; // Even more depth
+            let loadMoreFound = 0;
 
-            const timer = setInterval(() => {
+            const timer = setInterval(async () => {
                 window.scrollBy(0, distance);
                 totalHeight += distance;
                 const currentHeight = document.documentElement.scrollHeight;
+
+                // Try to find "Load More" / "Ver más" buttons
+                const buttons = Array.from(document.querySelectorAll('button, a, span'))
+                    .filter(el => {
+                        const text = el.textContent?.toLowerCase() || '';
+                        return (text.includes('ver más') ||
+                            text.includes('load more') ||
+                            text.includes('cargar más') ||
+                            text.includes('mostrar más') ||
+                            text.includes('view more')) &&
+                            el.getBoundingClientRect().top < window.innerHeight + 1000;
+                    });
+
+                if (buttons.length > 0) {
+                    const btn = buttons[0] as HTMLElement;
+                    if (loadMoreFound < 10) { // Limit to 10 clicks to avoid infinite loops
+                        btn.click();
+                        loadMoreFound++;
+                        console.log('[AutoScroll] Clicked Load More button');
+                    }
+                }
 
                 if (currentHeight === lastHeight) {
                     scrollAttempts++;
@@ -159,13 +183,12 @@ async function autoScroll(page: any) {
                     lastHeight = currentHeight;
                 }
 
-                // Stop if we haven't seen new content for 4 attempts, or we've scrolled a lot
-                if (scrollAttempts >= 4 || totalHeight >= currentHeight * 4 || totalHeight > 30000) {
+                if (scrollAttempts >= maxAttempts || totalHeight >= maxScrollHeight) {
                     clearInterval(timer);
-                    window.scrollTo(0, 0);
+                    console.log(`[AutoScroll] Finished at ${totalHeight}px with ${loadMoreFound} load more clicks`);
                     resolve();
                 }
-            }, 250);
+            }, 500); // 500ms to allow clicks and loading
         });
     });
 }

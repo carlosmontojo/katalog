@@ -207,7 +207,7 @@ export function parseProductPage(html: string, baseUrl: string): ProductCandidat
     }
 
     candidates.push(...bestCandidates);
-    return dedupeCandidates(candidates).slice(0, 80);
+    return dedupeCandidates(candidates).slice(0, 200);
 }
 
 export function extractGlobalNavigation(html: string, baseUrl: string): Category[] {
@@ -474,11 +474,21 @@ function extractFromCard(card: cheerio.Cheerio<any>, $: cheerio.CheerioAPI, base
 }
 
 function isValidCandidate(c: ProductCandidate): boolean {
-    if (!c.title || c.title === 'Sin título') return false;
+    if (!c.title || c.title === 'Sin título' || c.title.length < 3) return false;
     if (!c.image_url) return false;
-    // CRITICAL: Products MUST have a price to be distinguished from category cards.
-    // This prevents the "Category Loop" where clicking a category shows subcategories as products.
-    if (!c.price || c.price.length < 2) return false;
+
+    // For universal scraping, we are more lenient.
+    // However, we still need a way to filter out category cards.
+    // Category cards usually don't have a price.
+    // If a candidate has no price, we only accept it if the title doesn't look like a generic category.
+    if (!c.price || c.price.length < 2) {
+        // If no price, check if title is a single word or matches category patterns
+        if (!c.title.includes(' ') || isValidCategoryName(c.title)) return false;
+
+        // Also check if the URL looks like a product URL vs category URL
+        if (c.product_url && (c.product_url.includes('/c/') || c.product_url.includes('/categoria/'))) return false;
+    }
+
     return true;
 }
 
