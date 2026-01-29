@@ -10,7 +10,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { ProductDetailModal } from './product-detail-modal'
 import { getStoreName } from '@/lib/utils/url'
 import { ManualProductForm } from './manual-product-form'
-import { Globe, Type } from 'lucide-react'
+import { Globe, Type, MousePointer2 } from 'lucide-react'
+import { VisualBrowser } from './visual-browser'
 
 interface UrlInputProps {
     projectId: string
@@ -24,7 +25,7 @@ interface Category {
 export function UrlInput({ projectId }: UrlInputProps) {
     const [url, setUrl] = useState('')
     const [loading, setLoading] = useState(false)
-    const [mode, setMode] = useState<'url' | 'manual'>('url')
+    const [mode, setMode] = useState<'url' | 'manual' | 'browse'>('url')
     const [step, setStep] = useState<'input' | 'category' | 'preview'>('input')
     const [categories, setCategories] = useState<Category[]>([])
     const [selectedCategoryName, setSelectedCategoryName] = useState<string>('')
@@ -147,7 +148,7 @@ export function UrlInput({ projectId }: UrlInputProps) {
                 <div className="flex flex-col gap-6">
                     <div className="flex items-center justify-between border-b border-slate-200/50 pb-4">
                         <div className="flex flex-col gap-1">
-                            <h2 className="text-lg font-medium tracking-[0.05em] text-foreground uppercase">Añadir Productos</h2>
+                            <h2 className="text-lg font-medium tracking-[0.05em] text-foreground uppercase">Añadir Productos (v2)</h2>
                             <p className="text-xs text-slate-400 tracking-[0.05em]">Importa productos desde una web o añádelos manualmente.</p>
                         </div>
                         <div className="flex bg-slate-100 p-1 rounded-sm">
@@ -164,6 +165,13 @@ export function UrlInput({ projectId }: UrlInputProps) {
                             >
                                 <Type className="w-3.5 h-3.5" />
                                 Manual
+                            </button>
+                            <button
+                                onClick={() => setMode('browse')}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all ${mode === 'browse' ? 'bg-red-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 border border-dashed border-red-200'}`}
+                            >
+                                <MousePointer2 className="w-3.5 h-3.5" />
+                                Navegar (NUEVO)
                             </button>
                         </div>
                     </div>
@@ -190,7 +198,7 @@ export function UrlInput({ projectId }: UrlInputProps) {
                                 </div>
                             </div>
                         )
-                    ) : (
+                    ) : mode === 'manual' ? (
                         <ManualProductForm
                             projectId={projectId}
                             onSuccess={() => {
@@ -199,6 +207,35 @@ export function UrlInput({ projectId }: UrlInputProps) {
                             }}
                             onCancel={() => setMode('url')}
                         />
+                    ) : (
+                        <div className="flex flex-col items-center justify-center p-12 border border-dashed border-slate-200 bg-slate-50/50 rounded-sm gap-6">
+                            <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-sm text-foreground">
+                                <MousePointer2 className="w-8 h-8" />
+                            </div>
+                            <div className="text-center space-y-2">
+                                <h3 className="text-sm font-bold uppercase tracking-[0.1em]">Navegador Visual</h3>
+                                <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
+                                    Te permite entrar en la web de la tienda y seleccionar visualmente los productos que quieras.
+                                </p>
+                            </div>
+                            <Button
+                                onClick={() => setMode('browse')}
+                                className="h-11 px-8 bg-foreground text-background hover:bg-foreground/90 rounded-sm text-[10px] font-bold uppercase tracking-[0.2em]"
+                            >
+                                Abrir Navegador
+                            </Button>
+
+                            {mode === 'browse' && (
+                                <VisualBrowser
+                                    projectId={projectId}
+                                    onClose={() => setMode('url')}
+                                    onSuccess={() => {
+                                        alert("Productos importados correctamente")
+                                        setMode('url')
+                                    }}
+                                />
+                            )}
+                        </div>
                     )}
                 </div>
             )}

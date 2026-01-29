@@ -13,7 +13,7 @@ export interface ScrapeResult {
 }
 
 /**
- * Scrape a URL using Puppeteer (headless Chrome)
+ * Scrape a URL using Puppeteer with Stealth Mode
  * This method works with ALL websites including heavy SPAs like React/Vue
  */
 export async function scrapeUrlWithPuppeteer(url: string): Promise<ScrapeResult> {

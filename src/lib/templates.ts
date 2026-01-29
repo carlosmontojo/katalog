@@ -263,25 +263,42 @@ export function generateHtml(project: any, products: any[], template: string, op
     }
 
     // Generate Product HTML for a single product
-    const generateProductHtml = (p: any) => `
+    const generateProductHtml = (p: any) => {
+        const specs = p.specifications || {};
+        const attrs = p.attributes || {};
+
+        // Build specs tags array
+        const specTags: string[] = [];
+        if (specs.dimensions) specTags.push(`📏 ${specs.dimensions}`);
+        if (specs.materials || attrs.materials) specTags.push(`🪵 ${specs.materials || attrs.materials}`);
+        if (specs.colors || attrs.colors) specTags.push(`🎨 ${specs.colors || attrs.colors}`);
+
+        // Add remaining attributes (up to 2 more)
+        Object.entries(attrs).slice(0, 2).forEach(([k, v]) => {
+            if (k !== 'materials' && k !== 'colors' && k !== 'brand') {
+                specTags.push(`${k}: ${v}`);
+            }
+        });
+
+        return `
         <div class="product-card">
             ${p.image_url
-            ? `<img src="${p.image_url}" class="product-img" alt="${p.title}" />`
-            : `<div class="product-img" style="display:flex;align-items:center;justify-content:center;color:#ccc;font-size:12pt;">No Image</div>`
-        }
+                ? `<img src="${p.image_url}" class="product-img" alt="${p.title}" />`
+                : `<div class="product-img" style="display:flex;align-items:center;justify-content:center;color:#ccc;font-size:12pt;">No Image</div>`
+            }
             <div class="product-info">
                 <div class="product-title">${p.title}</div>
-                ${showPrices ? `<div class="product-price">${p.currency || '€'} ${p.price}</div>` : ''}
+                ${showPrices ? `<div class="product-price">${p.currency || '€'} ${p.price || '—'}</div>` : ''}
                 ${showDescriptions && p.description ? `<div class="product-desc">${p.description}</div>` : ''}
-                ${showSpecs && (p.attributes || p.specifications) ? `
+                ${showSpecs && specTags.length > 0 ? `
                     <div class="product-specs">
-                        ${p.specifications?.dimensions ? `<span class="spec-tag" style="background:var(--c-gray);color:var(--c-text);">📏 ${p.specifications.dimensions}</span>` : ''}
-                        ${Object.entries(p.attributes || {}).slice(0, 3).map(([k, v]) => `<span class="spec-tag">${k}: ${v}</span>`).join('')}
+                        ${specTags.slice(0, 4).map(tag => `<span class="spec-tag">${tag}</span>`).join('')}
                     </div>
                 ` : ''}
             </div>
         </div>
     `;
+    };
 
     // Paginate products
     const productPages = chunk(products, itemsPerPage);

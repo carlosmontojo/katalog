@@ -33,12 +33,7 @@ export function ProductCard({ product }: ProductCardProps) {
                         </div>
                     )}
 
-                    {/* Sold Out Badge (Placeholder logic) */}
-                    {product.price === 0 && (
-                        <div className="absolute top-2 right-2 bg-white px-2 py-1 rounded-sm shadow-sm">
-                            <span className="text-[8px] font-bold uppercase tracking-wider text-slate-400">Sold Out</span>
-                        </div>
-                    )}
+
 
                     {/* View Details Button - appears on hover */}
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import {
     Dialog,
     DialogContent,
@@ -12,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Loader2, Plus, FolderOpen, ArrowLeft } from "lucide-react"
 import { createClient } from '@/lib/supabase/client'
+import { createProjectAction } from '@/app/scraping-actions'
 
 interface DestinationModalProps {
     isOpen: boolean
@@ -27,6 +29,7 @@ export function DestinationModal({
     onSelectExisting
 }: DestinationModalProps) {
     const supabase = createClient()
+    const router = useRouter()
 
     const [step, setStep] = useState<'choose' | 'new-form'>('choose')
     const [hasExistingProjects, setHasExistingProjects] = useState(false)
@@ -49,7 +52,13 @@ export function DestinationModal({
     const checkExistingProjects = async () => {
         setLoadingProjects(true)
         try {
-            const { data: { user } } = await supabase.auth.getUser()
+            let { data: { user } } = await supabase.auth.getUser()
+
+            if (!user) {
+                const { data: { session } } = await supabase.auth.refreshSession()
+                user = session?.user || null
+            }
+
             if (user) {
                 const { count } = await supabase
                     .from('projects')
@@ -59,6 +68,10 @@ export function DestinationModal({
             }
         } catch (e) {
             console.error('Error checking projects:', e)
+            // If it's a 401/Not Authenticated, we might want to know
+            if (e instanceof Error && e.message.includes('auth')) {
+                setHasExistingProjects(false)
+            }
         } finally {
             setLoadingProjects(false)
         }
@@ -69,25 +82,20 @@ export function DestinationModal({
 
         setCreating(true)
         try {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) throw new Error('Not authenticated')
+            // Use the Server Action for better session resilience
+            const project = await createProjectAction(newName.trim(), newDescription.trim())
 
-            const { data: project, error } = await supabase
-                .from('projects')
-                .insert({
-                    user_id: user.id,
-                    name: newName.trim(),
-                    description: newDescription.trim() || null
-                })
-                .select()
-                .single()
-
-            if (error) throw error
+            if (!project) throw new Error('Failed to create project')
 
             onSelectNew(project.id, project.name)
-        } catch (e) {
+        } catch (e: any) {
             console.error('Error creating katalog:', e)
-            alert('Error creating Katalog')
+            if (e.message?.includes('authenticated') || e.message?.includes('JWT')) {
+                alert('Tu sesión ha expirado. Por favor, recarga la página e inicia sesión de nuevo.')
+                window.location.reload()
+            } else {
+                alert('Error al crear el catálogo: ' + (e.message || 'Desconocido'))
+            }
         } finally {
             setCreating(false)
         }

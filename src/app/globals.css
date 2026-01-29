@@ -133,3 +133,17 @@
 .animate-fly-to-sidebar {
   animation: fly-to-sidebar 0.7s ease-in-out forwards;
 }
+
+/* Shimmer animation for loading progress */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.5s infinite;
+}

@@ -8,6 +8,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { LoadingProgress } from "@/components/ui/loading-progress"
 import { Loader2, Plus, X, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react"
 import { fetchProductDetails } from "@/app/scraping-actions"
 
@@ -17,6 +18,7 @@ interface ProductDetailModalProps {
         price: number
         currency: string
         image_url?: string
+        images?: string[]  // Database-stored images from previous scrapes
         original_url?: string
     }
     isOpen: boolean
@@ -27,10 +29,16 @@ interface ProductDetailModalProps {
 
 interface ProductDetails {
     images: string[]
+    price?: string
     dimensions?: string
     description?: string
     materials?: string
     colors?: string
+    weight?: string
+    capacity?: string
+    style?: string
+    features?: string[]
+    careInstructions?: string
 }
 
 export function ProductDetailModal({
@@ -66,6 +74,14 @@ export function ProductDetailModal({
         try {
             const result = await fetchProductDetails(product.original_url)
             if (result.success && result.details) {
+                // DEBUG: Log all image URLs received from server
+                console.log('[ProductDetail] ===== IMAGE DEBUG =====')
+                console.log('[ProductDetail] Product URL:', product.original_url)
+                console.log('[ProductDetail] Images received:', result.details.images)
+                result.details.images?.forEach((img, idx) => {
+                    console.log(`[ProductDetail] Image ${idx + 1}:`, img)
+                })
+                console.log('[ProductDetail] ===========================')
                 setDetails(result.details)
             } else {
                 setError(result.error || 'No se pudo cargar la información')
@@ -77,11 +93,14 @@ export function ProductDetailModal({
         }
     }
 
+    // Priority: Live Scrape > Database Images > Main Image (NO FILTERING)
     const allImages = details?.images?.length
         ? details.images
-        : product.image_url
-            ? [product.image_url]
-            : []
+        : (product.images && product.images.length > 0)
+            ? product.images
+            : product.image_url
+                ? [product.image_url]
+                : []
 
     const nextImage = () => setSelectedImage((prev) => (prev + 1) % allImages.length)
     const prevImage = () => setSelectedImage((prev) => (prev - 1 + allImages.length) % allImages.length)
@@ -89,10 +108,26 @@ export function ProductDetailModal({
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="!max-w-[95vw] !w-[95vw] h-[95vh] flex flex-col p-0 gap-0 bg-white border-none rounded-sm overflow-hidden">
+                <DialogHeader>
+                    <DialogTitle className="sr-only">Detalles del Producto</DialogTitle>
+                </DialogHeader>
                 <div className="flex-1 flex overflow-hidden">
                     {/* Left: Image Gallery */}
-                    <div className="w-1/2 flex flex-col p-12 bg-white border-r border-slate-100">
-                        <div className="relative flex-1 bg-slate-50 rounded-sm overflow-hidden mb-8">
+                    <div className="w-1/2 flex flex-col p-8 bg-white border-r border-slate-100">
+                        {/* Loading Progress */}
+                        {loading && (
+                            <div className="mb-4">
+                                <LoadingProgress
+                                    isLoading={loading}
+                                    message="Cargando detalles del producto..."
+                                    variant="bar"
+                                    showPercentage
+                                />
+                            </div>
+                        )}
+
+                        {/* Main Image - using aspect-ratio for consistent sizing */}
+                        <div className="relative w-full aspect-square bg-slate-50 rounded-sm overflow-hidden mb-6 flex items-center justify-center">
                             {allImages.length > 0 ? (
                                 <>
                                     <img
@@ -151,7 +186,7 @@ export function ProductDetailModal({
                                     {product.title}
                                 </h1>
                                 <p className="text-sm text-slate-400 tracking-[0.05em]">
-                                    {details?.materials?.split(',')[0] || "Sklum"}
+                                    {details?.materials?.split(',')[0] || "Vista detalle"}
                                 </p>
                             </div>
                             {product.original_url && (
@@ -172,52 +207,71 @@ export function ProductDetailModal({
                             </p>
 
                             {/* Medidas */}
-                            <div>
-                                <h3 className="text-xs font-bold tracking-[0.2em] text-foreground uppercase mb-4">Medidas</h3>
-                                <div className="text-sm leading-relaxed text-slate-500 space-y-1">
-                                    {details?.dimensions ? (
-                                        details.dimensions.split('\n').map((line, i) => (
+                            {details?.dimensions && (
+                                <div>
+                                    <h3 className="text-xs font-bold tracking-[0.2em] text-foreground uppercase mb-4">Medidas</h3>
+                                    <div className="text-sm leading-relaxed text-slate-500 space-y-1">
+                                        {details.dimensions.split('\n').map((line, i) => (
                                             <p key={i}>{line}</p>
-                                        ))
-                                    ) : (
-                                        <p>Alto: 75 cm / Ancho: 316 cm / Profundo: 161 cm</p>
-                                    )}
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Materiales */}
-                            <div>
-                                <h3 className="text-xs font-bold tracking-[0.2em] text-foreground uppercase mb-4">Materiales</h3>
-                                <div className="text-sm leading-relaxed text-slate-500 space-y-1">
-                                    {details?.materials ? (
-                                        details.materials.split('\n').map((line, i) => (
+                            {details?.materials && (
+                                <div>
+                                    <h3 className="text-xs font-bold tracking-[0.2em] text-foreground uppercase mb-4">Materiales</h3>
+                                    <div className="text-sm leading-relaxed text-slate-500 space-y-1">
+                                        {details.materials.split('\n').map((line, i) => (
                                             <p key={i}>{line}</p>
-                                        ))
-                                    ) : (
-                                        <>
-                                            <p>Material: Poliéster</p>
-                                            <p>Material estructura: Madera de Pino</p>
-                                            <p>Material patas: Plástico</p>
-                                        </>
-                                    )}
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
-                            {/* Características */}
-                            <div>
-                                <h3 className="text-xs font-bold tracking-[0.2em] text-foreground uppercase mb-4">Características</h3>
-                                <div className="text-sm leading-relaxed text-slate-500 space-y-1">
-                                    {details?.colors ? (
-                                        <p>Colores: {details.colors}</p>
-                                    ) : (
-                                        <>
-                                            <p>Colores: Borreguito Blanco</p>
-                                            <p>Peso Máx. Soportado: 440 Kg</p>
-                                            <p>Uso: Interior</p>
-                                        </>
-                                    )}
+                            {/* Colores */}
+                            {details?.colors && (
+                                <div>
+                                    <h3 className="text-xs font-bold tracking-[0.2em] text-foreground uppercase mb-4">Colores</h3>
+                                    <p className="text-sm leading-relaxed text-slate-500">{details.colors}</p>
                                 </div>
-                            </div>
+                            )}
+
+                            {/* Características adicionales */}
+                            {(details?.weight || details?.capacity || details?.style) && (
+                                <div>
+                                    <h3 className="text-xs font-bold tracking-[0.2em] text-foreground uppercase mb-4">Especificaciones</h3>
+                                    <div className="text-sm leading-relaxed text-slate-500 space-y-1">
+                                        {details.weight && <p><span className="font-medium">Peso:</span> {details.weight}</p>}
+                                        {details.capacity && <p><span className="font-medium">Capacidad:</span> {details.capacity}</p>}
+                                        {details.style && <p><span className="font-medium">Estilo:</span> {details.style}</p>}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Features */}
+                            {details?.features && details.features.length > 0 && (
+                                <div>
+                                    <h3 className="text-xs font-bold tracking-[0.2em] text-foreground uppercase mb-4">Características</h3>
+                                    <ul className="text-sm leading-relaxed text-slate-500 space-y-2">
+                                        {details.features.map((feature, i) => (
+                                            <li key={i} className="flex items-start gap-2">
+                                                <span className="text-amber-500 mt-1">•</span>
+                                                <span>{feature}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            {/* Care Instructions */}
+                            {details?.careInstructions && (
+                                <div>
+                                    <h3 className="text-xs font-bold tracking-[0.2em] text-foreground uppercase mb-4">Cuidados</h3>
+                                    <p className="text-sm leading-relaxed text-slate-500">{details.careInstructions}</p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Footer Info */}
@@ -225,7 +279,9 @@ export function ProductDetailModal({
                             <div className="text-3xl font-bold tracking-[0.05em] text-foreground">
                                 {product.price > 0
                                     ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: product.currency || 'EUR' }).format(product.price)
-                                    : '—'}
+                                    : details?.price
+                                        ? details.price
+                                        : '—'}
                             </div>
                             <div className="flex gap-4">
                                 <button className="p-2 text-slate-400 hover:text-foreground transition-colors">
@@ -242,6 +298,8 @@ export function ProductDetailModal({
                                 </button>
                             </div>
                         </div>
+
+
                     </div>
                 </div>
             </DialogContent>

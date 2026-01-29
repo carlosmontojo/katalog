@@ -142,10 +142,46 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
                 console.log(`Result for ${product.title}:`, result.success, result.images?.length)
 
                 if (result.success && result.images && result.images.length > 0) {
+                    // Filter out images with extreme aspect ratios by LOADING them
+                    const validImages = await Promise.all(
+                        result.images.map(async (imgUrl) => {
+                            return new Promise<string | null>((resolve) => {
+                                const img = new Image();
+                                img.crossOrigin = 'anonymous';
+                                img.onload = () => {
+                                    const ratio = img.width / img.height;
+                                    // Filter out extreme aspect ratios (strips/slices)
+                                    if (ratio > 3.5 || ratio < 0.28) {
+                                        console.log(`[Moodboard] Filtering strip image: ${img.width}x${img.height}, ratio: ${ratio.toFixed(2)}, url: ${imgUrl.slice(-50)}`);
+                                        resolve(null);
+                                    } else if (img.width < 100 || img.height < 100) {
+                                        console.log(`[Moodboard] Filtering tiny image: ${img.width}x${img.height}`);
+                                        resolve(null);
+                                    } else {
+                                        resolve(imgUrl);
+                                    }
+                                };
+                                img.onerror = () => {
+                                    console.log(`[Moodboard] Image failed to load, keeping anyway: ${imgUrl.slice(-50)}`);
+                                    resolve(imgUrl); // Keep on error - might work later
+                                };
+                                // Timeout after 8 seconds
+                                setTimeout(() => {
+                                    console.log(`[Moodboard] Image timeout, keeping: ${imgUrl.slice(-50)}`);
+                                    resolve(imgUrl);
+                                }, 8000);
+                                img.src = imgUrl;
+                            });
+                        })
+                    );
+
+                    const filteredImages = validImages.filter((img): img is string => img !== null);
+                    console.log(`[Moodboard] Filtered ${result.images.length - filteredImages.length} strip images for ${product.title}`);
+
                     // Update local state
                     const index = updatedProducts.findIndex(p => p.id === product.id)
                     if (index !== -1) {
-                        updatedProducts[index] = { ...updatedProducts[index], images: result.images }
+                        updatedProducts[index] = { ...updatedProducts[index], images: filteredImages }
                     }
                 } else {
                     console.warn(`No new images found for ${product.title}`)
@@ -629,12 +665,16 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
                                                 {/* Original Image */}
                                                 <div
                                                     className={`
-                                                        relative aspect-square rounded-md border-2 overflow-hidden cursor-pointer group
+                                                        relative min-h-[120px] rounded-md border-2 overflow-hidden cursor-pointer group bg-slate-50 flex items-center justify-center
                                                         ${selectedImages[product.id] === product.image_url ? 'border-primary ring-2 ring-primary/20' : 'border-transparent hover:border-slate-300'}
                                                     `}
                                                     onClick={() => handleSelectImage(product.id, product.image_url)}
                                                 >
-                                                    <img src={product.image_url} className="w-full h-full object-contain p-2" />
+                                                    <img
+                                                        src={product.image_url}
+                                                        className="max-w-full max-h-[150px] object-contain"
+                                                        onError={(e) => e.currentTarget.style.display = 'none'}
+                                                    />
                                                     {selectedImages[product.id] === product.image_url && (
                                                         <div className="absolute top-2 right-2 bg-primary text-white rounded-full p-1">
                                                             <Check className="w-3 h-3" />
@@ -650,12 +690,29 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
                                                     <div
                                                         key={idx}
                                                         className={`
-                                                            relative aspect-square rounded-md border-2 overflow-hidden cursor-pointer group
+                                                            relative min-h-[120px] rounded-md border-2 overflow-hidden cursor-pointer group bg-slate-50 flex items-center justify-center
                                                             ${selectedImages[product.id] === img ? 'border-primary ring-2 ring-primary/20' : 'border-transparent hover:border-slate-300'}
                                                         `}
                                                         onClick={() => handleSelectImage(product.id, img)}
                                                     >
-                                                        <img src={img} className="w-full h-full object-contain p-2" />
+                                                        <img
+                                                            src={img}
+                                                            className="max-w-full max-h-[150px] object-contain"
+                                                            onLoad={(e) => {
+                                                                const imgEl = e.currentTarget;
+                                                                const ratio = imgEl.naturalWidth / imgEl.naturalHeight;
+                                                                // Hide strip/slice images with extreme aspect ratios
+                                                                if (ratio > 3.5 || ratio < 0.28 || imgEl.naturalWidth < 80 || imgEl.naturalHeight < 80) {
+                                                                    console.log(`[UI] Hiding strip image: ${imgEl.naturalWidth}x${imgEl.naturalHeight}, ratio: ${ratio.toFixed(2)}`);
+                                                                    const container = imgEl.closest('div');
+                                                                    if (container) container.style.display = 'none';
+                                                                }
+                                                            }}
+                                                            onError={(e) => {
+                                                                const container = e.currentTarget.closest('div');
+                                                                if (container) (container as HTMLElement).style.display = 'none';
+                                                            }}
+                                                        />
                                                         {selectedImages[product.id] === img && (
                                                             <div className="absolute top-2 right-2 bg-primary text-white rounded-full p-1">
                                                                 <Check className="w-3 h-3" />

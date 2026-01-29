@@ -43,6 +43,7 @@ create table public.products (
   image_url text,
   images text[] default array[]::text[], -- Store multiple images
   original_url text,
+  brand text,
   
   -- Organization
   category_id uuid references public.categories(id) on delete set null,
@@ -55,6 +56,7 @@ create table public.products (
   
   -- State
   is_visible boolean default true,
+  status text default 'selected',
   sort_order integer default 0
 );
 

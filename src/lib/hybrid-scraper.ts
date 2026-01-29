@@ -30,20 +30,28 @@ export async function scrapeUrlHybrid(url: string): Promise<HybridScrapeResult> 
     const puppeteerResult = await scrapeUrlWithPuppeteer(url);
 
     // Check if Puppeteer succeeded with good content
-    // Lowered threshold to 3KB to catch more cases
     const htmlLength = puppeteerResult.html?.length || 0;
     const htmlContent = puppeteerResult.html || '';
 
     // Check for "Soft 404" or Bot Protection pages
-    // Sklum and others often return a 200 OK but with a "404" page content
-    const isSoft404 = htmlContent.includes('Error 404') ||
+    // Key insight: Sklum (and others) may return 404 status BUT still serve the full product page
+    // So we only consider it a "soft 404" if the content is ALSO small/empty
+    const hasProductContent = htmlContent.includes('product') ||
+        htmlContent.includes('price') ||
+        htmlContent.includes('galería') ||
+        htmlContent.includes('gallery') ||
+        htmlLength > 50000; // Large HTML = likely real content even with 404
+
+    const isTrueSoft404 = (
+        htmlContent.includes('Error 404') ||
         htmlContent.includes('Page Not Found') ||
-        (htmlContent.includes('404') && htmlContent.length < 15000) ||
-        puppeteerResult.statusCode === 404; // Explicit 404 status
+        htmlContent.includes('Página no encontrada')
+    ) && htmlLength < 30000; // Only a soft 404 if HTML is small
 
-    console.log(`[Hybrid Scraper] Puppeteer result: success=${puppeteerResult.success}, htmlLength=${htmlLength}, statusCode=${puppeteerResult.statusCode}, isSoft404=${isSoft404}`);
+    console.log(`[Hybrid Scraper] Puppeteer result: success=${puppeteerResult.success}, htmlLength=${htmlLength}, statusCode=${puppeteerResult.statusCode}, hasProductContent=${hasProductContent}, isTrueSoft404=${isTrueSoft404}`);
 
-    if (puppeteerResult.success && puppeteerResult.html && htmlLength > 3000 && !isSoft404) {
+    // Accept Puppeteer result if: success AND (has product content OR large HTML) AND not a true soft 404
+    if (puppeteerResult.success && puppeteerResult.html && (hasProductContent || htmlLength > 10000) && !isTrueSoft404) {
         console.log('[Hybrid Scraper] ✅ Puppeteer succeeded with sufficient HTML!');
         return {
             success: true,
