@@ -79,7 +79,7 @@ export default function LandingPage() {
             {/* Download App Section */}
             <div className="flex flex-col items-center gap-4 mb-24">
               <p className="text-sm text-muted-foreground font-medium">O descarga la app de escritorio</p>
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-col sm:flex-row gap-3 flex-wrap justify-center">
                 <a
                   href="https://github.com/carlosmontojo/katalog/releases/download/v1.0.0/Katalog-1.0.0-arm64.dmg"
                   className="flex items-center gap-3 px-6 py-3 bg-foreground text-background rounded-full hover:bg-foreground/90 transition-all hover:scale-105 group"
@@ -100,8 +100,18 @@ export default function LandingPage() {
                   <span className="font-medium">Mac (Intel)</span>
                   <Download className="w-4 h-4 opacity-60 group-hover:opacity-100" />
                 </a>
+                <a
+                  href="https://github.com/carlosmontojo/katalog/releases/download/v1.0.0/Katalog.Setup.1.0.0.exe"
+                  className="flex items-center gap-3 px-6 py-3 bg-foreground/10 text-foreground border border-border rounded-full hover:bg-foreground/20 transition-all hover:scale-105 group"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" />
+                  </svg>
+                  <span className="font-medium">Windows</span>
+                  <Download className="w-4 h-4 opacity-60 group-hover:opacity-100" />
+                </a>
               </div>
-              <p className="text-xs text-muted-foreground">Versión 1.0.0 • Requiere macOS 10.12+</p>
+              <p className="text-xs text-muted-foreground">Versión 1.0.0 • macOS 10.12+ / Windows 10+</p>
             </div>
 
             {/* Main Mockup */}
