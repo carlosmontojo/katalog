@@ -4,13 +4,11 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { detectCategories, scrapeProducts, saveSelectedProducts } from '@/app/scraping-actions'
-import { Loader2, Plus, Check, ShoppingBag, Eye } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import { Loader2, Plus, Check, ShoppingBag, Eye, Globe, MousePointer2 } from 'lucide-react'
 import { Checkbox } from "@/components/ui/checkbox"
 import { ProductDetailModal } from './product-detail-modal'
 import { getStoreName } from '@/lib/utils/url'
 import { ManualProductForm } from './manual-product-form'
-import { Globe, Type, MousePointer2 } from 'lucide-react'
 import { VisualBrowser } from './visual-browser'
 
 interface UrlInputProps {
@@ -25,7 +23,8 @@ interface Category {
 export function UrlInput({ projectId }: UrlInputProps) {
     const [url, setUrl] = useState('')
     const [loading, setLoading] = useState(false)
-    const [mode, setMode] = useState<'url' | 'manual' | 'browse'>('url')
+    const [showManualForm, setShowManualForm] = useState(false)
+    const [showBrowser, setShowBrowser] = useState(false)
     const [step, setStep] = useState<'input' | 'category' | 'preview'>('input')
     const [categories, setCategories] = useState<Category[]>([])
     const [selectedCategoryName, setSelectedCategoryName] = useState<string>('')
@@ -36,34 +35,9 @@ export function UrlInput({ projectId }: UrlInputProps) {
     const [modalOpen, setModalOpen] = useState(false)
     const [selectedProductIndex, setSelectedProductIndex] = useState<number | null>(null)
 
-    const handleAnalyze = async () => {
+    const handleNavigate = () => {
         if (!url) return;
-        setLoading(true);
-        try {
-            const result = await detectCategories(url);
-
-            if (result.success && result.categories && result.categories.length > 0) {
-                setCategories(result.categories);
-                setStep('category');
-            } else if (result.success && (!result.categories || result.categories.length === 0)) {
-                // If no categories found, try to extract products directly
-                const importResult = await scrapeProducts(projectId, url, '', true, false);
-                if (importResult.success && importResult.products) {
-                    setPreviewProducts(importResult.products);
-                    setSelectedProducts(new Set());
-                    setStep('preview');
-                } else {
-                    alert("No se detectaron categorías ni productos.");
-                }
-            } else {
-                alert("No se pudieron detectar categorías. Por favor intenta de nuevo.");
-            }
-        } catch (e) {
-            console.error('[handleAnalyze] Error:', e);
-            alert("Error al analizar la URL");
-        } finally {
-            setLoading(false);
-        }
+        setShowBrowser(true);
     }
 
     const handleCategorySelect = async (categoryName: string) => {
@@ -142,102 +116,81 @@ export function UrlInput({ projectId }: UrlInputProps) {
         setModalOpen(true);
     }
 
+    // Show manual form
+    if (showManualForm) {
+        return (
+            <div className="flex flex-col gap-8 p-8 bg-background border-none rounded-sm">
+                <ManualProductForm
+                    projectId={projectId}
+                    onSuccess={() => {
+                        alert("Producto añadido correctamente");
+                        setShowManualForm(false);
+                    }}
+                    onCancel={() => setShowManualForm(false)}
+                />
+            </div>
+        )
+    }
+
     return (
         <div className="flex flex-col gap-8 p-8 bg-background border-none rounded-sm">
             {step === 'input' && (
                 <div className="flex flex-col gap-6">
+                    {/* Header with manual add button */}
                     <div className="flex items-center justify-between border-b border-slate-200/50 pb-4">
                         <div className="flex flex-col gap-1">
-                            <h2 className="text-lg font-medium tracking-[0.05em] text-foreground uppercase">Añadir Productos (v2)</h2>
-                            <p className="text-xs text-slate-400 tracking-[0.05em]">Importa productos desde una web o añádelos manualmente.</p>
+                            <h2 className="text-lg font-medium tracking-[0.05em] text-foreground uppercase">Añadir Productos</h2>
+                            <p className="text-xs text-slate-400 tracking-[0.05em]">Navega por la web o añade productos manualmente.</p>
                         </div>
-                        <div className="flex bg-slate-100 p-1 rounded-sm">
-                            <button
-                                onClick={() => setMode('url')}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all ${mode === 'url' ? 'bg-white shadow-sm text-foreground' : 'text-slate-400 hover:text-slate-600'}`}
-                            >
-                                <Globe className="w-3.5 h-3.5" />
-                                URL
-                            </button>
-                            <button
-                                onClick={() => setMode('manual')}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all ${mode === 'manual' ? 'bg-white shadow-sm text-foreground' : 'text-slate-400 hover:text-slate-600'}`}
-                            >
-                                <Type className="w-3.5 h-3.5" />
-                                Manual
-                            </button>
-                            <button
-                                onClick={() => setMode('browse')}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all ${mode === 'browse' ? 'bg-red-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 border border-dashed border-red-200'}`}
-                            >
-                                <MousePointer2 className="w-3.5 h-3.5" />
-                                Navegar (NUEVO)
-                            </button>
-                        </div>
+                        <Button
+                            onClick={() => setShowManualForm(true)}
+                            variant="outline"
+                            className="h-10 px-6 border-slate-200 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-slate-50 rounded-sm"
+                        >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Añadir Manual
+                        </Button>
                     </div>
 
-                    {mode === 'url' ? (
-                        step === 'input' && (
-                            <div className="flex flex-col gap-6">
-                                <div className="flex gap-4">
-                                    <Input
-                                        placeholder="Pega la URL de cualquier tienda (ej: Sklum, Westwing...)"
-                                        value={url}
-                                        onChange={(e) => setUrl(e.target.value)}
-                                        disabled={loading}
-                                        className="h-12 bg-white border-slate-200/50 rounded-sm focus-visible:ring-slate-200 text-sm tracking-[0.05em]"
-                                    />
-                                    <Button
-                                        onClick={handleAnalyze}
-                                        disabled={loading || !url}
-                                        className="h-12 px-8 bg-foreground text-background hover:bg-foreground/90 rounded-sm text-[10px] font-bold uppercase tracking-[0.2em]"
-                                    >
-                                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                                        Analizar
-                                    </Button>
-                                </div>
+                    {/* URL input with Navigate button */}
+                    <div className="flex gap-4">
+                        <div className="relative flex-1">
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                                <Globe className="w-5 h-5 text-slate-300" />
                             </div>
-                        )
-                    ) : mode === 'manual' ? (
-                        <ManualProductForm
-                            projectId={projectId}
-                            onSuccess={() => {
-                                alert("Producto añadido correctamente");
-                                setMode('url');
-                            }}
-                            onCancel={() => setMode('url')}
-                        />
-                    ) : (
-                        <div className="flex flex-col items-center justify-center p-12 border border-dashed border-slate-200 bg-slate-50/50 rounded-sm gap-6">
-                            <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-sm text-foreground">
-                                <MousePointer2 className="w-8 h-8" />
-                            </div>
-                            <div className="text-center space-y-2">
-                                <h3 className="text-sm font-bold uppercase tracking-[0.1em]">Navegador Visual</h3>
-                                <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
-                                    Te permite entrar en la web de la tienda y seleccionar visualmente los productos que quieras.
-                                </p>
-                            </div>
-                            <Button
-                                onClick={() => setMode('browse')}
-                                className="h-11 px-8 bg-foreground text-background hover:bg-foreground/90 rounded-sm text-[10px] font-bold uppercase tracking-[0.2em]"
-                            >
-                                Abrir Navegador
-                            </Button>
-
-                            {mode === 'browse' && (
-                                <VisualBrowser
-                                    projectId={projectId}
-                                    onClose={() => setMode('url')}
-                                    onSuccess={() => {
-                                        alert("Productos importados correctamente")
-                                        setMode('url')
-                                    }}
-                                />
-                            )}
+                            <Input
+                                placeholder="Pega la URL de cualquier tienda (ej: Sklum, Westwing...)"
+                                value={url}
+                                onChange={(e) => setUrl(e.target.value)}
+                                disabled={loading}
+                                className="h-12 pl-12 bg-white border-slate-200/50 rounded-sm focus-visible:ring-slate-200 text-sm tracking-[0.05em]"
+                                onKeyDown={(e) => e.key === 'Enter' && handleNavigate()}
+                            />
                         </div>
-                    )}
+                        <Button
+                            onClick={handleNavigate}
+                            disabled={loading || !url}
+                            className="h-12 px-8 bg-foreground text-background hover:bg-foreground/90 rounded-sm text-[10px] font-bold uppercase tracking-[0.2em]"
+                        >
+                            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MousePointer2 className="mr-2 h-4 w-4" />}
+                            Navegar
+                        </Button>
+                    </div>
                 </div>
+            )}
+
+            {/* Visual Browser */}
+            {showBrowser && (
+                <VisualBrowser
+                    initialUrl={url}
+                    projectId={projectId}
+                    onClose={() => setShowBrowser(false)}
+                    onSuccess={() => {
+                        alert("Productos importados correctamente")
+                        setShowBrowser(false)
+                        setUrl('')
+                    }}
+                />
             )}
 
             {step === 'category' && (

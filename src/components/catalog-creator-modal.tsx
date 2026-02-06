@@ -31,6 +31,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { exportToPSD, exportToSVG, exportToPDF, exportToExcel, exportToInDesign } from '@/lib/moodboard-exporter'
+import { fetchProductDetails, saveProductDetails } from '@/app/scraping-actions'
 
 interface Product {
     id: string
@@ -41,6 +42,8 @@ interface Product {
     description?: string
     specifications?: any
     attributes?: any
+    original_url?: string
+    brand?: string
 }
 
 interface Moodboard {
@@ -104,7 +107,7 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
 
             // Calculate size to fit in cell while maintaining aspect ratio
             const cellW = colWidth
-            const cellH = rowHeight - 120 // More space for detailed info
+            const cellH = rowHeight - 180 // Much more space for detailed info with all dimensions
             const imgAspect = (p.width || 200) / (p.height || 200)
 
             let w = cellW
@@ -185,10 +188,68 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                         ]
                     }
 
-                    // 2. Process all products (NO BACKGROUND REMOVAL)
-                    setInitStatus('Loading products...')
+                    // 2. AUTO-ENRICH PRODUCTS: Fetch missing details for products that need it
+                    setInitStatus('Fetching product details...')
+                    const enrichedProducts = [...products]
+                    const productsToEnrich = products.filter(p =>
+                        p.original_url &&
+                        (!p.description || !p.specifications?.dimensions || !p.specifications?.materials)
+                    )
+
+                    console.log(`[Catalog] ${productsToEnrich.length} products need enrichment`)
+
+                    // Enrich up to 3 at a time to avoid overwhelming the server
+                    const batchSize = 3
+                    for (let i = 0; i < productsToEnrich.length; i += batchSize) {
+                        const batch = productsToEnrich.slice(i, i + batchSize)
+                        setInitProgress(Math.round((i / productsToEnrich.length) * 50))
+                        setInitStatus(`Fetching details (${i + 1}/${productsToEnrich.length})...`)
+
+                        await Promise.all(batch.map(async (product) => {
+                            try {
+                                if (!product.original_url) return
+
+                                console.log(`[Catalog] Enriching: ${product.title}`)
+                                const result = await fetchProductDetails(product.original_url)
+
+                                if (result.success && result.details) {
+                                    // Update local copy for this session
+                                    const idx = enrichedProducts.findIndex(p => p.id === product.id)
+                                    if (idx >= 0) {
+                                        enrichedProducts[idx] = {
+                                            ...enrichedProducts[idx],
+                                            description: result.details.description || enrichedProducts[idx].description,
+                                            specifications: {
+                                                ...enrichedProducts[idx].specifications,
+                                                dimensions: result.details.dimensions || enrichedProducts[idx].specifications?.dimensions,
+                                                materials: result.details.materials || enrichedProducts[idx].specifications?.materials,
+                                                colors: result.details.colors || enrichedProducts[idx].specifications?.colors
+                                            }
+                                        }
+                                    }
+
+                                    // Also save to database for future use
+                                    await saveProductDetails(product.id, {
+                                        description: result.details.description,
+                                        dimensions: result.details.dimensions,
+                                        materials: result.details.materials,
+                                        colors: result.details.colors,
+                                        weight: result.details.weight,
+                                        images: result.details.images
+                                    })
+                                }
+                            } catch (e) {
+                                console.error(`[Catalog] Error enriching ${product.title}:`, e)
+                            }
+                        }))
+                    }
+
+                    setInitProgress(50)
+
+                    // 3. Process all product images (NO BACKGROUND REMOVAL)
+                    setInitStatus('Loading product images...')
                     const allProcessed = await generator.processImages(
-                        products.map(p => ({
+                        enrichedProducts.map(p => ({
                             id: p.id,
                             title: p.title,
                             imageUrl: p.image_url
@@ -211,73 +272,112 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
 
                         const pageTexts: MoodboardText[] = []
                         arranged.forEach((p, idx) => {
-                            const orig = products.find(o => o.id === p.id)
+                            const orig = enrichedProducts.find(o => o.id === p.id)
                             if (!orig) return
 
-                            let currentY = p.y + p.height + 15
+                            let currentY = p.y + p.height + 12
+                            const fontSize = 8
+                            const lineSpacing = 12 // Tighter spacing
 
-                            // Title
-                            pageTexts.push({
-                                id: crypto.randomUUID(),
-                                text: orig.title,
-                                x: p.x,
-                                y: currentY,
-                                fontSize: 16,
-                                fontFamily: 'Arial',
-                                color: '#1a1a1a',
-                                zIndex: 20 + idx * 5,
-                                maxWidth: colWidth
-                            })
-                            currentY += calculateTextHeight(orig.title, 16, 'Arial', colWidth) + 4
+                            // Helper to add a single line - NO maxWidth to avoid word-wrap cutting
+                            const addSingleLine = (text: string, color: string = '#1a1a1a', isBold: boolean = false) => {
+                                // Truncate if too long to fit in column
+                                const maxChars = 45
+                                const truncatedText = text.length > maxChars ? text.substring(0, maxChars) + '...' : text
+                                pageTexts.push({
+                                    id: crypto.randomUUID(),
+                                    text: truncatedText,
+                                    x: p.x,
+                                    y: currentY,
+                                    fontSize: isBold ? fontSize + 1 : fontSize,
+                                    fontFamily: 'Arial',
+                                    color: color,
+                                    zIndex: 20 + idx * 20 + pageTexts.length
+                                    // NO maxWidth - prevents word wrapping that cuts words
+                                })
+                                currentY += lineSpacing
+                            }
 
-                            // Price
+                            // 1. Nombre (truncate for catalog, show in bold)
+                            const nombreTruncado = orig.title.length > 40 ? orig.title.substring(0, 40) + '...' : orig.title
+                            addSingleLine(nombreTruncado, '#000000', true)
+
+                            // 2. Tipología
+                            let tipologia = orig.specifications?.category || orig.attributes?.category || orig.specifications?.type || orig.attributes?.type || ''
+                            if (!tipologia) {
+                                const titleLower = orig.title.toLowerCase()
+                                if (titleLower.includes('mesa')) tipologia = 'Mesa'
+                                else if (titleLower.includes('silla')) tipologia = 'Silla'
+                                else if (titleLower.includes('sofá') || titleLower.includes('sofa')) tipologia = 'Sofá'
+                                else if (titleLower.includes('lámpara') || titleLower.includes('lampara')) tipologia = 'Lámpara'
+                                else if (titleLower.includes('estantería') || titleLower.includes('estanteria')) tipologia = 'Estantería'
+                                else if (titleLower.includes('armario')) tipologia = 'Armario'
+                                else if (titleLower.includes('cama')) tipologia = 'Cama'
+                                else if (titleLower.includes('escritorio')) tipologia = 'Escritorio'
+                            }
+                            if (tipologia) addSingleLine(`Tipo: ${tipologia}`, '#64748b')
+
+                            // 3. Marca - extract from URL
+                            let marca = ''
+                            if (orig.original_url) {
+                                const url = orig.original_url.toLowerCase()
+                                if (url.includes('sklum')) marca = 'Sklum'
+                                else if (url.includes('westwing')) marca = 'Westwing'
+                                else if (url.includes('ikea')) marca = 'IKEA'
+                                else if (url.includes('maisons-du-monde')) marca = 'Maisons du Monde'
+                                else if (url.includes('zara')) marca = 'Zara Home'
+                                else if (url.includes('hm.com')) marca = 'H&M Home'
+                                else if (url.includes('elcorteingles')) marca = 'El Corte Inglés'
+                                else if (url.includes('amazon')) marca = 'Amazon'
+                                else if (url.includes('leroy')) marca = 'Leroy Merlin'
+                            }
+                            if (marca) addSingleLine(`Marca: ${marca}`, '#64748b')
+
+                            // 4. Precio
                             if (orig.price) {
-                                const priceText = `${orig.price} ${orig.currency || '€'}`
-                                pageTexts.push({
-                                    id: crypto.randomUUID(),
-                                    text: priceText,
-                                    x: p.x,
-                                    y: currentY,
-                                    fontSize: 14,
-                                    fontFamily: 'Arial',
-                                    color: '#b45309', // Amber-700 for a premium price look
-                                    zIndex: 21 + idx * 5,
-                                    maxWidth: colWidth
-                                })
-                                currentY += calculateTextHeight(priceText, 14, 'Arial', colWidth) + 4
+                                addSingleLine(`Precio: ${orig.price} ${orig.currency || 'EUR'}`, '#b45309')
                             }
 
-                            // Dimensions (from specifications or attributes)
-                            const dims = orig.specifications?.dimensions || orig.attributes?.dimensions || ''
-                            if (dims) {
-                                pageTexts.push({
-                                    id: crypto.randomUUID(),
-                                    text: dims,
-                                    x: p.x,
-                                    y: currentY,
-                                    fontSize: 12,
-                                    fontFamily: 'Arial',
-                                    color: '#64748b',
-                                    zIndex: 22 + idx * 5,
-                                    maxWidth: colWidth
-                                })
-                                currentY += calculateTextHeight(dims, 12, 'Arial', colWidth) + 4
+                            // 5. Medidas - PARSE and format as single compact line
+                            const dims = orig.specifications?.dimensions || orig.attributes?.dimensions
+                            if (dims && typeof dims === 'string') {
+                                // Parse dimensions - extract numeric values with units
+                                // Format: "Alto: 92 cm\nAncho: 235 cm\nProfundidad: 100 cm" -> "92 x 235 x 100 cm"
+                                const heightMatch = dims.match(/alto?\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(cm|mm|m)?/i)
+                                const widthMatch = dims.match(/ancho?\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(cm|mm|m)?/i)
+                                const depthMatch = dims.match(/(?:profundidad|fondo|prof)\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(cm|mm|m)?/i)
+                                const diameterMatch = dims.match(/(?:diámetro|diametro|Ø)\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(cm|mm|m)?/i)
+
+                                const parts: string[] = []
+                                if (heightMatch) parts.push(`Alto: ${heightMatch[1]} cm`)
+                                if (widthMatch) parts.push(`Ancho: ${widthMatch[1]} cm`)
+                                if (depthMatch) parts.push(`Prof: ${depthMatch[1]} cm`)
+                                if (diameterMatch) parts.push(`Ø${diameterMatch[1]} cm`)
+
+                                if (parts.length > 0) {
+                                    addSingleLine(`Medidas: ${parts.join(' | ')}`, '#64748b')
+                                }
                             }
 
-                            // Description
-                            if (orig.description) {
-                                pageTexts.push({
-                                    id: crypto.randomUUID(),
-                                    text: orig.description,
-                                    x: p.x,
-                                    y: currentY,
-                                    fontSize: 11,
-                                    fontFamily: 'Arial',
-                                    color: '#94a3b8',
-                                    zIndex: 23 + idx * 5,
-                                    maxWidth: colWidth
-                                })
+                            // 6. Materiales - simplified
+                            const materials = orig.specifications?.materials || orig.attributes?.materials
+                            if (materials) {
+                                const matClean = typeof materials === 'string' ? materials.split('\n')[0] : String(materials)
+                                addSingleLine(`Materiales: ${matClean}`, '#64748b')
                             }
+
+                            // 7. Colores - simplified
+                            const colors = orig.specifications?.colors || orig.attributes?.colors
+                            if (colors) {
+                                const colClean = typeof colors === 'string' ? colors.split('\n')[0] : String(colors)
+                                addSingleLine(`Colores: ${colClean}`, '#64748b')
+                            }
+
+                            // 8-11. Additional fields (blank for manual entry)
+                            addSingleLine('Ubicación en plano:', '#64748b')
+                            addSingleLine('Unidades:', '#64748b')
+                            addSingleLine('Tiempo de entrega:', '#64748b')
+                            addSingleLine('Coste del porte:', '#64748b')
                         })
 
                         productPages.push({
@@ -739,79 +839,109 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                     zIndex: 10 + currentPage.products.length
                 }
 
-                let currentY = newProduct.y + newProduct.height + 15
+                let currentY = newProduct.y + newProduct.height + 12
                 const centerX = newProduct.x + newProduct.width / 2
-                const canvasWidth = 210 * 3.78
-                const padding = 60
-                const colWidth = (canvasWidth - padding * 3) / 2
                 const newTexts: MoodboardText[] = []
+                const fontSize = 8
+                const lineSpacing = 12 // Tighter spacing
 
-                // Title
-                newTexts.push({
-                    id: crypto.randomUUID(),
-                    text: product.title,
-                    x: centerX,
-                    y: currentY,
-                    fontSize: 16,
-                    fontFamily: 'Arial',
-                    color: '#1a1a1a',
-                    zIndex: 20 + currentPage.texts.length,
-                    maxWidth: colWidth,
-                    textAlign: 'center'
-                })
-                currentY += calculateTextHeight(product.title, 16, 'Arial', colWidth) + 4
+                // Helper to add a single line - NO maxWidth to avoid word-wrap cutting
+                const addSingleLine = (text: string, color: string = '#1a1a1a', isBold: boolean = false) => {
+                    const maxChars = 45
+                    const truncatedText = text.length > maxChars ? text.substring(0, maxChars) + '...' : text
+                    newTexts.push({
+                        id: crypto.randomUUID(),
+                        text: truncatedText,
+                        x: centerX,
+                        y: currentY,
+                        fontSize: isBold ? fontSize + 1 : fontSize,
+                        fontFamily: 'Arial',
+                        color: color,
+                        zIndex: 20 + currentPage.texts.length + newTexts.length,
+                        textAlign: 'center'
+                        // NO maxWidth
+                    })
+                    currentY += lineSpacing
+                }
 
-                // Price
+                // 1. Nombre
+                const nombreTruncado = product.title.length > 40 ? product.title.substring(0, 40) + '...' : product.title
+                addSingleLine(nombreTruncado, '#000000', true)
+
+                // 2. Tipología
+                let tipologia = product.specifications?.category || product.attributes?.category || product.specifications?.type || product.attributes?.type || ''
+                if (!tipologia) {
+                    const titleLower = product.title.toLowerCase()
+                    if (titleLower.includes('mesa')) tipologia = 'Mesa'
+                    else if (titleLower.includes('silla')) tipologia = 'Silla'
+                    else if (titleLower.includes('sofá') || titleLower.includes('sofa')) tipologia = 'Sofá'
+                    else if (titleLower.includes('lámpara') || titleLower.includes('lampara')) tipologia = 'Lámpara'
+                    else if (titleLower.includes('estantería') || titleLower.includes('estanteria')) tipologia = 'Estantería'
+                    else if (titleLower.includes('armario')) tipologia = 'Armario'
+                    else if (titleLower.includes('cama')) tipologia = 'Cama'
+                    else if (titleLower.includes('escritorio')) tipologia = 'Escritorio'
+                }
+                if (tipologia) addSingleLine(`Tipo: ${tipologia}`, '#64748b')
+
+                // 3. Marca - extract from URL
+                let marca = ''
+                if (product.original_url) {
+                    const url = product.original_url.toLowerCase()
+                    if (url.includes('sklum')) marca = 'Sklum'
+                    else if (url.includes('westwing')) marca = 'Westwing'
+                    else if (url.includes('ikea')) marca = 'IKEA'
+                    else if (url.includes('maisons-du-monde')) marca = 'Maisons du Monde'
+                    else if (url.includes('zara')) marca = 'Zara Home'
+                    else if (url.includes('hm.com')) marca = 'H&M Home'
+                    else if (url.includes('elcorteingles')) marca = 'El Corte Inglés'
+                    else if (url.includes('amazon')) marca = 'Amazon'
+                    else if (url.includes('leroy')) marca = 'Leroy Merlin'
+                }
+                if (marca) addSingleLine(`Marca: ${marca}`, '#64748b')
+
+                // 4. Precio
                 if (product.price) {
-                    const priceText = `${product.price} ${product.currency || '€'}`
-                    newTexts.push({
-                        id: crypto.randomUUID(),
-                        text: priceText,
-                        x: centerX,
-                        y: currentY,
-                        fontSize: 14,
-                        fontFamily: 'Arial',
-                        color: '#b45309',
-                        zIndex: 21 + currentPage.texts.length,
-                        maxWidth: colWidth,
-                        textAlign: 'center'
-                    })
-                    currentY += calculateTextHeight(priceText, 14, 'Arial', colWidth) + 4
+                    addSingleLine(`Precio: ${product.price} ${product.currency || 'EUR'}`, '#b45309')
                 }
 
-                // Dimensions
-                const dims = product.specifications?.dimensions || product.attributes?.dimensions || ''
-                if (dims) {
-                    newTexts.push({
-                        id: crypto.randomUUID(),
-                        text: dims,
-                        x: centerX,
-                        y: currentY,
-                        fontSize: 12,
-                        fontFamily: 'Arial',
-                        color: '#64748b',
-                        zIndex: 22 + currentPage.texts.length,
-                        maxWidth: colWidth,
-                        textAlign: 'center'
-                    })
-                    currentY += calculateTextHeight(dims, 12, 'Arial', colWidth) + 4
+                // 5. Medidas - PARSE and format as single compact line
+                const dims = product.specifications?.dimensions || product.attributes?.dimensions
+                if (dims && typeof dims === 'string') {
+                    const heightMatch = dims.match(/alto?\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(cm|mm|m)?/i)
+                    const widthMatch = dims.match(/ancho?\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(cm|mm|m)?/i)
+                    const depthMatch = dims.match(/(?:profundidad|fondo|prof)\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(cm|mm|m)?/i)
+                    const diameterMatch = dims.match(/(?:diámetro|diametro|Ø)\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(cm|mm|m)?/i)
+
+                    const parts: string[] = []
+                    if (heightMatch) parts.push(`Alto: ${heightMatch[1]} cm`)
+                    if (widthMatch) parts.push(`Ancho: ${widthMatch[1]} cm`)
+                    if (depthMatch) parts.push(`Prof: ${depthMatch[1]} cm`)
+                    if (diameterMatch) parts.push(`Ø${diameterMatch[1]} cm`)
+
+                    if (parts.length > 0) {
+                        addSingleLine(`Medidas: ${parts.join(' | ')}`, '#64748b')
+                    }
                 }
 
-                // Description
-                if (product.description) {
-                    newTexts.push({
-                        id: crypto.randomUUID(),
-                        text: product.description,
-                        x: centerX,
-                        y: currentY,
-                        fontSize: 11,
-                        fontFamily: 'Arial',
-                        color: '#94a3b8',
-                        zIndex: 23 + currentPage.texts.length,
-                        maxWidth: colWidth,
-                        textAlign: 'center'
-                    })
+                // 6. Materiales - simplified
+                const materials = product.specifications?.materials || product.attributes?.materials
+                if (materials) {
+                    const matClean = typeof materials === 'string' ? materials.split('\n')[0] : String(materials)
+                    addSingleLine(`Materiales: ${matClean}`, '#64748b')
                 }
+
+                // 7. Colores - simplified
+                const colors = product.specifications?.colors || product.attributes?.colors
+                if (colors) {
+                    const colClean = typeof colors === 'string' ? colors.split('\n')[0] : String(colors)
+                    addSingleLine(`Colores: ${colClean}`, '#64748b')
+                }
+
+                // 8-11. Additional fields (blank for manual entry)
+                addSingleLine('Ubicación en plano:', '#64748b')
+                addSingleLine('Unidades:', '#64748b')
+                addSingleLine('Tiempo de entrega:', '#64748b')
+                addSingleLine('Coste del porte:', '#64748b')
 
                 updateCurrentPage({
                     products: [...currentPage.products, newProduct],
@@ -1105,8 +1235,11 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                                                 color: t.color,
                                                 fontFamily: t.fontFamily,
                                                 fontSize: `${t.fontSize * editorScale}px`,
-                                                lineHeight: 1.2,
+                                                lineHeight: 1.4,
                                                 whiteSpace: 'pre-wrap',
+                                                wordBreak: 'normal',
+                                                overflowWrap: 'break-word',
+                                                hyphens: 'auto',
                                                 maxWidth: t.maxWidth ? t.maxWidth * editorScale : 'none',
                                                 textAlign: t.textAlign || 'left',
                                                 transform: t.textAlign === 'center' ? 'translateX(-50%)' : 'none',

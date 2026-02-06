@@ -10,10 +10,11 @@ import {
 import { Button } from "@/components/ui/button"
 import { LoadingProgress } from "@/components/ui/loading-progress"
 import { Loader2, Plus, X, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react"
-import { fetchProductDetails } from "@/app/scraping-actions"
+import { fetchProductDetails, saveProductDetails } from "@/app/scraping-actions"
 
 interface ProductDetailModalProps {
     product: {
+        id?: string  // Add product ID for saving details
         title: string
         price: number
         currency: string
@@ -83,6 +84,19 @@ export function ProductDetailModal({
                 })
                 console.log('[ProductDetail] ===========================')
                 setDetails(result.details)
+
+                // SAVE DETAILS TO DATABASE if we have a product ID
+                if (product.id) {
+                    console.log('[ProductDetail] Saving details to database for product:', product.id)
+                    await saveProductDetails(product.id, {
+                        description: result.details.description,
+                        dimensions: result.details.dimensions,
+                        materials: result.details.materials,
+                        colors: result.details.colors,
+                        weight: result.details.weight,
+                        images: result.details.images
+                    })
+                }
             } else {
                 setError(result.error || 'No se pudo cargar la información')
             }

@@ -386,310 +386,288 @@ export async function fetchProductDetails(productUrl: string) {
         const $ = cheerio.load(scrapeResult.html);
         const baseUrl = new URL(productUrl).origin;
 
-        // Extract ALL images from the page
+        // ===============================================
+        // ROBUST UNIVERSAL IMAGE EXTRACTION
+        // Priority: P1 JSON-LD → P2 og:image → P3 Universal galleries → P4 Data attrs → P5 Fallback
+        // ===============================================
+
         const images: string[] = [];
-        // Strategy 1: JSON-LD (Best for e-commerce)
+        const addImage = (src: string | undefined | null) => {
+            if (!src || typeof src !== 'string') return;
+            let fullUrl = src.trim();
+
+            // Resolve relative URLs
+            if (fullUrl.startsWith('//')) {
+                fullUrl = 'https:' + fullUrl;
+            } else if (fullUrl.startsWith('/')) {
+                fullUrl = baseUrl + fullUrl;
+            } else if (!fullUrl.startsWith('http')) {
+                fullUrl = baseUrl + '/' + fullUrl;
+            }
+
+            // Quick validation
+            if (fullUrl.length < 15) return;
+            const lower = fullUrl.toLowerCase();
+            if (lower.includes('data:image')) return;
+            if (lower.includes('1x1') || lower.includes('pixel') || lower.includes('blank')) return;
+            if (lower.includes('logo') || lower.includes('icon') || lower.includes('favicon')) return;
+            if (lower.endsWith('.svg') || lower.endsWith('.gif')) return;
+
+            // Avoid duplicates
+            if (!images.includes(fullUrl)) {
+                images.push(fullUrl);
+            }
+        };
+
+        // P1: JSON-LD (Most reliable for e-commerce)
+        console.log('[FetchDetails] P1: Extracting from JSON-LD...');
         $('script[type="application/ld+json"]').each((_, el) => {
             try {
                 const json = JSON.parse($(el).html() || '{}');
+                const processItem = (item: any) => {
+                    if (item['@type'] === 'Product' || item['@type'] === 'ItemPage') {
+                        if (item.image) {
+                            const imgs = Array.isArray(item.image) ? item.image : [item.image];
+                            imgs.forEach((img: any) => {
+                                if (typeof img === 'string') addImage(img);
+                                else if (img?.url) addImage(img.url);
+                                else if (img?.contentUrl) addImage(img.contentUrl);
+                            });
+                        }
+                    }
+                    // Check nested @graph
+                    if (item['@graph']) {
+                        item['@graph'].forEach(processItem);
+                    }
+                };
                 const dataList = Array.isArray(json) ? json : [json];
-
-                for (const data of dataList) {
-                    if (data['@type'] === 'Product' && data.image) {
-                        const imgs = Array.isArray(data.image) ? data.image : [data.image];
-                        imgs.forEach((img: string) => {
-                            if (typeof img === 'string' && img.startsWith('http')) {
-                                images.push(img);
-                            }
-                        });
-                    }
-                }
+                dataList.forEach(processItem);
             } catch (e) {
-                console.error('Error parsing JSON-LD:', e);
+                // Silent fail for JSON-LD parse errors
             }
         });
+        console.log(`[FetchDetails] P1 JSON-LD found: ${images.length} images`);
 
-        // Helper to check if URL has strip-like dimensions in query params
-        const hasStripQueryParams = (url: string): { isStrip: boolean; width?: number; height?: number } => {
-            try {
-                const urlObj = new URL(url);
-                const width = parseInt(urlObj.searchParams.get('width') || urlObj.searchParams.get('w') || '0');
-                const height = parseInt(urlObj.searchParams.get('height') || urlObj.searchParams.get('h') || '0');
-
-                if (width > 0 && height > 0) {
-                    const ratio = width / height;
-                    // Strip if ratio is more than 3:1 or less than 1:3
-                    if (ratio > 3 || ratio < 0.33) {
-                        console.log(`[FetchDetails] Detected strip query params: ${width}x${height} (ratio: ${ratio.toFixed(2)})`);
-                        return { isStrip: true, width, height };
-                    }
-                }
-                return { isStrip: false, width, height };
-            } catch {
-                return { isStrip: false };
-            }
-        };
-
-        // Helper to fix image URLs by removing crop params or fixing dimensions
-        const fixImageUrl = (url: string): string | null => {
-            try {
-                const urlObj = new URL(url);
-
-                // Check for strip-like query params
-                const { isStrip, width, height } = hasStripQueryParams(url);
-
-                if (isStrip && width && height) {
-                    // Remove func=crop which causes the strip
-                    urlObj.searchParams.delete('func');
-
-                    // Fix dimensions to be proportional (use width for both to get square aspect)
-                    // Or better: just request a reasonable size
-                    if (width > height) {
-                        // Width is much larger - set height to match width for square-ish image
-                        urlObj.searchParams.set('height', String(Math.min(width, 1024)));
-                        urlObj.searchParams.set('width', String(Math.min(width, 1024)));
-                    } else {
-                        // Height is much larger
-                        urlObj.searchParams.set('width', String(Math.min(height, 1024)));
-                        urlObj.searchParams.set('height', String(Math.min(height, 1024)));
-                    }
-
-                    console.log(`[FetchDetails] Fixed strip URL: ${url.substring(0, 60)}... -> ${urlObj.toString().substring(0, 60)}...`);
-                    return urlObj.toString();
-                }
-
-                return url;
-            } catch {
-                return url;
-            }
-        };
-
-        // Helper to check if URL is a zoom tile or strip image
-        // MOVED BEFORE Strategy 2 so it can be used by all strategies
-        const isZoomTileOrStrip = (url: string): boolean => {
-            const lowerUrl = url.toLowerCase();
-
-            // Common zoom tile patterns
-            if (
-                lowerUrl.includes('/tile') ||
-                lowerUrl.includes('_tile') ||
-                lowerUrl.includes('/zoom/') ||
-                lowerUrl.includes('/zoomify/') ||
-                lowerUrl.includes('deepzoom') ||
-                lowerUrl.includes('/dzi/') ||
-                lowerUrl.includes('_dz_') ||
-                // Tile coordinate patterns like "0_0", "1_2", etc.
-                /[/_]\d+[_x]\d+\.(jpg|png|webp)/i.test(url) ||
-                // Very small dimension patterns
-                /[/_](50|60|70|80|90)x/i.test(url) ||
-                /x(50|60|70|80|90)[/_]/i.test(url)
-            ) {
-                console.log(`[FetchDetails] Filtering zoom tile: ${url.substring(0, 80)}...`);
-                return true;
-            }
-
-            // Check for extreme aspect ratio in URL path dimensions (like 1200x160 in path)
-            const dimMatch = url.match(/(\d{2,})x(\d{2,})/i);
-            if (dimMatch) {
-                const width = parseInt(dimMatch[1]);
-                const height = parseInt(dimMatch[2]);
-                const ratio = width / height;
-                // Filter if aspect ratio is more than 3:1 or less than 1:3
-                if (ratio > 3 || ratio < 0.33) {
-                    console.log(`[FetchDetails] Filtering strip image (path): ${width}x${height} (ratio: ${ratio.toFixed(2)})`);
-                    return true;
-                }
-            }
-
-            // Note: Query param strips are handled by fixImageUrl, not filtered here
-            return false;
-        };
-
-        // Strategy 2: Look for specific product gallery images (Sklum specific & others)
-        // Sklum uses .c-product-gallery__list for the main slider
-        $('.c-product-gallery__list img, .o-product-image, .c-lightbox__img, .js-product-card-image, .c-product-card__image, [data-at*="image"], .product__img, .gallery__img').each((_, el) => {
-            // Skip images inside related products sliders (Sklum uses .c-slider-carousel-section for related)
-            if ($(el).closest('.c-slider-carousel-section, .related-products, .cross-sell, .upsell, .c-product-card').length > 0) {
-                return;
-            }
-
-            const src = $(el).attr('src') || $(el).attr('data-src') || $(el).attr('data-pswp-src') || $(el).attr('data-zoom-image');
-            if (src) {
-                // APPLY FILTER HERE - Skip zoom tiles and strips
-                if (isZoomTileOrStrip(src)) {
-                    return;
-                }
-
-                let fullUrl = src;
-                if (src.startsWith('//')) {
-                    fullUrl = 'https:' + src;
-                } else if (src.startsWith('/')) {
-                    fullUrl = baseUrl + src;
-                } else if (!src.startsWith('http')) {
-                    fullUrl = baseUrl + '/' + src;
-                }
-
-                // Also check the resolved URL
-                if (!isZoomTileOrStrip(fullUrl)) {
-                    images.push(fullUrl);
-                }
-            }
+        // P2: OpenGraph meta tags
+        console.log('[FetchDetails] P2: Extracting from og:image...');
+        const ogImages = $('meta[property="og:image"], meta[property="og:image:secure_url"]');
+        ogImages.each((_, el) => {
+            addImage($(el).attr('content'));
         });
+        // Also check Twitter cards
+        $('meta[name="twitter:image"], meta[name="twitter:image:src"]').each((_, el) => {
+            addImage($(el).attr('content'));
+        });
+        console.log(`[FetchDetails] P2 after og:image: ${images.length} images`);
 
-        // Strategy 3: General img tags (Fallback/Supplement) - RESTRICTED SCOPE
-        // Only look inside main content areas to avoid footer/header/related products
-        const mainContent = $('main, article, .product-container, #main-content, .page-content, .l-details-main-content').first();
-        const context = mainContent.length ? mainContent : $('body');
+        // P3: Universal gallery detection - find containers with multiple product images
+        console.log('[FetchDetails] P3: Universal gallery detection...');
 
-        // FALLBACK: If we found NO images via JSON-LD or Gallery, be more aggressive
-        if (images.length === 0) {
-            console.log('[FetchDetails] No images found via JSON-LD or Gallery. Falling back to broad search.');
-        }
+        // Data attributes that commonly hold high-res image URLs
+        const srcAttrs = [
+            'data-zoom-image', 'data-large', 'data-large-src', 'data-full-src',
+            'data-pswp-src', 'data-original', 'data-lazy-src', 'data-lazyload',
+            'data-src', 'data-high-res', 'data-hires', 'data-image-large',
+            'data-image', 'data-bgimage', 'data-background-image', 'data-srcset',
+            'data-zoom', 'data-big', 'data-xlarge', 'data-fullsize', 'data-hi-res',
+            'data-main-image', 'data-zoomable', 'data-magnify-src'
+        ];
 
-        // Helper to get the base image name for deduplication
-        const getImageBaseName = (url: string): string => {
-            // Remove dimensions, size variants, and common suffixes
-            return url
-                .replace(/[_-]?\d+x\d+/gi, '')
-                .replace(/[_-](small|thumb|medium|large|xl|xxl)/gi, '')
-                .replace(/[?&].*$/, '') // Remove query params
-                .replace(/\.(jpg|jpeg|png|webp|gif)$/i, '');
-        };
-
-        context.find('img').each((_, el) => {
-            // Skip images inside related/cross-sell sections AND specific Sklum slider containers
-            if ($(el).closest('.c-slider-carousel-section, .related-products, .cross-sell, .upsell, .recommended, .accessories, .footer, nav, header, .c-product-card, .c-product-gallery__bullets').length > 0) {
-                return;
+        const getImageFromElement = ($el: any): string | null => {
+            // Try high-res data attributes first
+            for (const attr of srcAttrs) {
+                const val = $el.attr(attr);
+                if (val && val.length > 10 && !val.startsWith('data:')) {
+                    return val;
+                }
             }
 
-            // PRIORITY ORDER: High-res first, then fallback to src
-            const highResSrc = $(el).attr('data-zoom-image') ||
-                $(el).attr('data-large-src') ||
-                $(el).attr('data-full-src') ||
-                $(el).attr('data-pswp-src');
-
-            // Check srcset for highest resolution
-            let srcsetHighRes: string | undefined;
-            const srcset = $(el).attr('srcset');
+            // Try srcset - pick highest resolution
+            const srcset = $el.attr('srcset');
             if (srcset) {
-                const candidates = srcset.split(',').map(s => s.trim());
-                // Sort by size (2x, 1200w, etc) and pick largest
-                const sorted = candidates.sort((a, b) => {
+                const candidates = srcset.split(',').map((s: string) => s.trim());
+                const sorted = candidates.sort((a: string, b: string) => {
                     const aMatch = a.match(/(\d+)[wx]$/);
                     const bMatch = b.match(/(\d+)[wx]$/);
                     return (bMatch ? parseInt(bMatch[1]) : 0) - (aMatch ? parseInt(aMatch[1]) : 0);
                 });
                 if (sorted[0]) {
-                    srcsetHighRes = sorted[0].split(' ')[0];
+                    return sorted[0].split(' ')[0];
                 }
             }
 
-            const src = highResSrc || srcsetHighRes || $(el).attr('data-src') || $(el).attr('data-lazy-src') || $(el).attr('src');
+            // Fallback to src
+            return $el.attr('src') || null;
+        };
 
-            // Strict filtering for Sklum and general e-commerce
-            if (src) {
-                const lowerSrc = src.toLowerCase();
+        // Universal gallery selectors - look for common patterns
+        const gallerySelectors = [
+            // Generic gallery patterns
+            '[class*="gallery"] img',
+            '[class*="slider"] img',
+            '[class*="carousel"] img',
+            '[class*="product-image"] img',
+            '[class*="product_image"] img',
+            '[class*="product-photo"] img',
+            '[class*="main-image"] img',
+            '[class*="lightbox"] img',
+            '[class*="zoom"] img',
+            '[class*="swiper"] img',
+            '[class*="slick"] img',
+            '[data-gallery] img',
+            '[data-slider] img',
+            // Common e-commerce patterns
+            '.product-gallery img',
+            '.image-gallery img',
+            '.photo-gallery img',
+            '.pdp-gallery img',
+            '.product-media img',
+            '.media-gallery img'
+        ];
+
+        // Skip containers that are clearly NOT product galleries
+        const skipContainers = [
+            '.related-products', '.cross-sell', '.upsell', '.recommended',
+            '.footer', 'footer', 'nav', 'header', '.header',
+            '.payment', '.trust-badges', '.reviews'
+        ];
+
+        gallerySelectors.forEach(selector => {
+            try {
+                $(selector).each((_, el) => {
+                    const $el = $(el);
+                    // Skip if inside excluded containers
+                    if ($el.closest(skipContainers.join(', ')).length > 0) return;
+
+                    const imgSrc = getImageFromElement($el);
+                    if (imgSrc) addImage(imgSrc);
+                });
+            } catch (e) {
+                // Invalid selector, skip
+            }
+        });
+        console.log(`[FetchDetails] P3 after galleries: ${images.length} images`);
+
+        // P4: All remaining images with data attributes (not in excluded areas)
+        console.log('[FetchDetails] P4: Scanning all images with data attributes...');
+        const mainContent = $('main, article, .product-container, .product-detail, .pdp, #main-content, .page-content, .product-page, [role="main"]').first();
+        const context = mainContent.length ? mainContent : $('body');
+
+        context.find('img').each((_, el) => {
+            const $el = $(el);
+
+            // Skip if in excluded areas
+            if ($el.closest(skipContainers.join(', ')).length > 0) return;
+
+            const imgSrc = getImageFromElement($el);
+            if (imgSrc) {
+                const lower = imgSrc.toLowerCase();
+                // Only filter truly invalid images
                 if (
-                    !lowerSrc.includes('logo') &&
-                    !lowerSrc.includes('icon') &&
-                    !lowerSrc.includes('banner') &&
-                    !lowerSrc.includes('svg') &&
-                    !lowerSrc.includes('payment') &&
-                    !lowerSrc.includes('1x1') &&
-                    !lowerSrc.includes('pixel') &&
-                    !lowerSrc.includes('loader') &&
-                    !lowerSrc.includes('placeholder') &&
-                    !lowerSrc.includes('swatch') && // Filter color swatches
-                    !lowerSrc.includes('texture') &&
-                    !lowerSrc.includes('pattern') &&
-                    !lowerSrc.includes('fsc') && // EXCLUDE FSC BADGES
-                    !lowerSrc.includes('badge') && // EXCLUDE BADGES
-                    !lowerSrc.includes('rating') && // EXCLUDE RATINGS
-                    !lowerSrc.includes('_small') && // EXCLUDE small variants
-                    !lowerSrc.includes('_thumb') && // EXCLUDE thumbnails
-                    !lowerSrc.includes('/50/') &&  // Common thumbnail path pattern
-                    !lowerSrc.includes('/100/') &&  // Common thumbnail path pattern
-                    !isZoomTileOrStrip(src)         // EXCLUDE zoom tiles and strips
+                    !lower.includes('logo') &&
+                    !lower.includes('icon') &&
+                    !lower.includes('badge') &&
+                    !lower.includes('rating') &&
+                    !lower.includes('payment') &&
+                    !lower.includes('banner') &&
+                    !lower.includes('sprite') &&
+                    !lower.includes('avatar')
                 ) {
-
-                    let fullUrl = src;
-                    if (src.startsWith('//')) {
-                        fullUrl = 'https:' + src;
-                    } else if (src.startsWith('/')) {
-                        fullUrl = baseUrl + src;
-                    } else if (!src.startsWith('http')) {
-                        fullUrl = baseUrl + '/' + src;
-                    }
-
-                    // TRY TO UPGRADE to high-res: common patterns
-                    fullUrl = fullUrl
-                        .replace(/_small\./gi, '.')
-                        .replace(/_thumb\./gi, '.')
-                        .replace(/\/thumb\//gi, '/large/')
-                        .replace(/\/small\//gi, '/large/')
-                        .replace(/\/200\//gi, '/800/')
-                        .replace(/\/300\//gi, '/800/')
-                        .replace(/w=\d+/gi, 'w=1200')
-                        .replace(/h=\d+/gi, 'h=1200');
-
-                    // Only add if it looks like a product image (usually has dimensions or specific path)
-                    // Sklum images often have dimensions in URL like "472x708" or are in /img/co/
-                    if (!images.includes(fullUrl)) {
-                        images.push(fullUrl);
-                    }
+                    addImage(imgSrc);
                 }
             }
         });
+        console.log(`[FetchDetails] P4 after all imgs: ${images.length} images`);
 
-        // First, fix any strip URLs (those with extreme aspect ratios in query params)
-        const fixedImages = images.map(img => fixImageUrl(img)).filter((img): img is string => img !== null);
-        console.log(`[FetchDetails] Fixed ${images.length - fixedImages.length} strip URLs via query param adjustment`);
+        // P5: If still very few images, try background images in style attrs
+        if (images.length < 3) {
+            console.log('[FetchDetails] P5: Checking background images...');
+            context.find('[style*="background-image"]').each((_, el) => {
+                const style = $(el).attr('style') || '';
+                const match = style.match(/background-image:\s*url\(['"]?([^'")\s]+)['"]?\)/i);
+                if (match && match[1]) {
+                    addImage(match[1]);
+                }
+            });
+        }
 
-        // Deduplicate images by base name (avoid multiple sizes of same image)
-        const seenBaseNames = new Set<string>();
-        const deduplicatedImages = fixedImages.filter(img => {
-            const baseName = getImageBaseName(img);
-            if (seenBaseNames.has(baseName)) {
-                return false;
+        // P6: Regex search for CDN image URLs in raw HTML (catches SPAs/React apps)
+        if (images.length < 5) {
+            console.log('[FetchDetails] P6: Searching for CDN URLs in raw HTML...');
+            const rawHtml = scrapeResult.html;
+
+            // Known e-commerce image CDN patterns
+            const cdnPatterns = [
+                // Selency - UUID-based
+                /https:\/\/images\.selency\.com\/[0-9a-f-]{36}[^"'\s]*/gi,
+                // Generic image URLs
+                /https?:\/\/[^"'\s]+\.(jpg|jpeg|png|webp)[^"'\s]*/gi,
+                // Westwing
+                /https?:\/\/[^"'\s]*westwing[^"'\s]*\.(jpg|jpeg|png|webp)[^"'\s]*/gi,
+                // Cloudinary
+                /https?:\/\/res\.cloudinary\.com\/[^"'\s]+/gi,
+                // Imgix
+                /https?:\/\/[^"'\s]*\.imgix\.net\/[^"'\s]+/gi,
+            ];
+
+            const foundUrls = new Set<string>();
+            for (const pattern of cdnPatterns) {
+                const matches = rawHtml.match(pattern) || [];
+                matches.forEach(url => {
+                    // Clean up the URL (remove trailing quotes, brackets, etc.)
+                    const cleanUrl = url.replace(/['"\\)}\]>,;]+$/, '').trim();
+                    if (cleanUrl.length > 20) {
+                        foundUrls.add(cleanUrl);
+                    }
+                });
             }
-            seenBaseNames.add(baseName);
+
+            // Add found URLs (filter out obvious non-product images)
+            const skipPatterns = ['language', 'logo', 'icon', 'app_download', 'favicon', 'banner', 'sprite', 'pixel', 'tracking', 'not_found'];
+            foundUrls.forEach(url => {
+                const lower = url.toLowerCase();
+                if (!skipPatterns.some(skip => lower.includes(skip))) {
+                    addImage(url);
+                }
+            });
+            console.log(`[FetchDetails] P6 after regex: ${images.length} images`);
+        }
+
+        // Final cleanup and deduplication
+        // Only deduplicate EXACT matches (after URL normalization)
+        const normalizeUrl = (url: string): string => {
+            try {
+                const u = new URL(url);
+                u.searchParams.delete('v'); // Version params
+                u.searchParams.delete('_'); // Cache busters
+                return u.toString();
+            } catch {
+                return url;
+            }
+        };
+
+        const seen = new Set<string>();
+        const uniqueImages = images.filter(img => {
+            const normalized = normalizeUrl(img);
+            if (seen.has(normalized)) return false;
+            seen.add(normalized);
             return true;
         });
 
-        // Use deduplicated list
-        const uniqueImages = Array.from(new Set(deduplicatedImages));
-
-        // Filter out empty, placeholder, or invalid URLs
+        // Final validation - must have valid extension or be from known CDN
         const validatedImages = uniqueImages.filter(img => {
-            if (!img || img.length < 10) return false;
-            if (!img.startsWith('http')) return false;
-
-            // Filter out common placeholder patterns
-            const lowerImg = img.toLowerCase();
-            if (lowerImg.includes('placeholder') || lowerImg.includes('loading') || lowerImg.includes('blank')) return false;
-            if (lowerImg.includes('data:image')) return false;
-            if (lowerImg.endsWith('.gif') && (lowerImg.includes('1x1') || lowerImg.includes('pixel'))) return false;
-
-            // Must have a valid image extension OR be from a known CDN
-            const urlPath = lowerImg.split('?')[0]; // Remove query params for extension check
-            const hasValidExtension = /\.(jpg|jpeg|png|webp|avif)$/i.test(urlPath);
-            const isKnownCDN = lowerImg.includes('cloudinary') || lowerImg.includes('imgix') ||
-                lowerImg.includes('shopify') || lowerImg.includes('amazonaws') ||
-                lowerImg.includes('cloudfront') || lowerImg.includes('unsplash');
-
-            // Require either valid extension or known CDN
-            if (!hasValidExtension && !isKnownCDN) {
-                console.log(`[FetchDetails] Filtering image without valid extension: ${img.substring(0, 60)}...`);
-                return false;
-            }
-
-            return true;
+            const urlPath = img.toLowerCase().split('?')[0];
+            const hasValidExt = /\.(jpg|jpeg|png|webp|avif)$/i.test(urlPath);
+            // Expanded CDN list including Selency, Westwing, Pamono, 1stDibs, etc.
+            const isKnownCDN = /cloudinary|imgix|shopify|amazonaws|cloudfront|unsplash|twimg|cdn\.|fastly|akamai|cloudflare|images\.selency\.com|selency\.s3|westwing|pamono|1stdibs|chairish|artsy|lumas|archiproducts|madeindesign|design-market|vinterior|catawiki/i.test(img);
+            // Accept UUID-based image URLs (like Selency: images.selency.com/{uuid})
+            const isUuidImage = /\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?$/i.test(urlPath);
+            return hasValidExt || isKnownCDN || isUuidImage;
         });
 
-        // Limit to reasonable number (15) to avoid garbage
+        // Limit to 15 images
         const finalImages = validatedImages.slice(0, 15);
-
-        console.log(`[FetchDetails] Found ${finalImages.length} valid images (from ${uniqueImages.length} candidates)`);
+        console.log(`[FetchDetails] Final: ${finalImages.length} validated images (from ${images.length} candidates)`);
 
         // Get body text for extraction
         const bodyText = $('body').text().replace(/\s+/g, ' ');
@@ -726,22 +704,31 @@ export async function fetchProductDetails(productUrl: string) {
             }
         }
 
-        // Clean up SEO junk and advertising text
+        // Clean up SEO junk and advertising text (improved patterns that don't require periods)
         if (description) {
             description = description
                 .replace(/✅|✚|★|☆/g, '')
-                .replace(/Descubre\s+la\s+colección[^.]*\./gi, '')
-                .replace(/Selección\s+exclusiva[^.]*\./gi, '')
-                .replace(/A\s+precios\s+bajos[^.]*\./gi, '')
-                .replace(/Envío\s+(gratis|gratuito)[^.]*\./gi, '')
-                .replace(/SKLUM[^.]*\./gi, '')
-                .replace(/NV\s*GALLERY[^.]*\./gi, '')
+                // SKLUM-specific patterns (without requiring periods)
+                .replace(/Descubre\s+la\s+colección[^.]*(?:\.|$)/gi, '')
+                .replace(/Descubre\s+la\s+colección[^A-Z]*/gi, '')
+                .replace(/Selección\s+exclusiva[^.]*(?:\.|$)/gi, '')
+                .replace(/Selección\s+exclusiva[^A-Z]*/gi, '')
+                .replace(/A\s+precios\s+bajos[^.]*(?:\.|$)/gi, '')
+                .replace(/A\s+precios\s+bajos.*$/gi, '')
+                .replace(/Envío\s+(gratis|gratuito)[^.]*(?:\.|$)/gi, '')
+                .replace(/de\s+SKLUM\s*/gi, '')
+                .replace(/SKLUM[^.]*(?:\.|$)/gi, '')
+                .replace(/NV\s*GALLERY[^.]*(?:\.|$)/gi, '')
+                // Generic promotional patterns
+                .replace(/Compra\s+ahora[^.]*(?:\.|$)/gi, '')
+                .replace(/Descubre\s+más[^.]*(?:\.|$)/gi, '')
+                .replace(/Ver\s+colección[^.]*(?:\.|$)/gi, '')
                 .replace(/\s+/g, ' ')
                 .trim();
         }
 
         // ===============================================
-        // AI-FIRST EXTRACTION: Universal across all sites
+        // STEP 1: Extract from JSON-LD (Most reliable for e-commerce)
         // ===============================================
         let dimensions: string | undefined;
         let materials: string | undefined;
@@ -752,115 +739,385 @@ export async function fetchProductDetails(productUrl: string) {
         let features: string[] = [];
         let careInstructions: string | undefined;
         let extractedPrice: string | undefined;
+        let jsonLdDescription: string | undefined;
 
-        try {
-            const OpenAI = (await import('openai')).default;
-            const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        // Try to extract from JSON-LD first (most reliable)
+        $('script[type="application/ld+json"]').each((_, el) => {
+            try {
+                const json = JSON.parse($(el).html() || '{}');
+                const dataList = Array.isArray(json) ? json : [json];
 
-            // Extract text from product-relevant areas for better AI context
-            const productAreas = [
-                '.product-description',
-                '.product-details',
-                '.product-specifications',
-                '.specifications',
-                '.product-info',
-                '[class*="specification"]',
-                '[class*="detail"]',
-                '[class*="feature"]',
-                '[class*="attribute"]',
-                'table',
-                'dl', // definition lists often contain specs
-                '.accordion',
-                '[data-testid*="spec"]'
-            ];
+                for (const data of dataList) {
+                    if (data['@type'] === 'Product') {
+                        // Description
+                        if (data.description && !jsonLdDescription) {
+                            jsonLdDescription = data.description;
+                        }
 
-            let relevantText = '';
-            for (const sel of productAreas) {
-                $(sel).each((_, el) => {
-                    const text = $(el).text().trim();
-                    if (text.length > 20 && text.length < 5000 && !text.includes('var(--')) {
-                        relevantText += ' ' + text;
+                        // Price from offers
+                        if (!extractedPrice && data.offers) {
+                            const offers = Array.isArray(data.offers) ? data.offers : [data.offers];
+                            for (const offer of offers) {
+                                if (offer.price) {
+                                    const currency = offer.priceCurrency || '€';
+                                    extractedPrice = `${offer.price} ${currency}`;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Weight
+                        if (!weight && data.weight) {
+                            if (typeof data.weight === 'object') {
+                                weight = `${data.weight.value} ${data.weight.unitCode || data.weight.unitText || 'kg'}`;
+                            } else {
+                                weight = String(data.weight);
+                            }
+                        }
+
+                        // Materials from additionalProperty or material field
+                        if (!materials) {
+                            if (data.material) {
+                                materials = Array.isArray(data.material) ? data.material.join(', ') : data.material;
+                            } else if (data.additionalProperty) {
+                                const props = Array.isArray(data.additionalProperty) ? data.additionalProperty : [data.additionalProperty];
+                                for (const prop of props) {
+                                    if (prop.name?.toLowerCase().includes('material')) {
+                                        materials = prop.value;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Colors from additionalProperty or color field
+                        if (!colors) {
+                            if (data.color) {
+                                colors = Array.isArray(data.color) ? data.color.join(', ') : data.color;
+                            } else if (data.additionalProperty) {
+                                const props = Array.isArray(data.additionalProperty) ? data.additionalProperty : [data.additionalProperty];
+                                for (const prop of props) {
+                                    if (prop.name?.toLowerCase().includes('color') || prop.name?.toLowerCase().includes('colour')) {
+                                        colors = prop.value;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Dimensions from additionalProperty
+                        if (!dimensions && data.additionalProperty) {
+                            const props = Array.isArray(data.additionalProperty) ? data.additionalProperty : [data.additionalProperty];
+                            const dimParts: string[] = [];
+
+                            // Helper to validate dimension values (must contain units)
+                            const isValidDimension = (val: string): boolean => {
+                                if (!val || typeof val !== 'string') return false;
+                                // Must contain measurement units
+                                return /\d+\s*(?:cm|mm|m|in|"|'|pulgadas?|metros?|centímetros?)/i.test(val);
+                            };
+
+                            for (const prop of props) {
+                                const name = prop.name?.toLowerCase() || '';
+                                const value = String(prop.value || '');
+
+                                // Only accept if value looks like a real dimension
+                                if (name.includes('alto') || name.includes('height') || name.includes('hauteur')) {
+                                    if (isValidDimension(value)) {
+                                        dimParts.push(`Alto: ${value}`);
+                                    }
+                                } else if (name.includes('ancho') || name.includes('width') || name.includes('largeur')) {
+                                    if (isValidDimension(value)) {
+                                        dimParts.push(`Ancho: ${value}`);
+                                    }
+                                } else if (name.includes('profund') || name.includes('depth') || name.includes('fondo')) {
+                                    if (isValidDimension(value)) {
+                                        dimParts.push(`Fondo: ${value}`);
+                                    }
+                                } else if (name.includes('dimension') || name.includes('medida') || name.includes('size')) {
+                                    // Only accept if it looks like actual dimensions
+                                    if (isValidDimension(value)) {
+                                        dimensions = value;
+                                    }
+                                }
+                            }
+                            if (dimParts.length > 0 && !dimensions) {
+                                dimensions = dimParts.join(', ');
+                            }
+                        }
+
+                        console.log('[FetchDetails] JSON-LD extracted:', {
+                            hasDescription: !!jsonLdDescription,
+                            hasPrice: !!extractedPrice,
+                            hasMaterials: !!materials,
+                            hasColors: !!colors,
+                            hasDimensions: !!dimensions,
+                            hasWeight: !!weight
+                        });
                     }
-                });
+                }
+            } catch (e) {
+                // JSON-LD parsing error, continue with AI
             }
+        });
 
-            // Fallback to full body if no relevant areas found
-            const textForAI = relevantText.length > 200
-                ? relevantText.substring(0, 12000)
-                : bodyText.substring(0, 12000);
+        // Use JSON-LD description if DOM extraction failed
+        if (!description && jsonLdDescription) {
+            // Clean SEO/promotional text from JSON-LD description
+            description = jsonLdDescription
+                .replace(/Descubre\s+la\s+colección[^.]*\./gi, '')
+                .replace(/Selección\s+exclusiva[^.]*\./gi, '')
+                .replace(/A\s+precios\s+bajos[^.]*\./gi, '')
+                .replace(/Envío\s+(gratis|gratuito)[^.]*\./gi, '')
+                .replace(/SKLUM[^.]*\./gi, '')
+                .replace(/NV\s*GALLERY[^.]*\./gi, '')
+                .replace(/✅|✚|★|☆/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
 
-            console.log(`[FetchDetails] Sending ${textForAI.length} chars to AI for extraction`);
+        // ===============================================
+        // STEP 2: AI extraction for missing fields
+        // ===============================================
+        const needsAI = !dimensions || !materials || !colors || !description;
 
-            const aiResponse = await openai.chat.completions.create({
-                model: 'gpt-4o-mini',
-                messages: [
-                    {
-                        role: 'system',
-                        content: `You are a product specification extractor. Extract ALL available product attributes from the text provided. This text comes from a product page and may be in ANY language (Spanish, English, French, German, Italian, etc.).
+        if (needsAI) {
+            try {
+                const OpenAI = (await import('openai')).default;
+                const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+                // EXPANDED selectors for product-relevant areas
+                const productAreas = [
+                    // Generic product sections
+                    '.product-description', '.product-details', '.product-specifications',
+                    '.specifications', '.product-info', '.product-attributes',
+                    // Tab content (common pattern)
+                    '.tab-content', '.tab-pane', '[role="tabpanel"]',
+                    '.tabs-content', '.product-tabs',
+                    // Accordion content (SKLUM, NV Gallery use these)
+                    '.accordion', '.accordion-content', '.accordion-body',
+                    '[class*="accordion"]', '[class*="collapse"]',
+                    // Attribute patterns
+                    '[class*="specification"]', '[class*="detail"]',
+                    '[class*="feature"]', '[class*="attribute"]',
+                    '[class*="property"]', '[class*="characteristic"]',
+                    // Tables (very common for specs)
+                    'table', 'dl', 'dt', 'dd',
+                    // Data test attributes
+                    '[data-testid*="spec"]', '[data-testid*="detail"]',
+                    // Site-specific selectors
+                    '.c-product-description', // SKLUM
+                    '.c-product-specifications', // SKLUM
+                    '.pdp-description', // Generic
+                    '.product-main-info', // Generic
+                    '[class*="pdp-"]', // PDP = Product Detail Page
+                    // Main content areas
+                    'main', 'article', '.main-content', '#main-content'
+                ];
+
+                let relevantText = '';
+                const seenTexts = new Set<string>(); // Avoid duplicates
+
+                for (const sel of productAreas) {
+                    $(sel).each((_, el) => {
+                        // Skip nav, footer, header, related products
+                        if ($(el).closest('nav, footer, header, .related-products, .cross-sell, .upsell, .c-slider-carousel-section').length > 0) {
+                            return;
+                        }
+
+                        const text = $(el).text().trim();
+                        // Must have reasonable length and not be CSS
+                        if (text.length > 30 && text.length < 8000 && !text.includes('var(--')) {
+                            // Check for duplicates
+                            const textHash = text.substring(0, 100);
+                            if (!seenTexts.has(textHash)) {
+                                seenTexts.add(textHash);
+                                relevantText += ' ' + text;
+                            }
+                        }
+                    });
+                }
+
+                // Clean UI noise from the text
+                relevantText = relevantText
+                    .replace(/Añadir al carrito/gi, '')
+                    .replace(/Add to cart/gi, '')
+                    .replace(/Comprar ahora/gi, '')
+                    .replace(/Buy now/gi, '')
+                    .replace(/En stock/gi, '')
+                    .replace(/Out of stock/gi, '')
+                    .replace(/Agotado/gi, '')
+                    .replace(/Envío gratis/gi, '')
+                    .replace(/Free shipping/gi, '')
+                    .replace(/Ver más/gi, '')
+                    .replace(/See more/gi, '')
+                    .replace(/Leer más/gi, '')
+                    .replace(/Read more/gi, '')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+
+                // If relevant areas are too small, use body but clean it
+                let textForAI: string;
+                if (relevantText.length > 300) {
+                    textForAI = relevantText.substring(0, 15000);
+                } else {
+                    // Clean body text more aggressively
+                    const cleanBody = $('body').clone();
+                    cleanBody.find('script, style, nav, footer, header, .cookie, .popup, .modal, .related-products, .cross-sell').remove();
+                    textForAI = cleanBody.text().replace(/\s+/g, ' ').trim().substring(0, 15000);
+                }
+
+                console.log(`[FetchDetails] Sending ${textForAI.length} chars to AI for extraction (need: dims=${!dimensions}, mats=${!materials}, colors=${!colors}, desc=${!description})`);
+
+                const aiResponse = await openai.chat.completions.create({
+                    model: 'gpt-4o-mini',
+                    messages: [
+                        {
+                            role: 'system',
+                            content: `You are an expert product specification extractor. Extract ALL available product attributes from the text provided. This text comes from a product page and may be in ANY language (Spanish, English, French, German, Italian, Portuguese, etc.).
+
+CRITICAL: Be VERY thorough with dimensions. Look for ANY measurements in the text, including:
+- Direct dimensions: "120 x 80 x 45 cm", "L120 W80 H45"
+- Labeled dimensions: "Alto: 70 cm", "Height: 70cm", "Ancho: 50 cm", "Width: 50cm"
+- Seat dimensions: "Altura asiento: 45 cm", "Seat height: 45cm"
+- In tables: rows with dimension labels
 
 Return a JSON object with these fields (use null if not found, do NOT invent data):
 {
-  "price": "The product price as a string, including currency symbol if present. E.g. '469,95 €' or '$299.99'",
-  "dimensions": "All measurements found (height, width, depth, length, diameter). Format: 'Height: X cm, Width: Y cm' or 'X × Y × Z cm'",
-  "materials": "All materials mentioned (wood type, metal, fabric, plastic, etc.). List them comma-separated.",
-  "colors": "Available colors/finishes for this product",
-  "weight": "Product weight if mentioned",
+  "price": "Product price with currency. E.g. '469,95 €' or '$299.99'",
+  "dimensions": "ALL useful measurements found. Include height, width, depth, seat height, table top size, etc. Format each dimension on a new line like: 'Alto: 70 cm\\nAncho: 50 cm\\nFondo: 45 cm'. EXCLUDE tolerance/tolerancia values.",
+  "materials": "ALL materials mentioned: wood types (oak, walnut, pine), metals (steel, iron, brass), fabrics (velvet, linen, cotton, bouclé), etc. Comma-separated.",
+  "colors": "Available colors/finishes mentioned for this product",
+  "weight": "Product weight if mentioned (e.g. '15 kg', '33 lbs')",
   "capacity": "Storage capacity, volume, or seating capacity if relevant",
-  "style": "Design style (modern, vintage, industrial, minimalist, etc.)",
-  "features": "Array of key features/characteristics (max 5 items)",
-  "careInstructions": "Cleaning or maintenance instructions if mentioned"
+  "style": "Design style (modern, vintage, industrial, minimalist, Scandinavian, etc.)",
+  "features": ["Array of key features/characteristics", "max 5 items"],
+  "careInstructions": "Cleaning or maintenance instructions",
+  "description": "A clean product description (2-3 sentences max), removing any promotional/SEO text"
 }
 
-Rules:
-1. Extract ONLY information that is explicitly stated in the text
-2. Translate attribute names to English but keep values in original language if they are proper nouns (colors, materials)
-3. For dimensions, include ALL measurements found (height, width, depth, seat height, etc.)
-4. For price, look for patterns like "Price: X €", "X,XX €", "$XX.XX", etc.
-5. Be thorough - this data will be shown to users in a product catalog`
-                    },
-                    { role: 'user', content: textForAI }
-                ],
-                response_format: { type: 'json_object' },
-                max_tokens: 800
-            });
+RULES:
+1. Extract ONLY information explicitly stated in the text - never invent data
+2. For dimensions, look EVERYWHERE in the text - they are often in tables, lists, or labeled sections
+3. For materials, include ALL materials mentioned (frame material, upholstery, legs, etc.)
+4. If you find Spanish labels like "Alto", "Ancho", "Fondo", "Largo", extract them with their values
+5. Clean the description of promotional text like "Descubre...", "Envío gratis", brand mentions, etc.`
+                        },
+                        { role: 'user', content: textForAI }
+                    ],
+                    response_format: { type: 'json_object' },
+                    max_tokens: 1000
+                });
 
-            const aiSpecs = JSON.parse(aiResponse.choices[0].message.content || '{}');
-            console.log('[FetchDetails] AI extracted specs:', aiSpecs);
+                const aiSpecs = JSON.parse(aiResponse.choices[0].message.content || '{}');
+                console.log('[FetchDetails] AI extracted specs:', aiSpecs);
 
-            // Map AI results to our variables
-            extractedPrice = aiSpecs.price || undefined;
-            dimensions = aiSpecs.dimensions || undefined;
-            materials = aiSpecs.materials || undefined;
-            colors = aiSpecs.colors || undefined;
-            weight = aiSpecs.weight || undefined;
-            capacity = aiSpecs.capacity || undefined;
-            style = aiSpecs.style || undefined;
-            features = Array.isArray(aiSpecs.features) ? aiSpecs.features : [];
-            careInstructions = aiSpecs.careInstructions || undefined;
+                // Map AI results - only if not already found from JSON-LD
+                if (!extractedPrice && aiSpecs.price) extractedPrice = aiSpecs.price;
+                if (!dimensions && aiSpecs.dimensions) {
+                    // Filter out tolerance/tolerancia lines
+                    dimensions = aiSpecs.dimensions
+                        .split(/[\n,]/)
+                        .filter((line: string) => !/tolerancia|tolerance|±|\+\/-/i.test(line))
+                        .join('\n')
+                        .trim();
+                }
+                if (!materials && aiSpecs.materials) materials = aiSpecs.materials;
+                if (!colors && aiSpecs.colors) colors = aiSpecs.colors;
+                if (!weight && aiSpecs.weight) weight = aiSpecs.weight;
+                if (!capacity && aiSpecs.capacity) capacity = aiSpecs.capacity;
+                if (!style && aiSpecs.style) style = aiSpecs.style;
+                if (features.length === 0 && Array.isArray(aiSpecs.features)) features = aiSpecs.features;
+                if (!careInstructions && aiSpecs.careInstructions) careInstructions = aiSpecs.careInstructions;
+                if (!description && aiSpecs.description) description = aiSpecs.description;
 
-        } catch (aiError) {
-            console.warn('[FetchDetails] AI extraction failed, falling back to regex:', aiError);
-
-            // FALLBACK: Basic regex patterns for common formats
-            // Dimensions pattern
-            const dimRegex = /(\d+(?:[.,]\d+)?)\s*(?:cm|mm|m)?\s*[x×*]\s*(\d+(?:[.,]\d+)?)\s*(?:cm|mm|m)?(?:\s*[x×*]\s*(\d+(?:[.,]\d+)?))?\s*(?:cm|mm|m)/i;
-            const dimMatch = bodyText.match(dimRegex);
-            if (dimMatch) {
-                dimensions = dimMatch[0];
+            } catch (aiError) {
+                console.warn('[FetchDetails] AI extraction failed, falling back to regex:', aiError);
             }
+        }
 
-            // Materials pattern (multilingual)
-            const matRegex = /(?:material|materiales?|matériaux?|materiali|werkstoff)[:\s]+([^.]{3,100})/gi;
-            const matMatch = bodyText.match(matRegex);
-            if (matMatch) {
-                materials = matMatch[0].replace(/^[^:]+:\s*/i, '').trim();
+        // ===============================================
+        // STEP 3: Regex fallback for any still-missing fields
+        // ===============================================
+        // Dimensions - multiple patterns
+        if (!dimensions) {
+            // Pattern 1: Labeled dimensions in Spanish
+            const labeledDims: string[] = [];
+            const altoMatch = bodyText.match(/(?:alto|altura|height|h)[:\s]*(\d+(?:[.,]\d+)?)\s*(?:cm|mm|m)/i);
+            const anchoMatch = bodyText.match(/(?:ancho|anchura|width|w|largo)[:\s]*(\d+(?:[.,]\d+)?)\s*(?:cm|mm|m)/i);
+            const fondoMatch = bodyText.match(/(?:fondo|profundidad|depth|d)[:\s]*(\d+(?:[.,]\d+)?)\s*(?:cm|mm|m)/i);
+
+            if (altoMatch) labeledDims.push(`Alto: ${altoMatch[1]} cm`);
+            if (anchoMatch) labeledDims.push(`Ancho: ${anchoMatch[1]} cm`);
+            if (fondoMatch) labeledDims.push(`Fondo: ${fondoMatch[1]} cm`);
+
+            if (labeledDims.length >= 2) {
+                dimensions = labeledDims.join('\n');
+            } else {
+                // Pattern 2: XxYxZ format
+                const dimRegex = /(\d+(?:[.,]\d+)?)\s*(?:cm|mm)?\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*(?:cm|mm)?(?:\s*[x×]\s*(\d+(?:[.,]\d+)?))?\s*(?:cm|mm)/i;
+                const dimMatch = bodyText.match(dimRegex);
+                if (dimMatch) {
+                    dimensions = dimMatch[0];
+                }
             }
+        }
 
-            // Colors pattern (multilingual)  
-            const colorRegex = /(?:colou?rs?|colores?|couleurs?|colori|farben?)[:\s]+([^.]{3,50})/gi;
-            const colorMatch = bodyText.match(colorRegex);
-            if (colorMatch) {
-                colors = colorMatch[0].replace(/^[^:]+:\s*/i, '').trim();
+        // Materials - expanded patterns
+        if (!materials) {
+            const matPatterns = [
+                /(?:material(?:es)?|matériaux?|materiali|werkstoff)[:\s]+([^.]{3,150})/gi,
+                /(?:tapizado|upholster(?:y|ed)|tissu)[:\s]+([^.]{3,80})/gi,
+                /(?:estructura|frame|structure)[:\s]+([^.]{3,80})/gi,
+            ];
+            const foundMats: string[] = [];
+            for (const regex of matPatterns) {
+                const matches = bodyText.matchAll(regex);
+                for (const match of matches) {
+                    const mat = match[1].trim();
+                    if (mat.length > 3 && mat.length < 100) {
+                        foundMats.push(mat);
+                    }
+                }
+            }
+            if (foundMats.length > 0) {
+                materials = [...new Set(foundMats)].join(', ');
+            }
+        }
+
+        // Colors - improved patterns (exclude CSS)
+        if (!colors) {
+            // Look for color names in specific contexts
+            const colorPatterns = [
+                // Explicit color label patterns
+                /(?:colou?rs?|colores?|couleurs?|colori|farben?)[:\s]+([A-Za-zÀ-ÿ\s,]+(?:blanco|negro|gris|azul|verde|rojo|beige|marrón|crema|white|black|gray|grey|blue|green|red|brown|cream)[A-Za-zÀ-ÿ\s,]*)/gi,
+                /(?:acabado|finish|finition)[:\s]+([A-Za-zÀ-ÿ\s,]+)/gi,
+                // Color in product name context
+                /(?:disponible\s+en|available\s+in)[:\s]+([A-Za-zÀ-ÿ\s,]+)/gi,
+            ];
+            for (const regex of colorPatterns) {
+                const match = bodyText.match(regex);
+                if (match && match[1]) {
+                    const potentialColor = match[1].trim();
+                    // Filter out CSS-like content
+                    if (!potentialColor.includes(':') &&
+                        !potentialColor.includes(';') &&
+                        !potentialColor.includes('px') &&
+                        !potentialColor.includes('font') &&
+                        !potentialColor.includes('display') &&
+                        potentialColor.length < 60) {
+                        colors = potentialColor;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Weight - expanded patterns
+        if (!weight) {
+            const weightMatch = bodyText.match(/(?:peso|weight|poids|gewicht)[:\s]*(\d+(?:[.,]\d+)?)\s*(?:kg|g|lb|lbs)/i);
+            if (weightMatch) {
+                weight = weightMatch[0].replace(/^[^:]+:\s*/i, '').trim();
             }
         }
 
@@ -891,36 +1148,114 @@ export async function updateProductWithMoreImages(productId: string, productUrl:
     const supabase = await createClient();
 
     try {
-        console.log(`[UpdateImages] Fetching more images for: ${productUrl}`);
+        console.log(`[UpdateImages] Fetching details and images for: ${productUrl}`);
         const result = await fetchProductDetails(productUrl);
 
         if (!result.success || !result.details) {
             return { success: false, error: result.error };
         }
 
-        const { images } = result.details;
-        console.log(`[UpdateImages] Found ${images.length} images`);
+        const { images, dimensions, description, materials, colors, weight } = result.details;
+        console.log(`[UpdateImages] Found ${images.length} images, dimensions: ${dimensions}, materials: ${materials}`);
+
+        // Build update object with all available data
+        const updateData: Record<string, any> = {};
 
         if (images.length > 0) {
+            updateData.images = images;
+        }
+
+        if (description) {
+            updateData.description = description;
+        }
+
+        // Build specifications object with all details
+        const specs: Record<string, string> = {};
+        if (dimensions) specs.dimensions = dimensions;
+        if (materials) specs.materials = materials;
+        if (colors) specs.colors = colors;
+        if (weight) specs.weight = weight;
+
+        if (Object.keys(specs).length > 0) {
+            updateData.specifications = specs;
+        }
+
+        // Only update if we have something to update
+        if (Object.keys(updateData).length > 0) {
             const { error } = await supabase
                 .from('products')
-                .update({
-                    images: images,
-                    // Also update other details if they were missing
-                    specifications: result.details.dimensions ? { dimensions: result.details.dimensions } : undefined
-                })
+                .update(updateData)
                 .eq('id', productId);
 
             if (error) throw error;
 
             revalidatePath('/dashboard/projects/[id]');
-            return { success: true, images };
+            return { success: true, images, details: result.details };
         }
 
-        return { success: true, images: [], message: 'No additional images found' };
+        return { success: true, images: [], message: 'No additional data found' };
 
     } catch (error: any) {
         console.error('[UpdateImages] Error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Save product details to database after they've been fetched
+ * This is called from the product detail modal after loading details
+ */
+export async function saveProductDetails(productId: string, details: {
+    description?: string;
+    dimensions?: string;
+    materials?: string;
+    colors?: string;
+    weight?: string;
+    images?: string[];
+}) {
+    const supabase = await createClient();
+
+    try {
+        console.log(`[SaveDetails] Saving details for product ${productId}`);
+
+        const updateData: Record<string, any> = {};
+
+        if (details.description) {
+            updateData.description = details.description;
+        }
+
+        if (details.images && details.images.length > 0) {
+            updateData.images = details.images;
+        }
+
+        // Build specifications object
+        const specs: Record<string, string> = {};
+        if (details.dimensions) specs.dimensions = details.dimensions;
+        if (details.materials) specs.materials = details.materials;
+        if (details.colors) specs.colors = details.colors;
+        if (details.weight) specs.weight = details.weight;
+
+        if (Object.keys(specs).length > 0) {
+            updateData.specifications = specs;
+        }
+
+        if (Object.keys(updateData).length === 0) {
+            return { success: true, message: 'No data to update' };
+        }
+
+        const { error } = await supabase
+            .from('products')
+            .update(updateData)
+            .eq('id', productId);
+
+        if (error) throw error;
+
+        console.log(`[SaveDetails] Saved product details:`, Object.keys(updateData));
+        revalidatePath('/dashboard/projects/[id]');
+        return { success: true };
+
+    } catch (error: any) {
+        console.error('[SaveDetails] Error:', error);
         return { success: false, error: error.message };
     }
 }

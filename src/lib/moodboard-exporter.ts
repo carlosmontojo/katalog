@@ -260,10 +260,35 @@ export function exportToPDF(
             pdf.addImage(dataUrl, 'PNG', p.x || 0, p.y || 0, p.width || 0, p.height || 0)
         } else {
             const t = entry.item as MoodboardText
-            pdf.setFont(t.fontFamily)
+            pdf.setFont('helvetica') // Use built-in font for reliability
             pdf.setFontSize(t.fontSize)
             pdf.setTextColor(t.color)
-            pdf.text(t.text, t.x, t.y + t.fontSize * 0.8) // Adjust baseline
+
+            // Handle text wrapping by words if maxWidth is specified
+            if (t.maxWidth) {
+                const words = t.text.split(' ')
+                let line = ''
+                let currentY = t.y + t.fontSize * 0.8
+                const lineHeight = t.fontSize * 1.4
+
+                for (let n = 0; n < words.length; n++) {
+                    const testLine = line + words[n] + ' '
+                    const testWidth = pdf.getTextWidth(testLine)
+                    if (testWidth > t.maxWidth && n > 0) {
+                        pdf.text(line.trim(), t.x, currentY)
+                        line = words[n] + ' '
+                        currentY += lineHeight
+                    } else {
+                        line = testLine
+                    }
+                }
+                // Draw the remaining text
+                if (line.trim()) {
+                    pdf.text(line.trim(), t.x, currentY)
+                }
+            } else {
+                pdf.text(t.text, t.x, t.y + t.fontSize * 0.8) // Adjust baseline
+            }
         }
     }
 

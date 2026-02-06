@@ -68,10 +68,12 @@ export function ProductCard({ product }: ProductCardProps) {
 
             <ProductDetailModal
                 product={{
+                    id: product.id,
                     title: product.title,
                     price: product.price || 0,
                     currency: product.currency || 'EUR',
                     image_url: product.image_url,
+                    images: product.images,
                     original_url: product.original_url
                 }}
                 isOpen={isDetailModalOpen}
