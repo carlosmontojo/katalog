@@ -32,6 +32,12 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
         .eq('project_id', id)
         .order('created_at', { ascending: false })
 
+    const { data: budgets } = await supabase
+        .from('budgets')
+        .select('*')
+        .eq('project_id', id)
+        .order('created_at', { ascending: false })
+
     return (
         <div className="flex flex-col w-full bg-background">
             {/* Project Header Section */}
@@ -51,8 +57,10 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
                     project={project}
                     products={products || []}
                     moodboards={moodboards || []}
+                    budgets={budgets || []}
                 />
             </div>
         </div>
     )
+
 }

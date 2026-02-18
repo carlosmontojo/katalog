@@ -2,23 +2,26 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, LayoutTemplate, Package, Wand2 } from 'lucide-react'
+import { Plus, LayoutTemplate, Package, Wand2, FileSpreadsheet } from 'lucide-react'
 import { ProductCard } from '@/components/product-card'
 import { UrlInput } from '@/components/url-input'
 import { MoodboardCard } from '@/components/moodboard-card'
 import { MoodboardCreatorModal } from '@/components/moodboard-creator-modal'
+import { BudgetCard } from '@/components/budget-card'
+import { BudgetCreatorModal } from '@/components/budget-creator-modal'
 import { GenerateCatalogButton } from '@/components/generate-catalog-button'
 
 interface ProjectViewProps {
     project: any
     products: any[]
     moodboards: any[]
+    budgets: any[]
 }
 
-export function ProjectView({ project, products, moodboards }: ProjectViewProps) {
+export function ProjectView({ project, products, moodboards, budgets }: ProjectViewProps) {
     const [isMoodboardModalOpen, setIsMoodboardModalOpen] = useState(false)
+    const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false)
 
     return (
         <div className="flex flex-col gap-12">
@@ -36,6 +39,12 @@ export function ProjectView({ project, products, moodboards }: ProjectViewProps)
                             className="bg-transparent p-0 h-auto text-[10px] font-bold tracking-[0.2em] uppercase text-slate-400 data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-none border-b-2 border-transparent data-[state=active]:border-foreground pb-4 transition-all"
                         >
                             Moodboards
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="budgets"
+                            className="bg-transparent p-0 h-auto text-[10px] font-bold tracking-[0.2em] uppercase text-slate-400 data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-none border-b-2 border-transparent data-[state=active]:border-foreground pb-4 transition-all"
+                        >
+                            Presupuestos
                         </TabsTrigger>
                     </TabsList>
 
@@ -103,11 +112,51 @@ export function ProjectView({ project, products, moodboards }: ProjectViewProps)
                         </div>
                     )}
                 </TabsContent>
+
+                <TabsContent value="budgets" className="mt-0">
+                    <div className="flex justify-end mb-8">
+                        <Button
+                            onClick={() => setIsBudgetModalOpen(true)}
+                            variant="outline"
+                            disabled={products.length === 0}
+                            className="h-10 px-6 border-slate-200 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-slate-50 rounded-sm"
+                        >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Generate Budget
+                        </Button>
+                    </div>
+
+                    {budgets.length > 0 ? (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-8 gap-y-12">
+                            {budgets.map((budget) => (
+                                <BudgetCard key={budget.id} budget={budget} projectId={project.id} />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center py-32 text-slate-400">
+                            <FileSpreadsheet className="w-12 h-12 opacity-20 mb-4" />
+                            <h3 className="text-sm font-medium tracking-[0.1em] uppercase">No budgets yet</h3>
+                            <p className="text-xs text-slate-300 mt-2">
+                                {products.length === 0
+                                    ? 'Add products first, then generate a budget'
+                                    : 'Click "Generate Budget" to create a professional Excel quote'
+                                }
+                            </p>
+                        </div>
+                    )}
+                </TabsContent>
             </Tabs>
 
             <MoodboardCreatorModal
                 isOpen={isMoodboardModalOpen}
                 onClose={() => setIsMoodboardModalOpen(false)}
+                projectId={project.id}
+                products={products}
+            />
+
+            <BudgetCreatorModal
+                isOpen={isBudgetModalOpen}
+                onClose={() => setIsBudgetModalOpen(false)}
                 projectId={project.id}
                 products={products}
             />

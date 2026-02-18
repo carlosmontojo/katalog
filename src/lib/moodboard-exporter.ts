@@ -484,3 +484,244 @@ function imageToDataURL(img: HTMLImageElement): string {
     }
     return ''
 }
+
+// ==========================================
+// Budget Excel Export (Professional Template)
+// ==========================================
+
+export interface BudgetLineItem {
+    productId: string
+    title: string
+    imageUrl?: string
+    cadRef?: string
+    category?: string
+    area?: string
+    supplier?: string
+    dimensions?: string
+    colour?: string
+    material?: string
+    status?: string
+    leadTime?: string
+    quantity: number
+    unitCost: number
+    currency?: string
+    notes?: string
+    dataSheetUrl?: string
+}
+
+export interface BudgetExportOptions {
+    studioName?: string
+    projectName?: string
+    sectionTitle?: string
+    version?: string
+    revisedBy?: string
+    revisionDate?: string
+    currency?: string
+}
+
+export async function exportBudgetToExcel(
+    lineItems: BudgetLineItem[],
+    options: BudgetExportOptions = {}
+): Promise<Blob> {
+    const workbook = new ExcelJS.Workbook()
+    const ws = workbook.addWorksheet('Budget', {
+        views: [{ showGridLines: false }]
+    })
+
+    const {
+        studioName = 'STUDIO NAME',
+        projectName = 'Project Name',
+        sectionTitle = 'FURNITURE',
+        version = 'Version I',
+        revisedBy = '',
+        revisionDate = new Date().toLocaleDateString('en-GB'),
+        currency = '€'
+    } = options
+
+    // Colors
+    const headerBg = 'FFF5F0EB'       // Light beige/cream
+    const lightGray = 'FFF8F7F6'       // Very light gray for alternating rows
+    const borderColor = 'FFE5E2DE'     // Subtle border
+    const textDark = 'FF1A1A1A'        // Dark text
+    const textMedium = 'FF666666'      // Medium text
+    const textLight = 'FF999999'       // Light text
+
+    // Column widths (16 columns)
+    ws.columns = [
+        { key: 'image', width: 12 },
+        { key: 'product', width: 18 },
+        { key: 'cadRef', width: 10 },
+        { key: 'category', width: 16 },
+        { key: 'area', width: 14 },
+        { key: 'supplier', width: 16 },
+        { key: 'dimensions', width: 22 },
+        { key: 'colour', width: 14 },
+        { key: 'material', width: 18 },
+        { key: 'status', width: 16 },
+        { key: 'leadTime', width: 14 },
+        { key: 'quantity', width: 10 },
+        { key: 'unitCost', width: 14 },
+        { key: 'total', width: 14 },
+        { key: 'notes', width: 28 },
+        { key: 'dataSheet', width: 12 },
+    ]
+
+    // ─── HEADER SECTION ───
+    // Row 1: Studio Name (large, bold)
+    const row1 = ws.getRow(1)
+    row1.height = 32
+    ws.getCell('A1').value = studioName
+    ws.getCell('A1').font = { size: 16, bold: true, color: { argb: textDark } }
+    ws.mergeCells('A1:D1')
+
+    // Right side: "Last Revised By" + "Revision Date"
+    ws.getCell('M1').value = 'Last Revised By'
+    ws.getCell('M1').font = { size: 8, bold: true, color: { argb: textMedium } }
+    ws.getCell('N1').value = 'Revision Date'
+    ws.getCell('N1').font = { size: 8, bold: true, color: { argb: textMedium } }
+
+    // Row 2: Project info
+    const row2 = ws.getRow(2)
+    row2.height = 20
+    ws.getCell('A2').value = projectName
+    ws.getCell('A2').font = { size: 9, bold: true, color: { argb: textDark } }
+    ws.getCell('B2').value = version
+    ws.getCell('B2').font = { size: 9, color: { argb: textMedium } }
+    ws.getCell('M2').value = revisedBy
+    ws.getCell('M2').font = { size: 9, color: { argb: textMedium } }
+    ws.getCell('N2').value = revisionDate
+    ws.getCell('N2').font = { size: 9, color: { argb: textMedium } }
+
+    // Row 3: Spacer
+    ws.getRow(3).height = 8
+
+    // Row 4: Section title + Total
+    const totalAmount = lineItems.reduce((sum, item) => sum + (item.quantity * item.unitCost), 0)
+    const row4 = ws.getRow(4)
+    row4.height = 28
+
+    ws.getCell('A4').value = sectionTitle
+    ws.getCell('A4').font = { size: 11, bold: true, color: { argb: textDark } }
+
+    // Section total on the right
+    ws.getCell('M4').value = `${sectionTitle} Total`
+    ws.getCell('M4').font = { size: 9, bold: true, color: { argb: textMedium } }
+    ws.getCell('M4').alignment = { horizontal: 'right' }
+    ws.getCell('N4').value = totalAmount
+    ws.getCell('N4').font = { size: 11, bold: true, color: { argb: textDark } }
+    ws.getCell('N4').numFmt = `${currency}#,##0.00`
+
+    // Fill row 4 with light beige background
+    for (let c = 1; c <= 16; c++) {
+        const cell = row4.getCell(c)
+        cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: headerBg }
+        }
+    }
+
+    // Row 5: Spacer
+    ws.getRow(5).height = 5
+
+    // ─── TABLE HEADER ROW (Row 6) ───
+    const headerRow = ws.getRow(6)
+    headerRow.height = 22
+    const headers = [
+        'Image', 'Product', 'CAD Ref', 'Category', 'Area', 'Supplier',
+        'Dimensions', 'Colour', 'Material', 'Status', 'Lead Time',
+        'Quantity', 'Unit Cost', 'Total', 'Notes', 'Data Sheet'
+    ]
+    headers.forEach((header, idx) => {
+        const cell = headerRow.getCell(idx + 1)
+        cell.value = header
+        cell.font = { size: 8, bold: true, color: { argb: textDark } }
+        cell.alignment = { vertical: 'middle' }
+        cell.border = {
+            bottom: { style: 'thin', color: { argb: borderColor } }
+        }
+    })
+
+    // ─── PRODUCT ROWS (starting from row 7) ───
+    const dataStartRow = 7
+
+    for (let i = 0; i < lineItems.length; i++) {
+        const item = lineItems[i]
+        const rowIdx = dataStartRow + i
+        const row = ws.getRow(rowIdx)
+        row.height = 75  // Accommodate product image
+
+        const total = item.quantity * item.unitCost
+
+        // Set cell values
+        row.getCell(1).value = ''  // Image placeholder
+        row.getCell(2).value = item.title || ''
+        row.getCell(3).value = item.cadRef || ''
+        row.getCell(4).value = item.category || ''
+        row.getCell(5).value = item.area || ''
+        row.getCell(6).value = item.supplier || ''
+        row.getCell(7).value = item.dimensions || ''
+        row.getCell(8).value = item.colour || ''
+        row.getCell(9).value = item.material || ''
+        row.getCell(10).value = item.status || ''
+        row.getCell(11).value = item.leadTime || ''
+        row.getCell(12).value = item.quantity
+        row.getCell(13).value = item.unitCost
+        row.getCell(13).numFmt = `${currency}#,##0.00`
+        row.getCell(14).value = total
+        row.getCell(14).numFmt = `${currency}#,##0.00`
+        row.getCell(15).value = item.notes || ''
+
+        // Data Sheet hyperlink
+        if (item.dataSheetUrl) {
+            row.getCell(16).value = { text: 'Link', hyperlink: item.dataSheetUrl }
+            row.getCell(16).font = { size: 8, color: { argb: 'FF4A90D9' }, underline: true }
+        }
+
+        // Style all cells in the row
+        for (let c = 1; c <= 16; c++) {
+            const cell = row.getCell(c)
+            cell.font = { ...cell.font, size: 8, color: cell.font?.color || { argb: textDark } }
+            cell.alignment = { vertical: 'middle', wrapText: true }
+            cell.border = {
+                bottom: { style: 'thin', color: { argb: borderColor } }
+            }
+            // Alternating row background
+            if (i % 2 === 1) {
+                cell.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: lightGray }
+                }
+            }
+        }
+
+        // Embed product image
+        if (item.imageUrl) {
+            try {
+                const response = await fetch(item.imageUrl)
+                if (response.ok) {
+                    const blob = await response.blob()
+                    const arrayBuffer = await blob.arrayBuffer()
+
+                    const imageId = workbook.addImage({
+                        buffer: arrayBuffer,
+                        extension: 'png'
+                    })
+
+                    ws.addImage(imageId, {
+                        tl: { col: 0.1, row: rowIdx - 1 + 0.1 },
+                        ext: { width: 65, height: 65 }
+                    })
+                }
+            } catch (e) {
+                console.error(`Failed to add image for ${item.title}:`, e)
+            }
+        }
+    }
+
+    // Generate Excel
+    const buffer = await workbook.xlsx.writeBuffer()
+    return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+}
+

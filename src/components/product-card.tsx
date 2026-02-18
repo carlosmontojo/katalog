@@ -73,6 +73,7 @@ export function ProductCard({ product }: ProductCardProps) {
                     price: product.price || 0,
                     currency: product.currency || 'EUR',
                     image_url: product.image_url,
+                    brand: product.brand,
                     images: product.images,
                     original_url: product.original_url
                 }}

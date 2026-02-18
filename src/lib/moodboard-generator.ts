@@ -18,6 +18,19 @@ export interface MoodboardSettings {
     height: number
     backgroundColor: string
     padding: number
+    fontFamily?: string
+    productStyle?: {
+        border?: {
+            width: number
+            color: string
+        }
+        borderRadius?: number
+        shadow?: {
+            blur: number
+            color: string
+            offset: { x: number, y: number }
+        }
+    }
 }
 
 const DEFAULT_SETTINGS: MoodboardSettings = {
@@ -237,8 +250,15 @@ export class MoodboardGenerator {
                 this.ctx.rotate(p.rotation * Math.PI / 180)
             }
 
-            // Add subtle shadow (except for rugs which are flat)
-            if (!this.isRug(p.title || '')) {
+            // Apply Style: Shadow
+            if (this.settings.productStyle?.shadow && !this.isRug(p.title || '')) {
+                const s = this.settings.productStyle.shadow
+                this.ctx.shadowColor = s.color
+                this.ctx.shadowBlur = s.blur
+                this.ctx.shadowOffsetX = s.offset.x
+                this.ctx.shadowOffsetY = s.offset.y
+            } else if (!this.isRug(p.title || '')) {
+                // Default subtle shadow
                 this.ctx.shadowColor = 'rgba(0,0,0,0.15)'
                 this.ctx.shadowBlur = 20
                 this.ctx.shadowOffsetX = 5
@@ -264,7 +284,24 @@ export class MoodboardGenerator {
                 tempCtx.putImageData(imageData, 0, 0)
                 this.ctx.drawImage(tempCanvas, -drawW / 2, -drawH / 2, drawW, drawH)
             } else if (p.imgElement && p.imgElement.naturalWidth > 0) {
-                this.ctx.drawImage(p.imgElement, -drawW / 2, -drawH / 2, drawW, drawH)
+                // Apply Styles: Border & Border Radius
+                if (this.settings.productStyle?.borderRadius || this.settings.productStyle?.border) {
+                    const radius = this.settings.productStyle.borderRadius || 0
+                    const border = this.settings.productStyle.border
+
+                    this.ctx.beginPath()
+                    this.ctx.roundRect(-drawW / 2, -drawH / 2, drawW, drawH, radius)
+                    this.ctx.clip()
+                    this.ctx.drawImage(p.imgElement, -drawW / 2, -drawH / 2, drawW, drawH)
+
+                    if (border) {
+                        this.ctx.lineWidth = border.width
+                        this.ctx.strokeStyle = border.color
+                        this.ctx.stroke()
+                    }
+                } else {
+                    this.ctx.drawImage(p.imgElement, -drawW / 2, -drawH / 2, drawW, drawH)
+                }
             }
 
             this.ctx.restore()

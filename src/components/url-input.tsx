@@ -7,7 +7,8 @@ import { detectCategories, scrapeProducts, saveSelectedProducts } from '@/app/sc
 import { Loader2, Plus, Check, ShoppingBag, Eye, Globe, MousePointer2 } from 'lucide-react'
 import { Checkbox } from "@/components/ui/checkbox"
 import { ProductDetailModal } from './product-detail-modal'
-import { getStoreName } from '@/lib/utils/url'
+import { getStoreName, normalizeUrl } from '@/lib/utils/url'
+import { getUserCountryCode } from '@/lib/utils/geo'
 import { ManualProductForm } from './manual-product-form'
 import { VisualBrowser } from './visual-browser'
 
@@ -37,6 +38,8 @@ export function UrlInput({ projectId }: UrlInputProps) {
 
     const handleNavigate = () => {
         if (!url) return;
+        const normalizedUrl = normalizeUrl(url);
+        setUrl(normalizedUrl);
         setShowBrowser(true);
     }
 
@@ -49,7 +52,8 @@ export function UrlInput({ projectId }: UrlInputProps) {
             const targetUrl = selectedCat?.url || url;
             const skipFilter = !!selectedCat?.url;
 
-            const result = await scrapeProducts(projectId, targetUrl, categoryName, true, skipFilter);
+            const countryCode = getUserCountryCode();
+            const result = await scrapeProducts(projectId, targetUrl, categoryName, true, skipFilter, countryCode);
 
             if (result.success && result.products) {
                 setPreviewProducts(result.products);

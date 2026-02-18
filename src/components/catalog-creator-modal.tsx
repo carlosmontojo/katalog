@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -18,7 +18,10 @@ import {
     RotateCw,
     Layout,
     Image as ImageIcon,
-    FileText
+    FileText,
+    ZoomIn,
+    ZoomOut,
+    Minus as MinusIcon
 } from 'lucide-react'
 import { MoodboardGenerator, MoodboardProduct, MoodboardText } from '@/lib/moodboard-generator'
 import { Input } from '@/components/ui/input'
@@ -32,6 +35,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { exportToPSD, exportToSVG, exportToPDF, exportToExcel, exportToInDesign } from '@/lib/moodboard-exporter'
 import { fetchProductDetails, saveProductDetails } from '@/app/scraping-actions'
+import { CatalogStyleSelector, CATALOG_STYLES, CatalogStyle } from './catalog-style-selector'
 
 interface Product {
     id: string
@@ -78,8 +82,11 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
     const [generating, setGenerating] = useState(false)
     const [initProgress, setInitProgress] = useState(0)
     const [initStatus, setInitStatus] = useState('')
-    const [editorScale, setEditorScale] = useState(0.5)
+    const [editorScale, setEditorScale] = useState(0.6)
     const [draggedPageIndex, setDraggedPageIndex] = useState<number | null>(null)
+    const [view, setView] = useState<'style' | 'editor'>('style')
+    const [selectedStyle, setSelectedStyle] = useState<CatalogStyle>(CATALOG_STYLES[0])
+    const [typographyTheme, setTypographyTheme] = useState<'serif' | 'sans'>('serif')
 
     // Editor State (for the current page)
     const [activeProductId, setActiveProductId] = useState<string | null>(null)
@@ -91,6 +98,7 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
     const [initialTextState, setInitialTextState] = useState<{ x: number, y: number } | null>(null)
 
     const generatorRef = useRef<MoodboardGenerator | null>(null)
+    const scrollContainerRef = useRef<HTMLDivElement>(null)
 
     // Helper to arrange products in a grid
     const arrangeInGrid = (processedProducts: (MoodboardProduct & { imgElement: HTMLImageElement })[]) => {
@@ -157,7 +165,7 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
     // Initialize with a cover page and product pages
     useEffect(() => {
         const init = async () => {
-            if (isOpen && pages.length === 0) {
+            if (isOpen && view === 'editor' && pages.length === 0) {
                 setGenerating(true)
                 setInitProgress(0)
                 setInitStatus('Initializing editor...')
@@ -165,7 +173,9 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                     const generator = new MoodboardGenerator({
                         width: 210 * 3.78,
                         height: 297 * 3.78,
-                        backgroundColor: '#ffffff'
+                        backgroundColor: selectedStyle.backgroundColor,
+                        productStyle: selectedStyle.productStyle,
+                        fontFamily: typographyTheme === 'serif' ? selectedStyle.titleFont : selectedStyle.fontFamily
                     })
 
                     // 1. Cover Page
@@ -181,39 +191,46 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                                 x: 100,
                                 y: 300,
                                 fontSize: 60,
-                                fontFamily: 'Arial',
+                                fontFamily: selectedStyle.titleFont,
                                 color: '#000000',
                                 zIndex: 1
                             }
                         ]
                     }
 
-                    // 2. AUTO-ENRICH PRODUCTS: Fetch missing details for products that need it
-                    setInitStatus('Fetching product details...')
+                    // 2. Smart enrichment: fetch details for products missing price OR key data
                     const enrichedProducts = [...products]
                     const productsToEnrich = products.filter(p =>
-                        p.original_url &&
-                        (!p.description || !p.specifications?.dimensions || !p.specifications?.materials)
+                        p.original_url && (
+                            // Missing price
+                            ((!p.price || p.price === 0) && !p.specifications?.price) ||
+                            // Missing dimensions/materials/colors (may have been wiped by a previous bug)
+                            (!p.specifications?.dimensions && !p.attributes?.dimensions) ||
+                            (!p.specifications?.materials && !p.attributes?.materials)
+                        )
                     )
 
-                    console.log(`[Catalog] ${productsToEnrich.length} products need enrichment`)
+                    if (productsToEnrich.length > 0) {
+                        setInitStatus(`Fetching prices (${productsToEnrich.length} products)...`)
+                        console.log(`[Catalog] ${productsToEnrich.length} products need price enrichment`)
 
-                    // Enrich up to 3 at a time to avoid overwhelming the server
-                    const batchSize = 3
-                    for (let i = 0; i < productsToEnrich.length; i += batchSize) {
-                        const batch = productsToEnrich.slice(i, i + batchSize)
-                        setInitProgress(Math.round((i / productsToEnrich.length) * 50))
-                        setInitStatus(`Fetching details (${i + 1}/${productsToEnrich.length})...`)
-
-                        await Promise.all(batch.map(async (product) => {
+                        // Fetch all in parallel with 15s timeout per product
+                        const TIMEOUT_MS = 15000
+                        await Promise.all(productsToEnrich.map(async (product) => {
                             try {
-                                if (!product.original_url) return
+                                const controller = new AbortController()
+                                const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS)
 
-                                console.log(`[Catalog] Enriching: ${product.title}`)
-                                const result = await fetchProductDetails(product.original_url)
+                                const result = await Promise.race([
+                                    fetchProductDetails(product.original_url!),
+                                    new Promise<{ success: false }>((_, reject) =>
+                                        setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS)
+                                    )
+                                ]) as any
 
-                                if (result.success && result.details) {
-                                    // Update local copy for this session
+                                clearTimeout(timeout)
+
+                                if (result?.success && result.details) {
                                     const idx = enrichedProducts.findIndex(p => p.id === product.id)
                                     if (idx >= 0) {
                                         enrichedProducts[idx] = {
@@ -223,23 +240,23 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                                                 ...enrichedProducts[idx].specifications,
                                                 dimensions: result.details.dimensions || enrichedProducts[idx].specifications?.dimensions,
                                                 materials: result.details.materials || enrichedProducts[idx].specifications?.materials,
-                                                colors: result.details.colors || enrichedProducts[idx].specifications?.colors
+                                                colors: result.details.colors || enrichedProducts[idx].specifications?.colors,
+                                                price: result.details.price || enrichedProducts[idx].specifications?.price
                                             }
                                         }
                                     }
-
-                                    // Also save to database for future use
-                                    await saveProductDetails(product.id, {
+                                    // Save to DB for next time
+                                    saveProductDetails(product.id, {
                                         description: result.details.description,
                                         dimensions: result.details.dimensions,
                                         materials: result.details.materials,
                                         colors: result.details.colors,
                                         weight: result.details.weight,
-                                        images: result.details.images
-                                    })
+                                        price: result.details.price
+                                    }).catch(() => { }) // fire-and-forget
                                 }
                             } catch (e) {
-                                console.error(`[Catalog] Error enriching ${product.title}:`, e)
+                                console.warn(`[Catalog] Skipped enrichment for ${product.title}:`, e)
                             }
                         }))
                     }
@@ -277,30 +294,57 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
 
                             let currentY = p.y + p.height + 12
                             const fontSize = 8
-                            const lineSpacing = 12 // Tighter spacing
+                            const lineSpacing = 12
+                            const fontFamily = selectedStyle.fontFamily
+                            const titleFont = selectedStyle.titleFont
+                            const textMaxWidth = colWidth - 16
+                            // Average char width at fontSize 8 (~4.8px)
+                            const avgCharWidth = 4.8
 
-                            // Helper to add a single line - NO maxWidth to avoid word-wrap cutting
-                            const addSingleLine = (text: string, color: string = '#1a1a1a', isBold: boolean = false) => {
-                                // Truncate if too long to fit in column
-                                const maxChars = 45
-                                const truncatedText = text.length > maxChars ? text.substring(0, maxChars) + '...' : text
+                            // Helper: clean scraped field values — strip HTML/code but keep product text
+                            const cleanField = (val: unknown): string => {
+                                if (!val) return ''
+                                if (typeof val === 'object') return ''
+                                let s = typeof val === 'string' ? val : String(val)
+                                // Reject obvious code/JSON
+                                if (s.includes('{') || s.includes('}') || s.includes('className') ||
+                                    s.includes('function(') || s.includes('useState') || s.includes('onClick') ||
+                                    s.includes('[object') || s.includes('undefined')) return ''
+                                // Strip HTML tags
+                                s = s.replace(/<[^>]*>/g, '')
+                                // Collapse whitespace
+                                s = s.replace(/[\n\r\t]+/g, ', ').replace(/\s{2,}/g, ' ').trim()
+                                // Clean edges
+                                s = s.replace(/^[,.\s]+/, '').replace(/[,.\s]+$/, '').trim()
+                                // Truncate if too long
+                                if (s.length > 200) {
+                                    const cut = s.lastIndexOf(',', 200)
+                                    s = cut > 50 ? s.substring(0, cut).trim() : s.substring(0, 200).trim()
+                                }
+                                return s
+                            }
+
+
+                            const addText = (text: string, color: string = '#1a1a1a', isBold: boolean = false, fontOverride?: string) => {
                                 pageTexts.push({
                                     id: crypto.randomUUID(),
-                                    text: truncatedText,
+                                    text: text,
                                     x: p.x,
                                     y: currentY,
                                     fontSize: isBold ? fontSize + 1 : fontSize,
-                                    fontFamily: 'Arial',
+                                    fontFamily: fontOverride || fontFamily,
                                     color: color,
-                                    zIndex: 20 + idx * 20 + pageTexts.length
-                                    // NO maxWidth - prevents word wrapping that cuts words
+                                    zIndex: 20 + idx * 20 + pageTexts.length,
+                                    maxWidth: textMaxWidth
                                 })
-                                currentY += lineSpacing
+                                // Estimate how many lines this text occupies
+                                const estWidth = text.length * avgCharWidth
+                                const lines = Math.max(1, Math.ceil(estWidth / textMaxWidth))
+                                currentY += lineSpacing * lines
                             }
 
-                            // 1. Nombre (truncate for catalog, show in bold)
-                            const nombreTruncado = orig.title.length > 40 ? orig.title.substring(0, 40) + '...' : orig.title
-                            addSingleLine(nombreTruncado, '#000000', true)
+                            // 1. Nombre (full, no truncation)
+                            addText(orig.title || 'Sin título', '#000000', true, titleFont)
 
                             // 2. Tipología
                             let tipologia = orig.specifications?.category || orig.attributes?.category || orig.specifications?.type || orig.attributes?.type || ''
@@ -314,8 +358,11 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                                 else if (titleLower.includes('armario')) tipologia = 'Armario'
                                 else if (titleLower.includes('cama')) tipologia = 'Cama'
                                 else if (titleLower.includes('escritorio')) tipologia = 'Escritorio'
+                                else if (titleLower.includes('taburete')) tipologia = 'Taburete'
+                                else if (titleLower.includes('macetero') || titleLower.includes('maceta')) tipologia = 'Macetero'
+                                else if (titleLower.includes('butaca')) tipologia = 'Butaca'
                             }
-                            if (tipologia) addSingleLine(`Tipo: ${tipologia}`, '#64748b')
+                            if (tipologia) addText(`Tipo: ${tipologia}`, '#64748b')
 
                             // 3. Marca - extract from URL
                             let marca = ''
@@ -331,18 +378,30 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                                 else if (url.includes('amazon')) marca = 'Amazon'
                                 else if (url.includes('leroy')) marca = 'Leroy Merlin'
                             }
-                            if (marca) addSingleLine(`Marca: ${marca}`, '#64748b')
+                            if (marca) addText(`Marca: ${marca}`, '#64748b')
 
-                            // 4. Precio
-                            if (orig.price) {
-                                addSingleLine(`Precio: ${orig.price} ${orig.currency || 'EUR'}`, '#b45309')
+                            // 4. Precio — check multiple sources
+                            let precioStr = ''
+                            if (orig.price && orig.price > 0) {
+                                precioStr = `${orig.price} ${orig.currency || '€'}`
+                            }
+                            if (!precioStr) {
+                                const specPrice = orig.specifications?.price || orig.attributes?.price
+                                if (specPrice && typeof specPrice === 'string' && specPrice.trim()) {
+                                    precioStr = specPrice.trim()
+                                }
+                            }
+                            if (!precioStr && orig.description) {
+                                const priceMatch = orig.description.match(/(\d+[.,]\d{2})\s*€/)
+                                if (priceMatch) precioStr = `${priceMatch[1]} €`
+                            }
+                            if (precioStr) {
+                                addText(`Precio: ${precioStr}`, '#b45309')
                             }
 
-                            // 5. Medidas - PARSE and format as single compact line
+                            // 5. Medidas — full display
                             const dims = orig.specifications?.dimensions || orig.attributes?.dimensions
                             if (dims && typeof dims === 'string') {
-                                // Parse dimensions - extract numeric values with units
-                                // Format: "Alto: 92 cm\nAncho: 235 cm\nProfundidad: 100 cm" -> "92 x 235 x 100 cm"
                                 const heightMatch = dims.match(/alto?\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(cm|mm|m)?/i)
                                 const widthMatch = dims.match(/ancho?\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(cm|mm|m)?/i)
                                 const depthMatch = dims.match(/(?:profundidad|fondo|prof)\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(cm|mm|m)?/i)
@@ -355,29 +414,29 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                                 if (diameterMatch) parts.push(`Ø${diameterMatch[1]} cm`)
 
                                 if (parts.length > 0) {
-                                    addSingleLine(`Medidas: ${parts.join(' | ')}`, '#64748b')
+                                    addText(`Medidas: ${parts.join(' | ')}`, '#64748b')
                                 }
                             }
 
-                            // 6. Materiales - simplified
+                            // 6. Materiales — full, cleaned
                             const materials = orig.specifications?.materials || orig.attributes?.materials
                             if (materials) {
-                                const matClean = typeof materials === 'string' ? materials.split('\n')[0] : String(materials)
-                                addSingleLine(`Materiales: ${matClean}`, '#64748b')
+                                const matClean = cleanField(materials)
+                                if (matClean) addText(`Materiales: ${matClean}`, '#64748b')
                             }
 
-                            // 7. Colores - simplified
+                            // 7. Colores — full, cleaned
                             const colors = orig.specifications?.colors || orig.attributes?.colors
                             if (colors) {
-                                const colClean = typeof colors === 'string' ? colors.split('\n')[0] : String(colors)
-                                addSingleLine(`Colores: ${colClean}`, '#64748b')
+                                const colClean = cleanField(colors)
+                                if (colClean) addText(`Colores: ${colClean}`, '#64748b')
                             }
 
                             // 8-11. Additional fields (blank for manual entry)
-                            addSingleLine('Ubicación en plano:', '#64748b')
-                            addSingleLine('Unidades:', '#64748b')
-                            addSingleLine('Tiempo de entrega:', '#64748b')
-                            addSingleLine('Coste del porte:', '#64748b')
+                            addText('Ubicación en plano:', '#64748b')
+                            addText('Unidades:', '#64748b')
+                            addText('Tiempo de entrega:', '#64748b')
+                            addText('Coste del porte:', '#64748b')
                         })
 
                         productPages.push({
@@ -399,7 +458,7 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
             }
         }
         init()
-    }, [isOpen, products])
+    }, [isOpen, products, view, selectedStyle])
 
     const currentPage = pages[currentPageIndex]
 
@@ -486,16 +545,24 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
         setPages(newPages)
     }
 
-    const handleMouseDown = (e: React.MouseEvent, product: MoodboardProduct & { imgElement: HTMLImageElement }, type: 'drag' | 'resize') => {
+    const handleMouseDown = (e: React.MouseEvent, product: MoodboardProduct & { imgElement: HTMLImageElement }, type: 'drag' | 'resize', pageIndex?: number) => {
         e.stopPropagation()
+        if (pageIndex !== undefined) setCurrentPageIndex(pageIndex)
         setActiveProductId(product.id)
         setActiveTextId(null)
 
-        // Bring to front
-        const maxZ = Math.max(...currentPage.products.map(p => p.zIndex || 0), ...currentPage.texts.map(t => t.zIndex || 0), 0)
+        // Bring to front — use the page we're interacting with
+        const targetPage = pageIndex !== undefined ? pages[pageIndex] : currentPage
+        const maxZ = Math.max(...targetPage.products.map(p => p.zIndex || 0), ...targetPage.texts.map(t => t.zIndex || 0), 0)
         if ((product.zIndex || 0) < maxZ) {
             product.zIndex = maxZ + 1
-            updateCurrentPage({ products: [...currentPage.products] })
+            if (pageIndex !== undefined) {
+                const newPages = [...pages]
+                newPages[pageIndex] = { ...newPages[pageIndex], products: [...newPages[pageIndex].products] }
+                setPages(newPages)
+            } else {
+                updateCurrentPage({ products: [...currentPage.products] })
+            }
         }
 
         setIsDragging(type === 'drag')
@@ -504,8 +571,9 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
         setInitialProductState({ x: product.x || 0, y: product.y || 0, w: product.width || 0, h: product.height || 0 })
     }
 
-    const handleTextMouseDown = (e: React.MouseEvent, text: MoodboardText) => {
+    const handleTextMouseDown = (e: React.MouseEvent, text: MoodboardText, pageIndex?: number) => {
         e.stopPropagation()
+        if (pageIndex !== undefined) setCurrentPageIndex(pageIndex)
         setActiveTextId(text.id)
         setActiveProductId(null)
         setIsDragging(true)
@@ -576,6 +644,19 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
         setActiveTextId(id)
         setActiveProductId(null)
     }
+
+    // Zoom controls
+    const handleZoom = useCallback((delta: number) => {
+        setEditorScale(prev => Math.min(2, Math.max(0.2, prev + delta)))
+    }, [])
+
+    const handleWheel = useCallback((e: React.WheelEvent) => {
+        if (e.ctrlKey || e.metaKey) {
+            e.preventDefault()
+            const delta = e.deltaY > 0 ? -0.05 : 0.05
+            handleZoom(delta)
+        }
+    }, [handleZoom])
 
     const updateActiveText = (updates: Partial<MoodboardText>) => {
         if (!activeTextId) return
@@ -820,7 +901,9 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
             const generator = new MoodboardGenerator({
                 width: 210 * 3.78,
                 height: 297 * 3.78,
-                backgroundColor: '#ffffff'
+                backgroundColor: selectedStyle.backgroundColor,
+                productStyle: selectedStyle.productStyle,
+                fontFamily: typographyTheme === 'serif' ? selectedStyle.titleFont : selectedStyle.fontFamily
             })
 
             const processed = await generator.processImages([{
@@ -843,10 +926,12 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                 const centerX = newProduct.x + newProduct.width / 2
                 const newTexts: MoodboardText[] = []
                 const fontSize = 8
-                const lineSpacing = 12 // Tighter spacing
+                const lineSpacing = 12
+                const fontFamily = typographyTheme === 'serif' ? 'Inter, serif' : 'Inter, sans-serif'
+                const titleFont = typographyTheme === 'serif' ? 'Playfair Display, serif' : 'Inter, sans-serif'
 
-                // Helper to add a single line - NO maxWidth to avoid word-wrap cutting
-                const addSingleLine = (text: string, color: string = '#1a1a1a', isBold: boolean = false) => {
+                // Helper to add a single line
+                const addSingleLine = (text: string, color: string = '#1a1a1a', isBold: boolean = false, fontOverride?: string) => {
                     const maxChars = 45
                     const truncatedText = text.length > maxChars ? text.substring(0, maxChars) + '...' : text
                     newTexts.push({
@@ -855,18 +940,17 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                         x: centerX,
                         y: currentY,
                         fontSize: isBold ? fontSize + 1 : fontSize,
-                        fontFamily: 'Arial',
+                        fontFamily: fontOverride || fontFamily,
                         color: color,
                         zIndex: 20 + currentPage.texts.length + newTexts.length,
                         textAlign: 'center'
-                        // NO maxWidth
                     })
                     currentY += lineSpacing
                 }
 
                 // 1. Nombre
                 const nombreTruncado = product.title.length > 40 ? product.title.substring(0, 40) + '...' : product.title
-                addSingleLine(nombreTruncado, '#000000', true)
+                addSingleLine(nombreTruncado, '#000000', true, titleFont)
 
                 // 2. Tipología
                 let tipologia = product.specifications?.category || product.attributes?.category || product.specifications?.type || product.attributes?.type || ''
@@ -960,301 +1044,453 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="!w-[95vw] !max-w-none !h-[90vh] flex flex-col p-0 gap-0 bg-background border-none rounded-sm overflow-hidden">
-                <div className="flex flex-col w-full h-full">
-                    <DialogHeader className="p-8 border-b border-slate-200/50 bg-white">
-                        <div className="flex items-center justify-between">
-                            <DialogTitle className="text-lg font-medium tracking-[0.05em] text-foreground uppercase">
+            <DialogContent showCloseButton={false} className="!max-w-[98vw] !w-[98vw] sm:!max-w-[98vw] h-[98vh] p-0 gap-0 border-none bg-slate-50 flex flex-col overflow-hidden">
+                <DialogHeader className="px-8 py-4 bg-white border-b border-slate-200 shrink-0">
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-4">
+                            {view === 'editor' && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setView('style')}
+                                    className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400"
+                                >
+                                    <ChevronLeft className="w-4 h-4 mr-1" />
+                                    Change Style
+                                </Button>
+                            )}
+                            <DialogTitle className="text-[12px] font-bold tracking-[0.3em] uppercase text-foreground">
                                 Catalog Creator
                             </DialogTitle>
-                            <div className="flex items-center gap-6">
-                                <div className="text-[10px] font-bold tracking-[0.2em] text-slate-400 uppercase">
-                                    Page {currentPageIndex + 1} of {pages.length}
-                                </div>
-                                <div className="flex gap-2">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setCurrentPageIndex(prev => Math.max(0, prev - 1))}
-                                        disabled={currentPageIndex === 0}
-                                        className="text-[10px] font-bold tracking-[0.1em] uppercase hover:bg-slate-50"
-                                    >
-                                        <ChevronLeft className="w-3 h-3 mr-1" /> Previous
+                        </div>
+                        <div className="flex gap-2">
+                            {view === 'editor' && (
+                                <>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="outline" className="h-8 border-slate-200 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-slate-50 rounded-sm">
+                                                <Download className="w-4 h-4 mr-2" />
+                                                Export...
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-48">
+                                            <DropdownMenuItem onClick={() => handleExport('pdf')} className="text-[10px] font-bold uppercase tracking-[0.1em]">Portable Document (PDF)</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleExport('png')} className="text-[10px] font-bold uppercase tracking-[0.1em]">Image ZIP (PNG)</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleExport('excel')} className="text-[10px] font-bold uppercase tracking-[0.1em]">Product Table (Excel)</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleExport('indesign')} className="text-[10px] font-bold uppercase tracking-[0.1em]">Desktop Pub (InDesign)</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleExport('psd')} className="text-[10px] font-bold uppercase tracking-[0.1em]">Photoshop (PSD)</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                    <Button onClick={onClose} variant="ghost" className="h-8 text-[10px] font-bold uppercase tracking-[0.2em] rounded-sm">
+                                        Close
                                     </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setCurrentPageIndex(prev => Math.min(pages.length - 1, prev + 1))}
-                                        disabled={currentPageIndex === pages.length - 1}
-                                        className="text-[10px] font-bold tracking-[0.1em] uppercase hover:bg-slate-50"
-                                    >
-                                        Next <ChevronRight className="w-3 h-3 ml-1" />
-                                    </Button>
-                                </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </DialogHeader>
+
+                <div className="flex-1 overflow-hidden">
+                    {view === 'style' ? (
+                        <div className="h-full overflow-y-auto bg-white px-8 py-12">
+                            <div className="w-full space-y-2 mb-12 text-center">
+                                <h2 className="text-3xl font-medium tracking-[0.1em] uppercase text-foreground">Catalog Aesthetics</h2>
+                                <p className="text-sm text-slate-400 tracking-[0.05em]">Choose a style that aligns with your interior design studio branding.</p>
+                            </div>
+                            <div className="w-full px-4">
+                                <CatalogStyleSelector onSelect={(style, typo) => {
+                                    setSelectedStyle(style)
+                                    setTypographyTheme(typo)
+                                    setPages([]) // Reset pages to trigger re-generation with new style
+                                    setView('editor')
+                                }} />
                             </div>
                         </div>
-                    </DialogHeader>
-
-                    <div className="flex-1 flex overflow-hidden">
-                        {/* Sidebar: Page Management */}
-                        <div className="w-64 border-r bg-slate-50 p-4 flex flex-col gap-4 overflow-y-auto">
-                            <div className="flex flex-col gap-2">
-                                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Pages</h3>
-                                {pages.map((page, idx) => (
-                                    <div
-                                        key={page.id}
-                                        draggable
-                                        onDragStart={(e) => handleDragStart(e, idx)}
-                                        onDragOver={(e) => handleDragOver(e, idx)}
-                                        onDrop={handleDrop}
-                                        className={`
+                    ) : (
+                        <div className="flex h-full overflow-hidden">
+                            {/* Previous Sidebar & Editor Content */}
+                            {/* Sidebar: Page Management */}
+                            <div className="w-48 border-r bg-slate-50 p-4 flex flex-col gap-4 overflow-y-auto">
+                                <div className="flex flex-col gap-2">
+                                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Pages</h3>
+                                    {pages.map((page, idx) => (
+                                        <div
+                                            key={page.id}
+                                            draggable
+                                            onDragStart={(e) => handleDragStart(e, idx)}
+                                            onDragOver={(e) => handleDragOver(e, idx)}
+                                            onDrop={handleDrop}
+                                            className={`
                                             group flex items-center gap-2 p-2 rounded-md cursor-pointer transition-all
                                             ${currentPageIndex === idx ? 'bg-white shadow-sm border-slate-200' : 'hover:bg-slate-100 border-transparent'}
                                             border ${draggedPageIndex === idx ? 'opacity-50' : 'opacity-100'}
                                         `}
-                                        onClick={() => setCurrentPageIndex(idx)}
-                                    >
-                                        <span className="text-xs font-bold text-slate-400">{idx + 1}</span>
-                                        <span className="text-sm truncate flex-1">{page.title}</span>
+                                            onClick={() => setCurrentPageIndex(idx)}
+                                        >
+                                            <span className="text-xs font-bold text-slate-400">{idx + 1}</span>
+                                            <span className="text-sm truncate flex-1">{page.title}</span>
 
-                                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <div className="flex flex-col mr-1">
+                                            <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <div className="flex flex-col mr-1">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-4 w-4 text-slate-400 hover:text-slate-600"
+                                                        onClick={(e) => { e.stopPropagation(); movePageUp(idx); }}
+                                                        disabled={idx === 0}
+                                                    >
+                                                        <ChevronUp className="w-3 h-3" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-4 w-4 text-slate-400 hover:text-slate-600"
+                                                        onClick={(e) => { e.stopPropagation(); movePageDown(idx); }}
+                                                        disabled={idx === pages.length - 1}
+                                                    >
+                                                        <ChevronDown className="w-3 h-3" />
+                                                    </Button>
+                                                </div>
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-4 w-4 text-slate-400 hover:text-slate-600"
-                                                    onClick={(e) => { e.stopPropagation(); movePageUp(idx); }}
-                                                    disabled={idx === 0}
+                                                    className="h-6 w-6 text-red-500 hover:text-red-600"
+                                                    onClick={(e) => { e.stopPropagation(); deletePage(idx); }}
                                                 >
-                                                    <ChevronUp className="w-3 h-3" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-4 w-4 text-slate-400 hover:text-slate-600"
-                                                    onClick={(e) => { e.stopPropagation(); movePageDown(idx); }}
-                                                    disabled={idx === pages.length - 1}
-                                                >
-                                                    <ChevronDown className="w-3 h-3" />
+                                                    <Trash2 className="w-3 h-3" />
                                                 </Button>
                                             </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-6 w-6 text-red-500 hover:text-red-600"
-                                                onClick={(e) => { e.stopPropagation(); deletePage(idx); }}
-                                            >
-                                                <Trash2 className="w-3 h-3" />
+                                        </div>
+                                    ))}
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="outline" className="w-full mt-2" size="sm">
+                                                <Plus className="w-4 h-4 mr-2" /> Add Page
                                             </Button>
-                                        </div>
-                                    </div>
-                                ))}
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="outline" className="w-full mt-2" size="sm">
-                                            <Plus className="w-4 h-4 mr-2" /> Add Page
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="start" className="w-56">
-                                        <DropdownMenuItem onClick={() => addPage('product-grid')}>
-                                            <Layout className="w-4 h-4 mr-2" /> Product Grid Page
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => addPage('custom')}>
-                                            <FileText className="w-4 h-4 mr-2" /> Custom/Cover Page
-                                        </DropdownMenuItem>
-                                        <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">From Moodboards</div>
-                                        {moodboards.map(m => (
-                                            <DropdownMenuItem key={m.id} onClick={() => addPage('moodboard', m.id)}>
-                                                <ImageIcon className="w-4 h-4 mr-2" /> {m.name}
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="start" className="w-56">
+                                            <DropdownMenuItem onClick={() => addPage('product-grid')}>
+                                                <Layout className="w-4 h-4 mr-2" /> Product Grid Page
                                             </DropdownMenuItem>
-                                        ))}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-                        </div>
-
-                        {/* Main Editor Area */}
-                        <div className="flex-1 flex flex-col bg-slate-100 overflow-hidden relative">
-                            {generating && pages.length === 0 && (
-                                <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center p-8">
-                                    <div className="w-full max-w-md space-y-4 text-center">
-                                        <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
-                                        <h3 className="text-xl font-semibold">{initStatus || 'Preparing your catalog...'}</h3>
-                                        <p className="text-slate-500">We're processing your products and creating the initial layout.</p>
-                                        <Progress value={initProgress} className="h-2" />
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Editor Toolbar */}
-                            <div className="p-2 bg-white border-b flex items-center gap-2">
-                                <Button variant="outline" size="sm" onClick={addText}>
-                                    <Type className="w-4 h-4 mr-2" /> Add Text
-                                </Button>
-
-                                <Dialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen}>
-                                    <Button variant="outline" size="sm" onClick={() => setIsAddProductOpen(true)}>
-                                        <ImageIcon className="w-4 h-4 mr-2" /> Add Product
-                                    </Button>
-                                    <DialogContent className="max-w-2xl">
-                                        <DialogHeader>
-                                            <DialogTitle>Select Product</DialogTitle>
-                                        </DialogHeader>
-                                        <div className="grid grid-cols-4 gap-4 max-h-[60vh] overflow-y-auto p-1">
-                                            {products.map(p => (
-                                                <div
-                                                    key={p.id}
-                                                    className="border rounded p-2 hover:border-primary cursor-pointer flex flex-col gap-2"
-                                                    onClick={() => handleAddProduct(p)}
-                                                >
-                                                    <div className="aspect-square bg-slate-50 rounded overflow-hidden">
-                                                        <img src={p.image_url} className="w-full h-full object-contain" alt="" />
-                                                    </div>
-                                                    <span className="text-xs font-medium line-clamp-2">{p.title}</span>
-                                                </div>
+                                            <DropdownMenuItem onClick={() => addPage('custom')}>
+                                                <FileText className="w-4 h-4 mr-2" /> Custom/Cover Page
+                                            </DropdownMenuItem>
+                                            <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">From Moodboards</div>
+                                            {moodboards.map(m => (
+                                                <DropdownMenuItem key={m.id} onClick={() => addPage('moodboard', m.id)}>
+                                                    <ImageIcon className="w-4 h-4 mr-2" /> {m.name}
+                                                </DropdownMenuItem>
                                             ))}
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
+                            </div>
+
+                            {/* Main Editor Area */}
+                            <div className="flex-1 flex flex-col bg-slate-100 overflow-hidden relative">
+                                {generating && pages.length === 0 && (
+                                    <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center p-8">
+                                        <div className="w-full max-w-md space-y-4 text-center">
+                                            <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
+                                            <h3 className="text-xl font-semibold">{initStatus || 'Preparing your catalog...'}</h3>
+                                            <p className="text-slate-500">We're processing your products and creating the initial layout.</p>
+                                            <Progress value={initProgress} className="h-2" />
                                         </div>
-                                    </DialogContent>
-                                </Dialog>
-
-                                {activeTextId && (
-                                    <>
-                                        <div className="h-6 w-px bg-slate-200 mx-2" />
-                                        <Select
-                                            value={currentPage.texts.find(t => t.id === activeTextId)?.fontFamily || 'Arial'}
-                                            onValueChange={(val) => updateActiveText({ fontFamily: val })}
-                                        >
-                                            <SelectTrigger className="w-[120px] h-8">
-                                                <SelectValue placeholder="Font" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="Arial">Arial</SelectItem>
-                                                <SelectItem value="Times New Roman">Times New Roman</SelectItem>
-                                                <SelectItem value="Courier New">Courier New</SelectItem>
-                                                <SelectItem value="Georgia">Georgia</SelectItem>
-                                                <SelectItem value="Verdana">Verdana</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-
-                                        <Input
-                                            type="number"
-                                            className="w-16 h-8"
-                                            value={currentPage.texts.find(t => t.id === activeTextId)?.fontSize || 16}
-                                            onChange={(e) => updateActiveText({ fontSize: parseInt(e.target.value) || 16 })}
-                                        />
-
-                                        <Input
-                                            type="color"
-                                            className="w-8 h-8 p-0 border-none"
-                                            value={currentPage.texts.find(t => t.id === activeTextId)?.color || '#000000'}
-                                            onChange={(e) => updateActiveText({ color: e.target.value })}
-                                        />
-
-                                        <Input
-                                            type="text"
-                                            className="w-40 h-8"
-                                            value={currentPage.texts.find(t => t.id === activeTextId)?.text || ''}
-                                            onChange={(e) => updateActiveText({ text: e.target.value })}
-                                        />
-
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => activeTextId && deleteText(activeTextId)}>
-                                            <Trash2 className="w-4 h-4" />
-                                        </Button>
-                                    </>
+                                    </div>
                                 )}
 
-                                <div className="flex-1" />
-                                <span className="text-sm text-slate-500">Page Type: <span className="font-medium text-slate-900 capitalize">{currentPage?.type}</span></span>
-                            </div>
+                                {/* Editor Toolbar */}
+                                <div className="p-2 bg-white border-b flex items-center gap-2">
+                                    <Button variant="outline" size="sm" onClick={addText}>
+                                        <Type className="w-4 h-4 mr-2" /> Add Text
+                                    </Button>
 
-                            {/* Canvas */}
-                            <div
-                                className="flex-1 overflow-auto p-8 flex justify-center items-start"
-                                onMouseMove={handleMouseMove}
-                                onMouseUp={handleMouseUp}
-                                onMouseLeave={handleMouseUp}
-                            >
-                                <div
-                                    className="bg-white shadow-2xl relative overflow-hidden flex-shrink-0 select-none"
-                                    style={{
-                                        width: 210 * 3.78 * editorScale, // A4 width in px at 96dpi approx
-                                        height: 297 * 3.78 * editorScale, // A4 height in px
-                                    }}
-                                >
-                                    {/* Page Content Rendering */}
-                                    {currentPage?.type === 'moodboard' && currentPage.moodboardId && (
-                                        <div className="w-full h-full flex items-center justify-center p-4 pointer-events-none">
-                                            <img
-                                                src={moodboards.find(m => m.id === currentPage.moodboardId)?.image_url}
-                                                className="max-w-full max-h-full object-contain shadow-lg"
-                                                alt="Moodboard Preview"
+                                    <Dialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen}>
+                                        <Button variant="outline" size="sm" onClick={() => setIsAddProductOpen(true)}>
+                                            <ImageIcon className="w-4 h-4 mr-2" /> Add Product
+                                        </Button>
+                                        <DialogContent className="max-w-2xl">
+                                            <DialogHeader>
+                                                <DialogTitle>Select Product</DialogTitle>
+                                            </DialogHeader>
+                                            <div className="grid grid-cols-4 gap-4 max-h-[60vh] overflow-y-auto p-1">
+                                                {products.map(p => (
+                                                    <div
+                                                        key={p.id}
+                                                        className="border rounded p-2 hover:border-primary cursor-pointer flex flex-col gap-2"
+                                                        onClick={() => handleAddProduct(p)}
+                                                    >
+                                                        <div className="aspect-square bg-slate-50 rounded overflow-hidden">
+                                                            <img src={p.image_url} className="w-full h-full object-contain" alt="" />
+                                                        </div>
+                                                        <span className="text-xs font-medium line-clamp-2">{p.title}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </DialogContent>
+                                    </Dialog>
+
+                                    {activeTextId && (
+                                        <>
+                                            <div className="h-6 w-px bg-slate-200 mx-2" />
+                                            <Select
+                                                value={currentPage.texts.find(t => t.id === activeTextId)?.fontFamily || 'Arial'}
+                                                onValueChange={(val) => updateActiveText({ fontFamily: val })}
+                                            >
+                                                <SelectTrigger className="w-[120px] h-8">
+                                                    <SelectValue placeholder="Font" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Arial">Arial</SelectItem>
+                                                    <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                                                    <SelectItem value="Courier New">Courier New</SelectItem>
+                                                    <SelectItem value="Georgia">Georgia</SelectItem>
+                                                    <SelectItem value="Verdana">Verdana</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+
+                                            <Input
+                                                type="number"
+                                                className="w-16 h-8"
+                                                value={currentPage.texts.find(t => t.id === activeTextId)?.fontSize || 16}
+                                                onChange={(e) => updateActiveText({ fontSize: parseInt(e.target.value) || 16 })}
                                             />
-                                        </div>
+
+                                            <Input
+                                                type="color"
+                                                className="w-8 h-8 p-0 border-none"
+                                                value={currentPage.texts.find(t => t.id === activeTextId)?.color || '#000000'}
+                                                onChange={(e) => updateActiveText({ color: e.target.value })}
+                                            />
+
+                                            <Input
+                                                type="text"
+                                                className="w-40 h-8"
+                                                value={currentPage.texts.find(t => t.id === activeTextId)?.text || ''}
+                                                onChange={(e) => updateActiveText({ text: e.target.value })}
+                                            />
+
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => activeTextId && deleteText(activeTextId)}>
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </>
                                     )}
 
-                                    {/* Products */}
-                                    {currentPage?.products.map(p => (
-                                        <div
-                                            key={p.id}
-                                            className={`absolute group ${activeProductId === p.id ? 'z-50' : ''}`}
-                                            style={{
-                                                left: (p.x || 0) * editorScale,
-                                                top: (p.y || 0) * editorScale,
-                                                width: (p.width || 0) * editorScale,
-                                                height: (p.height || 0) * editorScale,
-                                                zIndex: p.zIndex,
-                                                cursor: isDragging ? 'grabbing' : 'grab',
-                                            }}
-                                            onMouseDown={(e) => handleMouseDown(e, p, 'drag')}
-                                        >
-                                            <img
-                                                src={p.imgElement.src}
-                                                alt={p.title}
-                                                className={`w-full h-full object-contain pointer-events-none ${activeProductId === p.id ? 'ring-2 ring-blue-500' : 'group-hover:ring-1 group-hover:ring-blue-300'}`}
-                                            />
+                                    <div className="flex-1" />
 
-                                            {/* Resize Handle */}
-                                            {activeProductId === p.id && (
+                                    {/* Zoom Controls */}
+                                    <div className="flex items-center gap-1 border rounded-md px-1">
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleZoom(-0.1)}>
+                                            <ZoomOut className="w-3.5 h-3.5" />
+                                        </Button>
+                                        <button
+                                            className="text-xs font-medium text-slate-600 min-w-[40px] text-center hover:text-slate-900 cursor-pointer"
+                                            onClick={() => setEditorScale(0.6)}
+                                        >
+                                            {Math.round(editorScale * 100)}%
+                                        </button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleZoom(0.1)}>
+                                            <ZoomIn className="w-3.5 h-3.5" />
+                                        </Button>
+                                    </div>
+
+                                    <span className="text-sm text-slate-500">Page <span className="font-medium text-slate-900">{currentPageIndex + 1}</span> / {pages.length}</span>
+                                </div>
+
+                                {/* Canvas — All Pages Stacked Vertically */}
+                                <div
+                                    ref={scrollContainerRef}
+                                    className="flex-1 overflow-auto p-8"
+                                    onMouseMove={handleMouseMove}
+                                    onMouseUp={handleMouseUp}
+                                    onMouseLeave={handleMouseUp}
+                                    onWheel={handleWheel}
+                                >
+                                    <div className="flex flex-col items-center gap-8">
+                                        {pages.map((page, pageIdx) => (
+                                            <div key={page.id} className="flex flex-col items-center gap-2">
+                                                {/* Page Label */}
                                                 <div
-                                                    className="absolute bottom-0 right-0 w-4 h-4 bg-blue-500 rounded-full cursor-se-resize -mb-2 -mr-2 z-50"
-                                                    onMouseDown={(e) => handleMouseDown(e, p, 'resize')}
-                                                />
-                                            )}
-                                        </div>
-                                    ))}
+                                                    className={`text-xs font-medium px-3 py-1 rounded-full cursor-pointer transition-colors ${currentPageIndex === pageIdx ? 'bg-primary text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
+                                                    onClick={() => setCurrentPageIndex(pageIdx)}
+                                                >
+                                                    Page {pageIdx + 1} — {page.title}
+                                                </div>
 
-                                    {/* Text Elements */}
-                                    {currentPage?.texts.map(t => (
-                                        <div
-                                            key={t.id}
-                                            className={`absolute cursor-move ${activeTextId === t.id ? 'ring-1 ring-blue-500 border-blue-500' : 'hover:ring-1 hover:ring-gray-300'}`}
-                                            style={{
-                                                left: t.x * editorScale,
-                                                top: t.y * editorScale,
-                                                zIndex: t.zIndex,
-                                                color: t.color,
-                                                fontFamily: t.fontFamily,
-                                                fontSize: `${t.fontSize * editorScale}px`,
-                                                lineHeight: 1.4,
-                                                whiteSpace: 'pre-wrap',
-                                                wordBreak: 'normal',
-                                                overflowWrap: 'break-word',
-                                                hyphens: 'auto',
-                                                maxWidth: t.maxWidth ? t.maxWidth * editorScale : 'none',
-                                                textAlign: t.textAlign || 'left',
-                                                transform: t.textAlign === 'center' ? 'translateX(-50%)' : 'none',
-                                                padding: '4px'
-                                            }}
-                                            onMouseDown={(e) => handleTextMouseDown(e, t)}
-                                        >
-                                            {t.text}
-                                        </div>
-                                    ))}
+                                                {/* Page Canvas */}
+                                                <div
+                                                    className={`shadow-2xl relative overflow-hidden flex-shrink-0 select-none transition-shadow ${currentPageIndex === pageIdx ? 'ring-2 ring-primary/40' : ''}`}
+                                                    style={{
+                                                        width: 210 * 3.78 * editorScale,
+                                                        height: 297 * 3.78 * editorScale,
+                                                        backgroundColor: selectedStyle.backgroundColor,
+                                                    }}
+                                                    onClick={() => setCurrentPageIndex(pageIdx)}
+                                                >
+                                                    {/* === STRUCTURAL GRID LINES === */}
+                                                    {page.type === 'product-grid' && (() => {
+                                                        const s = editorScale
+                                                        const canvasW = 210 * 3.78
+                                                        const canvasH = 297 * 3.78
+                                                        const pad = 60
+                                                        const headerH = 45
+                                                        const footerH = 10
+                                                        const borderColor = selectedStyle.productStyle.border?.color || '#e2e2e2'
+                                                        const borderW = Math.max(selectedStyle.productStyle.border?.width || 0.5, 0.5)
+                                                        const midX = canvasW / 2
+                                                        const contentTop = pad + headerH
+                                                        const contentBottom = canvasH - pad - footerH
+                                                        const midY = (contentTop + contentBottom) / 2
+
+                                                        return (
+                                                            <>
+                                                                {/* Page header line */}
+                                                                <div className="absolute pointer-events-none" style={{
+                                                                    left: pad * s, top: (pad + headerH) * s,
+                                                                    width: (canvasW - pad * 2) * s, height: `${borderW}px`,
+                                                                    backgroundColor: borderColor, opacity: 0.6
+                                                                }} />
+                                                                {/* Vertical center divider */}
+                                                                <div className="absolute pointer-events-none" style={{
+                                                                    left: midX * s, top: contentTop * s,
+                                                                    width: `${borderW}px`, height: (contentBottom - contentTop) * s,
+                                                                    backgroundColor: borderColor, opacity: 0.4
+                                                                }} />
+                                                                {/* Horizontal center divider */}
+                                                                <div className="absolute pointer-events-none" style={{
+                                                                    left: pad * s, top: midY * s,
+                                                                    width: (canvasW - pad * 2) * s, height: `${borderW}px`,
+                                                                    backgroundColor: borderColor, opacity: 0.4
+                                                                }} />
+                                                                {/* Page footer line */}
+                                                                <div className="absolute pointer-events-none" style={{
+                                                                    left: pad * s, top: contentBottom * s,
+                                                                    width: (canvasW - pad * 2) * s, height: `${borderW}px`,
+                                                                    backgroundColor: borderColor, opacity: 0.6
+                                                                }} />
+                                                                {/* Page number */}
+                                                                <div className="absolute pointer-events-none" style={{
+                                                                    right: pad * s, bottom: (pad / 2) * s,
+                                                                    fontSize: `${7 * s}px`, color: borderColor, opacity: 0.7,
+                                                                    fontFamily: selectedStyle.fontFamily,
+                                                                    letterSpacing: '0.15em', textTransform: 'uppercase' as const,
+                                                                }}>
+                                                                    {String(pageIdx + 1).padStart(2, '0')}
+                                                                </div>
+                                                                {/* Header catalog label */}
+                                                                <div className="absolute pointer-events-none" style={{
+                                                                    left: pad * s, top: (pad + 8) * s,
+                                                                    fontSize: `${6 * s}px`, color: borderColor, opacity: 0.7,
+                                                                    fontFamily: selectedStyle.fontFamily,
+                                                                    letterSpacing: '0.25em', textTransform: 'uppercase' as const,
+                                                                    fontWeight: 600,
+                                                                }}>
+                                                                    Product Specification
+                                                                </div>
+                                                            </>
+                                                        )
+                                                    })()}
+
+                                                    {/* Moodboard Content */}
+                                                    {page.type === 'moodboard' && page.moodboardId && (
+                                                        <div className="w-full h-full flex items-center justify-center p-4 pointer-events-none">
+                                                            <img
+                                                                src={moodboards.find(m => m.id === page.moodboardId)?.image_url}
+                                                                className="max-w-full max-h-full object-contain shadow-lg"
+                                                                alt="Moodboard Preview"
+                                                            />
+                                                        </div>
+                                                    )}
+
+                                                    {/* Products with card containers */}
+                                                    {page.products.map(p => {
+                                                        const cardPad = 10 * editorScale
+                                                        const cardBorder = selectedStyle.productStyle.border
+                                                            ? `${selectedStyle.productStyle.border.width}px solid ${selectedStyle.productStyle.border.color}`
+                                                            : '0.5px solid rgba(0,0,0,0.08)'
+                                                        const cardRadius = selectedStyle.productStyle.borderRadius
+                                                            ? `${selectedStyle.productStyle.borderRadius}px`
+                                                            : '0'
+                                                        const cardShadow = selectedStyle.productStyle.shadow
+                                                            ? `${selectedStyle.productStyle.shadow.offset.x}px ${selectedStyle.productStyle.shadow.offset.y}px ${selectedStyle.productStyle.shadow.blur}px ${selectedStyle.productStyle.shadow.color}`
+                                                            : 'none'
+
+                                                        return (
+                                                            <div
+                                                                key={p.id}
+                                                                className={`absolute group ${activeProductId === p.id && currentPageIndex === pageIdx ? 'z-50' : ''}`}
+                                                                style={{
+                                                                    left: (p.x || 0) * editorScale - cardPad,
+                                                                    top: (p.y || 0) * editorScale - cardPad,
+                                                                    width: (p.width || 0) * editorScale + cardPad * 2,
+                                                                    height: (p.height || 0) * editorScale + cardPad * 2,
+                                                                    zIndex: p.zIndex,
+                                                                    cursor: isDragging ? 'grabbing' : 'grab',
+                                                                    border: cardBorder,
+                                                                    borderRadius: cardRadius,
+                                                                    boxShadow: cardShadow,
+                                                                    backgroundColor: selectedStyle.backgroundColor,
+                                                                }}
+                                                                onMouseDown={(e) => handleMouseDown(e, p, 'drag', pageIdx)}
+                                                            >
+                                                                <img
+                                                                    src={p.imgElement.src}
+                                                                    alt={p.title}
+                                                                    className={`w-full h-full object-contain pointer-events-none ${activeProductId === p.id && currentPageIndex === pageIdx ? 'ring-2 ring-blue-500' : 'group-hover:ring-1 group-hover:ring-blue-300'}`}
+                                                                    style={{
+                                                                        borderRadius: cardRadius,
+                                                                    }}
+                                                                />
+
+                                                                {/* Resize Handle */}
+                                                                {activeProductId === p.id && currentPageIndex === pageIdx && (
+                                                                    <div
+                                                                        className="absolute bottom-0 right-0 w-4 h-4 bg-blue-500 rounded-full cursor-se-resize -mb-2 -mr-2 z-50"
+                                                                        onMouseDown={(e) => handleMouseDown(e, p, 'resize', pageIdx)}
+                                                                    />
+                                                                )}
+                                                            </div>
+                                                        )
+                                                    })}
+
+                                                    {/* Text Elements */}
+                                                    {page.texts.map(t => (
+                                                        <div
+                                                            key={t.id}
+                                                            className={`absolute cursor-move ${activeTextId === t.id && currentPageIndex === pageIdx ? 'ring-1 ring-blue-500 border-blue-500' : 'hover:ring-1 hover:ring-gray-300'}`}
+                                                            style={{
+                                                                left: t.x * editorScale,
+                                                                top: t.y * editorScale,
+                                                                zIndex: t.zIndex,
+                                                                color: t.color,
+                                                                fontFamily: t.fontFamily,
+                                                                fontSize: `${t.fontSize * editorScale}px`,
+                                                                lineHeight: 1.4,
+                                                                whiteSpace: 'pre-wrap',
+                                                                wordBreak: 'normal',
+                                                                overflowWrap: 'break-word',
+                                                                hyphens: 'auto',
+                                                                maxWidth: t.maxWidth ? t.maxWidth * editorScale : 'none',
+                                                                textAlign: t.textAlign || 'left',
+                                                                transform: t.textAlign === 'center' ? 'translateX(-50%)' : 'none',
+                                                                padding: '4px'
+                                                            }}
+                                                            onMouseDown={(e) => handleTextMouseDown(e, t, pageIdx)}
+                                                        >
+                                                            {t.text}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    )}
+                </div>
 
+                {view === 'editor' && (
                     <DialogFooter className="p-4 border-t bg-white">
                         <Button variant="ghost" onClick={onClose}>Cancel</Button>
                         <div className="flex-1" />
@@ -1279,8 +1515,8 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                             Save Catalog
                         </Button>
                     </DialogFooter>
-                </div>
+                )}
             </DialogContent>
-        </Dialog>
+        </Dialog >
     )
 }

@@ -16,8 +16,9 @@ export interface ScrapeResult {
  * Scrape a URL using Puppeteer with Stealth Mode
  * This method works with ALL websites including heavy SPAs like React/Vue
  */
-export async function scrapeUrlWithPuppeteer(url: string): Promise<ScrapeResult> {
+export async function scrapeUrlWithPuppeteer(url: string, options?: { quickMode?: boolean }): Promise<ScrapeResult> {
     const startTime = Date.now();
+    const quick = options?.quickMode ?? false;
     let browser;
 
     try {
@@ -59,10 +60,10 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<ScrapeResult>
         });
 
         // Navigate to the page
-        console.log(`[Puppeteer] Navigating to ${url}...`);
+        console.log(`[Puppeteer] Navigating to ${url}... (quick=${quick})`);
         const response = await page.goto(url, {
-            waitUntil: 'networkidle2', // Wait until network is mostly idle
-            timeout: 20000 // Increased timeout to 20s
+            waitUntil: quick ? 'domcontentloaded' : 'networkidle2',
+            timeout: quick ? 10000 : 20000
         });
 
         // Log response status but don't abort immediately
@@ -72,15 +73,15 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<ScrapeResult>
             console.log(`[Puppeteer] Response status: ${statusCode}`);
         }
 
-        // Wait a bit more for any delayed JS
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        // Wait for JS rendering — shorter in quick mode
+        await new Promise(resolve => setTimeout(resolve, quick ? 1000 : 3000));
 
-        // Simulate scrolling to trigger lazy loading
-        console.log(`[Puppeteer] Scrolling to load content...`);
-        await autoScroll(page);
-
-        // Wait for content to settle after scrolling
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        if (!quick) {
+            // Full scroll for catalog/listing pages
+            console.log(`[Puppeteer] Scrolling to load content...`);
+            await autoScroll(page);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
 
         // Get the full HTML
         const html = await page.content();
@@ -143,36 +144,48 @@ async function autoScroll(page: any) {
     await page.evaluate(async () => {
         await new Promise<void>((resolve) => {
             let totalHeight = 0;
-            const distance = 600;
+            const distance = 800; // Increased distance
             let lastHeight = document.documentElement.scrollHeight;
             let scrollAttempts = 0;
-            const maxAttempts = 5;
-            const maxScrollHeight = 80000; // Even more depth
+            const maxAttempts = 12; // Increased persistence
+            const maxScrollHeight = 120000; // Even more depth for large catalogs
             let loadMoreFound = 0;
+            const maxLoadMoreClicks = 30; // Increased limit
 
             const timer = setInterval(async () => {
                 window.scrollBy(0, distance);
                 totalHeight += distance;
                 const currentHeight = document.documentElement.scrollHeight;
 
-                // Try to find "Load More" / "Ver más" buttons
-                const buttons = Array.from(document.querySelectorAll('button, a, span'))
+                // Try to find "Load More" / "Ver más" buttons (multilingual)
+                const buttons = Array.from(document.querySelectorAll('button, a, span, div.btn'))
                     .filter(el => {
-                        const text = el.textContent?.toLowerCase() || '';
-                        return (text.includes('ver más') ||
-                            text.includes('load more') ||
-                            text.includes('cargar más') ||
-                            text.includes('mostrar más') ||
-                            text.includes('view more')) &&
-                            el.getBoundingClientRect().top < window.innerHeight + 1000;
+                        const text = el.textContent?.toLowerCase().trim() || '';
+                        if (text.length === 0 || text.length > 30) return false;
+
+                        const keywords = [
+                            'ver más', 'load more', 'cargar más', 'mostrar más',
+                            'view more', 'plus de produits', 'mehr laden', 'mostra altro',
+                            'see more', 'show more', 'ver mas', 'carga más', 'ver productos',
+                            'next page', 'página siguiente'
+                        ];
+
+                        return keywords.some(k => text.includes(k)) &&
+                            el.getBoundingClientRect().top < window.innerHeight + 1500;
                     });
 
                 if (buttons.length > 0) {
                     const btn = buttons[0] as HTMLElement;
-                    if (loadMoreFound < 10) { // Limit to 10 clicks to avoid infinite loops
-                        btn.click();
-                        loadMoreFound++;
-                        console.log('[AutoScroll] Clicked Load More button');
+                    if (loadMoreFound < maxLoadMoreClicks) {
+                        // Check if it's actually visible and clickable
+                        const style = window.getComputedStyle(btn);
+                        if (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
+                            btn.click();
+                            loadMoreFound++;
+                            console.log(`[AutoScroll] Clicked Load More button #${loadMoreFound}: ${btn.textContent?.trim()}`);
+                            // Wait a bit more after a click to let content load
+                            scrollAttempts = 0;
+                        }
                     }
                 }
 
@@ -183,12 +196,13 @@ async function autoScroll(page: any) {
                     lastHeight = currentHeight;
                 }
 
+                // If we've reached the end or max attempts or max height
                 if (scrollAttempts >= maxAttempts || totalHeight >= maxScrollHeight) {
                     clearInterval(timer);
                     console.log(`[AutoScroll] Finished at ${totalHeight}px with ${loadMoreFound} load more clicks`);
                     resolve();
                 }
-            }, 500); // 500ms to allow clicks and loading
+            }, 600); // 600ms to allow clicks and loading and rendering
         });
     });
 }

@@ -2,7 +2,8 @@
 
 // Rebuild trigger
 
-import { parseProductPage, extractGlobalNavigation, extractContentCategories, extractNavHtml, Category, isProductDetailPage } from '@/lib/dom-parser';
+import * as cheerio from 'cheerio';
+import { parseProductPage, extractGlobalNavigation, extractContentCategories, extractNavHtml, Category, isProductDetailPage, ProductCandidate } from '@/lib/dom-parser';
 import { inferCategoriesFromOpenAI, inferCategoryKeywords, analyzePageForCatalog, searchProductDimensions } from '@/lib/openai';
 import { scrapeUrlHybrid } from '@/lib/hybrid-scraper';
 import { createClient } from '@/lib/supabase/server';
@@ -34,10 +35,10 @@ export async function createProjectAction(name: string, description?: string) {
     return data
 }
 
-export async function detectCategories(url: string) {
+export async function detectCategories(url: string, countryCode?: string) {
     try {
-        console.log(`[detectCategories] Scraping ${url} with Hybrid scraper...`);
-        const scrapeResult = await scrapeUrlHybrid(url);
+        console.log(`[detectCategories] Scraping ${url} with Hybrid scraper (Country: ${countryCode || 'Default'})...`);
+        const scrapeResult = await scrapeUrlHybrid(url, { location: countryCode });
         const html = scrapeResult.html;
 
         if (!html) {
@@ -159,15 +160,15 @@ export async function detectCategories(url: string) {
     }
 }
 
-export async function scrapeProducts(projectId: string, url: string, category: string, preview: boolean = false, skipKeywordFilter: boolean = false) {
+export async function scrapeProducts(projectId: string, url: string, category: string, preview: boolean = false, skipKeywordFilter: boolean = false, countryCode?: string) {
     const supabase = await createClient();
 
-    console.log(`[Scrape Products] Starting scrape for:`, { url, category, preview, skipKeywordFilter });
+    console.log(`[Scrape Products] Starting scrape for:`, { url, category, preview, skipKeywordFilter, countryCode });
 
     try {
         // 1. Fetch Full HTML using Hybrid Scraper (Puppeteer → Firecrawl fallback)
-        console.log(`[Scrape Products] Using Hybrid scraper for: ${url}`);
-        const scrapeResult = await scrapeUrlHybrid(url);
+        console.log(`[Scrape Products] Using Hybrid scraper for: ${url} (Country: ${countryCode || 'Default'})`);
+        const scrapeResult = await scrapeUrlHybrid(url, { location: countryCode });
 
         if (!scrapeResult.html || scrapeResult.html.length < 1000) {
             console.error("[Scrape Products] Hybrid scraper error and no usable HTML:", scrapeResult.error);
@@ -182,8 +183,14 @@ export async function scrapeProducts(projectId: string, url: string, category: s
         const html = scrapeResult.html;
 
         // 2. Parse DOM for Candidates
-        const candidates = parseProductPage(html, url);
+        let candidates = parseProductPage(html, url);
         console.log(`[Scrape Products] Parsed ${candidates.length} product candidates`);
+
+        // IF NO CANDIDATES FOUND: Use AI to identify product cards from a snippet
+        if (candidates.length === 0) {
+            console.log(`[Scrape Products] No products found via DOM parsing. Falling back to AI identification...`);
+            candidates = await identifyProductsViaAI(html, url);
+        }
 
         // DEBUG: Show sample candidates
         if (candidates.length > 0) {
@@ -243,10 +250,30 @@ export async function scrapeProducts(projectId: string, url: string, category: s
         // 5. Global AI Context (Once per URL)
         const pageContext = await analyzePageForCatalog(html, url);
 
-        // 6. Save Global Metadata to Project (Only if NOT preview, or maybe always? Let's do it always to cache context)
+        // Helper to validate if a string is a likely genuine brand name
+        const isValidBrand = (name: string | undefined | null): boolean => {
+            if (!name || name.length < 2) return false;
+            const lower = name.toLowerCase();
+            // Reject material/technical terms
+            const materialTerms = [
+                'tweed', 'velvet', 'terciopelo', 'madera', 'wood', 'metal', 'acero', 'steel',
+                'camel', 'beige', 'oak', 'roble', 'mármol', 'marble', 'vidrio', 'glass',
+                'tablero', 'partículas', 'fibra', 'densidad', 'media', 'polyurethane', 'poliéster',
+                'algodón', 'cotton', 'lana', 'wool', 'linen', 'lino', 'ratán', 'rattan'
+            ];
+            if (materialTerms.some(term => lower.includes(term))) return false;
+            // Reject generic UI/technical patterns
+            if (/\d+x\d+/.test(lower)) return false; // Dimensions
+            if (/^[0-9\s.,-]+$/.test(lower)) return false; // Only numbers/symbols
+            return true;
+        };
+
+        // 6. Save Global Metadata to Project
+        let inferredBrand = isValidBrand(pageContext.site_name) ? pageContext.site_name : undefined;
+
         await supabase.from('projects').update({
             catalog_ai_metadata: {
-                site_name: pageContext.site_name,
+                site_name: inferredBrand || getStoreName(url),
                 main_category: pageContext.main_category,
                 sub_category: pageContext.sub_category,
                 currency: pageContext.currency,
@@ -254,26 +281,24 @@ export async function scrapeProducts(projectId: string, url: string, category: s
             }
         }).eq('id', projectId);
 
-        // NOTE: Deep scrape removed for performance - dimensions now loaded on-demand when user clicks a product
-
-
         // 8. Map Products
+        const { cleanText } = await import('@/lib/dom-parser');
         const validProducts = filteredCandidates.map(c => {
             const product = {
                 project_id: projectId,
-                title: c.title || 'Untitled Product',
-                description: c.description,
+                title: cleanText(c.title || 'Untitled Product'),
+                description: cleanText(c.description || ''),
                 price: parsePrice(c.price),
                 currency: pageContext.currency || 'EUR',
                 image_url: c.image_url,
                 original_url: c.product_url || url,
-                brand: pageContext.site_name || getStoreName(c.product_url || url),
+                brand: inferredBrand || getStoreName(c.product_url || url),
                 category_id: null,
                 attributes: {},
                 ai_metadata: {
                     inferred_category: category || pageContext.main_category,
                 },
-                specifications: c.dimensions ? { dimensions: c.dimensions } : {},
+                specifications: c.dimensions ? { dimensions: cleanText(c.dimensions) } : {},
                 is_visible: true
             };
 
@@ -375,7 +400,7 @@ export async function fetchProductDetails(productUrl: string) {
     try {
         console.log(`[FetchDetails] Scraping product page: ${productUrl}`);
 
-        const scrapeResult = await scrapeUrlHybrid(productUrl);
+        const scrapeResult = await scrapeUrlHybrid(productUrl, { quickMode: true });
 
         if (!scrapeResult.success || !scrapeResult.html) {
             console.error('[FetchDetails] Failed to scrape:', scrapeResult.error);
@@ -412,6 +437,18 @@ export async function fetchProductDetails(productUrl: string) {
             if (lower.includes('1x1') || lower.includes('pixel') || lower.includes('blank')) return;
             if (lower.includes('logo') || lower.includes('icon') || lower.includes('favicon')) return;
             if (lower.endsWith('.svg') || lower.endsWith('.gif')) return;
+
+            // Reject thumbnail URLs entirely
+            if (/[_-](thumb|thumbnail|small|mini|tiny|xs|sm|preview)[._]/i.test(lower)) return;
+            if (/\/(thumbnails?|thumb|small|mini)\//i.test(lower)) return;
+
+            // Skip URLs with very small explicit dimensions
+            const dimMatch = fullUrl.match(/[/_-](\d{2,3})x(\d{2,3})[/_.\-]/);
+            if (dimMatch) {
+                const w = parseInt(dimMatch[1]);
+                const h = parseInt(dimMatch[2]);
+                if (w < 200 && h < 200) return;
+            }
 
             // Avoid duplicates
             if (!images.includes(fullUrl)) {
@@ -539,6 +576,11 @@ export async function fetchProductDetails(productUrl: string) {
                     // Skip if inside excluded containers
                     if ($el.closest(skipContainers.join(', ')).length > 0) return;
 
+                    // Skip small images (thumbnail indicators)
+                    const w = parseInt($el.attr('width') || '0');
+                    const h = parseInt($el.attr('height') || '0');
+                    if ((w > 0 && w < 150) || (h > 0 && h < 150)) return;
+
                     const imgSrc = getImageFromElement($el);
                     if (imgSrc) addImage(imgSrc);
                 });
@@ -548,41 +590,51 @@ export async function fetchProductDetails(productUrl: string) {
         });
         console.log(`[FetchDetails] P3 after galleries: ${images.length} images`);
 
-        // P4: All remaining images with data attributes (not in excluded areas)
-        console.log('[FetchDetails] P4: Scanning all images with data attributes...');
-        const mainContent = $('main, article, .product-container, .product-detail, .pdp, #main-content, .page-content, .product-page, [role="main"]').first();
-        const context = mainContent.length ? mainContent : $('body');
+        // P4: All remaining images — ONLY if we have fewer than 5 good images
+        // Otherwise P4 tends to pick up low-res thumbnails from other page sections
+        if (images.length < 5) {
+            console.log('[FetchDetails] P4: Scanning all images with data attributes...');
+            const mainContent = $('main, article, .product-container, .product-detail, .pdp, #main-content, .page-content, .product-page, [role="main"]').first();
+            const context = mainContent.length ? mainContent : $('body');
 
-        context.find('img').each((_, el) => {
-            const $el = $(el);
+            context.find('img').each((_, el) => {
+                const $el = $(el);
 
-            // Skip if in excluded areas
-            if ($el.closest(skipContainers.join(', ')).length > 0) return;
+                // Skip if in excluded areas
+                if ($el.closest(skipContainers.join(', ')).length > 0) return;
 
-            const imgSrc = getImageFromElement($el);
-            if (imgSrc) {
-                const lower = imgSrc.toLowerCase();
-                // Only filter truly invalid images
-                if (
-                    !lower.includes('logo') &&
-                    !lower.includes('icon') &&
-                    !lower.includes('badge') &&
-                    !lower.includes('rating') &&
-                    !lower.includes('payment') &&
-                    !lower.includes('banner') &&
-                    !lower.includes('sprite') &&
-                    !lower.includes('avatar')
-                ) {
-                    addImage(imgSrc);
+                // Skip small images
+                const w = parseInt($el.attr('width') || '0');
+                const h = parseInt($el.attr('height') || '0');
+                if ((w > 0 && w < 200) || (h > 0 && h < 200)) return;
+
+                const imgSrc = getImageFromElement($el);
+                if (imgSrc) {
+                    const lower = imgSrc.toLowerCase();
+                    // Only filter truly invalid images
+                    if (
+                        !lower.includes('logo') &&
+                        !lower.includes('icon') &&
+                        !lower.includes('badge') &&
+                        !lower.includes('rating') &&
+                        !lower.includes('payment') &&
+                        !lower.includes('banner') &&
+                        !lower.includes('sprite') &&
+                        !lower.includes('avatar')
+                    ) {
+                        addImage(imgSrc);
+                    }
                 }
-            }
-        });
-        console.log(`[FetchDetails] P4 after all imgs: ${images.length} images`);
+            });
+            console.log(`[FetchDetails] P4 after all imgs: ${images.length} images`);
+        } else {
+            console.log(`[FetchDetails] P4: Skipped (already have ${images.length} good images)`);
+        }
 
         // P5: If still very few images, try background images in style attrs
         if (images.length < 3) {
             console.log('[FetchDetails] P5: Checking background images...');
-            context.find('[style*="background-image"]').each((_, el) => {
+            $('body').find('[style*="background-image"]').each((_: any, el: any) => {
                 const style = $(el).attr('style') || '';
                 const match = style.match(/background-image:\s*url\(['"]?([^'")\s]+)['"]?\)/i);
                 if (match && match[1]) {
@@ -706,7 +758,8 @@ export async function fetchProductDetails(productUrl: string) {
 
         // Clean up SEO junk and advertising text (improved patterns that don't require periods)
         if (description) {
-            description = description
+            const { cleanText } = await import('@/lib/dom-parser');
+            description = cleanText(description)
                 .replace(/✅|✚|★|☆/g, '')
                 // SKLUM-specific patterns (without requiring periods)
                 .replace(/Descubre\s+la\s+colección[^.]*(?:\.|$)/gi, '')
@@ -863,23 +916,13 @@ export async function fetchProductDetails(productUrl: string) {
 
         // Use JSON-LD description if DOM extraction failed
         if (!description && jsonLdDescription) {
-            // Clean SEO/promotional text from JSON-LD description
-            description = jsonLdDescription
-                .replace(/Descubre\s+la\s+colección[^.]*\./gi, '')
-                .replace(/Selección\s+exclusiva[^.]*\./gi, '')
-                .replace(/A\s+precios\s+bajos[^.]*\./gi, '')
-                .replace(/Envío\s+(gratis|gratuito)[^.]*\./gi, '')
-                .replace(/SKLUM[^.]*\./gi, '')
-                .replace(/NV\s*GALLERY[^.]*\./gi, '')
-                .replace(/✅|✚|★|☆/g, '')
-                .replace(/\s+/g, ' ')
-                .trim();
+            description = jsonLdDescription.trim();
         }
 
         // ===============================================
         // STEP 2: AI extraction for missing fields
         // ===============================================
-        const needsAI = !dimensions || !materials || !colors || !description;
+        const needsAI = !dimensions || !materials || !colors || !description || !extractedPrice;
 
         if (needsAI) {
             try {
@@ -1121,20 +1164,40 @@ RULES:
             }
         }
 
+        // Price - regex fallback (like dimensions/colors/weight have)
+        if (!extractedPrice) {
+            // Pattern 1: price with € sign - "149,99 €", "2.220€", "€ 149.99", "149,99€"
+            const pricePatterns = [
+                /(?:precio|price|prix|preis|pvp)[:\s]*(\d[\d.,]*\d?)\s*€/i,
+                /(\d[\d.,]*\d?)\s*€/,
+                /€\s*(\d[\d.,]*\d?)/,
+            ];
+            for (const regex of pricePatterns) {
+                const match = bodyText.match(regex);
+                if (match && match[1]) {
+                    extractedPrice = match[1].trim() + ' €';
+                    break;
+                }
+            }
+        }
+
+        const { cleanText } = await import('@/lib/dom-parser');
+
         return {
             success: true,
             details: {
                 images: finalImages,
+                brand: getStoreName(productUrl),
                 price: extractedPrice,
-                dimensions,
-                description: description.substring(0, 500),
-                materials,
-                colors,
-                weight,
+                dimensions: dimensions ? cleanText(dimensions) : undefined,
+                description: description ? cleanText(description).substring(0, 500) : '',
+                materials: materials ? cleanText(materials) : undefined,
+                colors: colors ? cleanText(colors) : undefined,
+                weight: weight ? cleanText(weight) : undefined,
                 capacity,
                 style,
-                features,
-                careInstructions
+                features: features.map(f => cleanText(f)),
+                careInstructions: careInstructions ? cleanText(careInstructions) : undefined
             }
         };
 
@@ -1155,8 +1218,8 @@ export async function updateProductWithMoreImages(productId: string, productUrl:
             return { success: false, error: result.error };
         }
 
-        const { images, dimensions, description, materials, colors, weight } = result.details;
-        console.log(`[UpdateImages] Found ${images.length} images, dimensions: ${dimensions}, materials: ${materials}`);
+        const { images, dimensions, description, materials, colors, weight, price } = result.details;
+        console.log(`[UpdateImages] Found ${images.length} images, dimensions: ${dimensions}, materials: ${materials}, price: ${price}`);
 
         // Build update object with all available data
         const updateData: Record<string, any> = {};
@@ -1175,6 +1238,7 @@ export async function updateProductWithMoreImages(productId: string, productUrl:
         if (materials) specs.materials = materials;
         if (colors) specs.colors = colors;
         if (weight) specs.weight = weight;
+        if (price) specs.price = price;
 
         if (Object.keys(specs).length > 0) {
             updateData.specifications = specs;
@@ -1189,7 +1253,7 @@ export async function updateProductWithMoreImages(productId: string, productUrl:
 
             if (error) throw error;
 
-            revalidatePath('/dashboard/projects/[id]');
+            // revalidatePath('/dashboard/projects/[id]');
             return { success: true, images, details: result.details };
         }
 
@@ -1212,6 +1276,7 @@ export async function saveProductDetails(productId: string, details: {
     colors?: string;
     weight?: string;
     images?: string[];
+    price?: string;
 }) {
     const supabase = await createClient();
 
@@ -1228,15 +1293,22 @@ export async function saveProductDetails(productId: string, details: {
             updateData.images = details.images;
         }
 
-        // Build specifications object
+        // Build specifications object — MERGE with existing data, don't replace
         const specs: Record<string, string> = {};
         if (details.dimensions) specs.dimensions = details.dimensions;
         if (details.materials) specs.materials = details.materials;
         if (details.colors) specs.colors = details.colors;
         if (details.weight) specs.weight = details.weight;
+        if (details.price) specs.price = details.price;
 
         if (Object.keys(specs).length > 0) {
-            updateData.specifications = specs;
+            // Fetch existing specifications first so we merge, not replace
+            const { data: existing } = await supabase
+                .from('products')
+                .select('specifications')
+                .eq('id', productId)
+                .single();
+            updateData.specifications = { ...(existing?.specifications || {}), ...specs };
         }
 
         if (Object.keys(updateData).length === 0) {
@@ -1261,3 +1333,63 @@ export async function saveProductDetails(productId: string, details: {
 }
 
 
+
+/**
+ * Analyze a snippet of HTML to identify product cards when traditional parsing fails
+ */
+async function identifyProductsViaAI(html: string, baseUrl: string): Promise<ProductCandidate[]> {
+    try {
+        const OpenAI = (await import('openai')).default;
+        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+        // Extract a "clean" version of the body to fit in context
+        const $ = cheerio.load(html);
+        $('script, style, nav, footer, header, .cookie, .popup, .modal, .c-main-nav, .c-footer').remove();
+
+        // Take a chunk of the main content
+        const mainContent = $('main, #content, .content, #main, .main').first().html() || $('body').html() || '';
+        const snippet = mainContent.substring(0, 50000); // 50k chars is usually enough for a list
+
+        console.log(`[identifyProductsViaAI] Sending ${snippet.length} chars to AI for product list extraction...`);
+
+        const response = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+                {
+                    role: 'system',
+                    content: `You are a web scraping expert. Your task is to extract a list of product cards from an HTML snippet.
+Extract as many products as you can find. For each product, extract:
+- title: The name or title of the product
+- price: The price (e.g. "49.99 €")
+- image_url: The URL of the product image (absolute or relative)
+- product_url: The URL to the product detail page (absolute or relative)
+
+Return a JSON object with a "products" array:
+{
+  "products": [
+    { "title": "...", "price": "...", "image_url": "...", "product_url": "..." },
+    ...
+  ]
+}`
+                },
+                { role: 'user', content: `Extract products from this HTML snippet from ${baseUrl}:\n\n${snippet}` }
+            ],
+            response_format: { type: 'json_object' }
+        });
+
+        const result = JSON.parse(response.choices[0].message.content || '{"products":[]}');
+        const rawProducts = result.products || [];
+
+        console.log(`[identifyProductsViaAI] AI found ${rawProducts.length} potential products`);
+
+        return rawProducts.map((p: any) => ({
+            ...p,
+            image_url: p.image_url ? new URL(p.image_url, baseUrl).href : undefined,
+            product_url: p.product_url ? new URL(p.product_url, baseUrl).href : undefined
+        }));
+
+    } catch (e) {
+        console.error('[identifyProductsViaAI] Error:', e);
+        return [];
+    }
+}

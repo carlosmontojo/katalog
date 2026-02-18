@@ -8,6 +8,7 @@ import { LoadingProgress } from '@/components/ui/loading-progress'
 import { Loader2, Globe, ArrowLeft, ArrowRight, RotateCcw, X, ShoppingBag, Plus, CheckCircle2 } from 'lucide-react'
 import { saveSelectedProducts } from '@/app/scraping-actions'
 import { processVisualCaptures } from '@/app/visual-actions'
+import { normalizeUrl } from '@/lib/utils/url'
 
 interface VisualBrowserProps {
     projectId?: string // Optional for dashboard home
@@ -27,9 +28,10 @@ declare global {
 }
 
 export function VisualBrowser({ projectId, initialUrl = '', onClose, onSuccess }: VisualBrowserProps) {
-    const [url, setUrl] = useState(initialUrl)
-    const [currentUrl, setCurrentUrl] = useState(initialUrl)
-    const [hasStarted, setHasStarted] = useState(!!initialUrl)
+    const normalizedInitial = normalizeUrl(initialUrl)
+    const [url, setUrl] = useState(normalizedInitial)
+    const [currentUrl, setCurrentUrl] = useState(normalizedInitial)
+    const [hasStarted, setHasStarted] = useState(!!normalizedInitial)
     const [selectionMode, setSelectionMode] = useState<'navigate' | 'capture'>('navigate')
     const [loading, setLoading] = useState(false)
     const [capturedItems, setCapturedItems] = useState<any[]>([])
@@ -71,11 +73,10 @@ export function VisualBrowser({ projectId, initialUrl = '', onClose, onSuccess }
 
     const handleNavigate = (e?: React.FormEvent) => {
         e?.preventDefault()
-        let target = url.trim()
+        const target = normalizeUrl(url)
         if (!target) return
 
-        if (!target.startsWith('http')) target = 'https://' + target
-
+        setUrl(target)
         setLoading(true)
         setCurrentUrl(target)
         setHasStarted(true)

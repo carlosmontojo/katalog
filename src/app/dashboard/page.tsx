@@ -13,6 +13,7 @@ import { ProductDetailModal } from '@/components/product-detail-modal'
 import { VisualBrowser } from '@/components/visual-browser'
 import { LoadingProgress } from '@/components/ui/loading-progress'
 import { processVisualCaptures } from '@/app/visual-actions'
+import { getUserCountryCode } from '@/lib/utils/geo'
 
 type ViewState = 'home' | 'category-select' | 'product-select'
 type DestinationType = 'new' | 'existing'
@@ -91,19 +92,21 @@ export default function Dashboard() {
         try {
             const isCategoryUrl = /\/(c|category|cat|categories|categoria|productos)\//i.test(url)
 
+            const countryCode = getUserCountryCode()
+
             if (isCategoryUrl) {
-                const result = await scrapeProducts('temp', url, 'Category Products', true, false)
+                const result = await scrapeProducts('temp', url, 'Category Products', true, false, countryCode)
                 if (result.success && result.products) {
                     setProducts(result.products)
                     setCategories([])
                 }
             } else {
-                const result = await detectCategories(url)
+                const result = await detectCategories(url, countryCode)
                 if (result.success && result.categories && result.categories.length > 0) {
                     setCategories(result.categories)
                     setProducts([])
                 } else {
-                    const scrapeResult = await scrapeProducts('temp', url, '', true, false)
+                    const scrapeResult = await scrapeProducts('temp', url, '', true, false, countryCode)
                     if (scrapeResult.success && scrapeResult.products) {
                         setProducts(scrapeResult.products)
                         setCategories([])
@@ -170,7 +173,8 @@ export default function Dashboard() {
             const targetUrl = categoryUrl || url
 
             // 1. Try to detect subcategories first
-            const result = await detectCategories(targetUrl)
+            const countryCode = getUserCountryCode()
+            const result = await detectCategories(targetUrl, countryCode)
 
             if (result.success && result.categories && result.categories.length > 0) {
                 // Found subcategories - DRILL DOWN
@@ -187,7 +191,8 @@ export default function Dashboard() {
                 setView('product-select')
                 setSelectedCategoryName(categoryName)
 
-                const scrapeResult = await scrapeProducts('temp', targetUrl, categoryName, true, !!categoryUrl)
+                const countryCode = getUserCountryCode()
+                const scrapeResult = await scrapeProducts('temp', targetUrl, categoryName, true, !!categoryUrl, countryCode)
 
                 if (scrapeResult.success && scrapeResult.products) {
                     setProducts(scrapeResult.products)

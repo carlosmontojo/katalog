@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
     Dialog,
     DialogContent,
@@ -19,6 +19,7 @@ interface ProductDetailModalProps {
         price: number
         currency: string
         image_url?: string
+        brand?: string
         images?: string[]  // Database-stored images from previous scrapes
         original_url?: string
     }
@@ -31,6 +32,7 @@ interface ProductDetailModalProps {
 interface ProductDetails {
     images: string[]
     price?: string
+    brand?: string
     dimensions?: string
     description?: string
     materials?: string
@@ -53,6 +55,7 @@ export function ProductDetailModal({
     const [details, setDetails] = useState<ProductDetails | null>(null)
     const [selectedImage, setSelectedImage] = useState(0)
     const [error, setError] = useState<string | null>(null)
+    const lastLoadedUrl = useRef<string | null>(null)
 
     useEffect(() => {
         if (isOpen && product.original_url && !details && !loading) {
@@ -60,10 +63,13 @@ export function ProductDetailModal({
         }
     }, [isOpen, product.original_url])
 
+    // Only reset when switching to a DIFFERENT product
     useEffect(() => {
-        setDetails(null)
-        setSelectedImage(0)
-        setError(null)
+        if (lastLoadedUrl.current && lastLoadedUrl.current !== product.original_url) {
+            setDetails(null)
+            setSelectedImage(0)
+            setError(null)
+        }
     }, [product.original_url])
 
     const loadDetails = async () => {
@@ -75,27 +81,21 @@ export function ProductDetailModal({
         try {
             const result = await fetchProductDetails(product.original_url)
             if (result.success && result.details) {
-                // DEBUG: Log all image URLs received from server
-                console.log('[ProductDetail] ===== IMAGE DEBUG =====')
-                console.log('[ProductDetail] Product URL:', product.original_url)
-                console.log('[ProductDetail] Images received:', result.details.images)
-                result.details.images?.forEach((img, idx) => {
-                    console.log(`[ProductDetail] Image ${idx + 1}:`, img)
-                })
-                console.log('[ProductDetail] ===========================')
                 setDetails(result.details)
+                lastLoadedUrl.current = product.original_url
 
-                // SAVE DETAILS TO DATABASE if we have a product ID
+                // SAVE DETAILS TO DATABASE (fire-and-forget to avoid revalidation race)
                 if (product.id) {
                     console.log('[ProductDetail] Saving details to database for product:', product.id)
-                    await saveProductDetails(product.id, {
+                    saveProductDetails(product.id, {
                         description: result.details.description,
                         dimensions: result.details.dimensions,
                         materials: result.details.materials,
                         colors: result.details.colors,
                         weight: result.details.weight,
-                        images: result.details.images
-                    })
+                        images: result.details.images,
+                        price: result.details.price
+                    }).catch(err => console.error('[ProductDetail] Save error:', err))
                 }
             } else {
                 setError(result.error || 'No se pudo cargar la información')
@@ -116,8 +116,23 @@ export function ProductDetailModal({
                 ? [product.image_url]
                 : []
 
-    const nextImage = () => setSelectedImage((prev) => (prev + 1) % allImages.length)
-    const prevImage = () => setSelectedImage((prev) => (prev - 1 + allImages.length) % allImages.length)
+    const [failedImages, setFailedImages] = useState<Set<string>>(new Set())
+    const validImages = allImages.filter(img => !failedImages.has(img))
+
+    const handleImageError = (url: string) => {
+        setFailedImages(prev => {
+            const next = new Set(prev)
+            next.add(url)
+            return next
+        })
+        // If current image failed, move to next valid one
+        if (validImages[selectedImage] === url && validImages.length > 1) {
+            setSelectedImage(0)
+        }
+    }
+
+    const nextImage = () => setSelectedImage((prev) => (prev + 1) % validImages.length)
+    const prevImage = () => setSelectedImage((prev) => (prev - 1 + validImages.length) % validImages.length)
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -130,26 +145,25 @@ export function ProductDetailModal({
                     <div className="w-1/2 flex flex-col p-8 bg-white border-r border-slate-100">
                         {/* Loading Progress */}
                         {loading && (
-                            <div className="mb-4">
-                                <LoadingProgress
-                                    isLoading={loading}
-                                    message="Cargando detalles del producto..."
-                                    variant="bar"
-                                    showPercentage
-                                />
-                            </div>
+                            <LoadingProgress
+                                isLoading={loading}
+                                message="Cargando detalles del producto..."
+                                variant="bar"
+                                showPercentage
+                            />
                         )}
 
                         {/* Main Image - using aspect-ratio for consistent sizing */}
                         <div className="relative w-full aspect-square bg-slate-50 rounded-sm overflow-hidden mb-6 flex items-center justify-center">
-                            {allImages.length > 0 ? (
+                            {validImages.length > 0 ? (
                                 <>
                                     <img
-                                        src={allImages[selectedImage]}
+                                        src={validImages[selectedImage]}
                                         alt={product.title}
                                         className="w-full h-full object-contain"
+                                        onError={() => handleImageError(validImages[selectedImage])}
                                     />
-                                    {allImages.length > 1 && (
+                                    {validImages.length > 1 && (
                                         <>
                                             <button
                                                 onClick={prevImage}
@@ -174,9 +188,9 @@ export function ProductDetailModal({
                         </div>
 
                         {/* Thumbnails */}
-                        {allImages.length > 1 && (
+                        {validImages.length > 1 && (
                             <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-                                {allImages.map((img, idx) => (
+                                {validImages.map((img, idx) => (
                                     <button
                                         key={idx}
                                         onClick={() => setSelectedImage(idx)}
@@ -185,7 +199,12 @@ export function ProductDetailModal({
                                             : 'border-transparent hover:border-slate-200'
                                             }`}
                                     >
-                                        <img src={img} alt="" className="w-full h-full object-cover" />
+                                        <img
+                                            src={img}
+                                            alt=""
+                                            className="w-full h-full object-cover"
+                                            onError={() => handleImageError(img)}
+                                        />
                                     </button>
                                 ))}
                             </div>
@@ -199,8 +218,8 @@ export function ProductDetailModal({
                                 <h1 className="text-3xl md:text-4xl font-bold tracking-[0.1em] text-foreground uppercase mb-2">
                                     {product.title}
                                 </h1>
-                                <p className="text-sm text-slate-400 tracking-[0.05em]">
-                                    {details?.materials?.split(',')[0] || "Vista detalle"}
+                                <p className="text-sm text-slate-400 tracking-[0.05em] uppercase font-medium">
+                                    {product.brand || details?.brand || details?.materials?.split(',')[0] || "Detalles"}
                                 </p>
                             </div>
                             {product.original_url && (

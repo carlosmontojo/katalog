@@ -40,37 +40,27 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }, [])
 
     const loadProjects = async () => {
-        console.log('Starting loadProjects...')
         setLoadingProjects(true)
         try {
-            const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-            if (authError) {
-                console.error('Auth error fetching user:', authError)
-                return
-            }
+            const { data: { user } } = await supabase.auth.getUser()
 
             if (!user) {
-                console.log('No user found in loadProjects')
+                setProjects([])
                 return
             }
 
-            console.log('Fetching projects for user:', user.id)
             const { data, error } = await supabase
                 .from('projects')
                 .select('id, name, created_at')
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false })
 
-            if (error) {
-                console.error('Error fetching projects:', error)
+            if (!error) {
+                setProjects(data || [])
             }
-            console.log('Projects fetched:', data?.length || 0)
-            setProjects(data || [])
         } catch (e) {
-            console.error('Unexpected error in loadProjects:', e)
+            console.error('Error loading projects:', e)
         } finally {
-            console.log('Finished loadProjects, setting loadingProjects to false')
             setLoadingProjects(false)
         }
     }
@@ -209,10 +199,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         {/* User Menu */}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-200/50">
+                                <Button variant="ghost" size="icon" className="rounded-full ring-0 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-transparent">
                                     <Avatar className="h-8 w-8">
                                         <AvatarImage src="/placeholder-user.jpg" alt="User" />
-                                        <AvatarFallback className="bg-slate-200 text-slate-600">
+                                        <AvatarFallback className="bg-transparent text-slate-600">
                                             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                                                 <circle cx="12" cy="7" r="4" />

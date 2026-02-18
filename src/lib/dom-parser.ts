@@ -34,18 +34,20 @@ export const isValidCategoryName = (text: string): boolean => {
         'anterior', 'siguiente', 'prev', 'next', 'close', 'cerrar',
         'view', 'ver', 'shop', 'more', 'all', 'filter', 'filtrar',
         'sort', 'ordenar', 'clear', 'limpiar', 'apply', 'aplicar',
-        'sklum', 'sklum pro', 'blog', 'magazine', 'trends', 'tendencias',
+        'blog', 'magazine', 'trends', 'tendencias',
         'nuestras tiendas', 'our stores', 'here to stay', 'selected',
         // Countries
         'france', 'francia', 'italy', 'italia', 'portugal', 'spain', 'españa',
         'germany', 'deutschland', 'united kingdom', 'uk', 'ireland', 'irlanda',
         'nederland', 'netherlands', 'belgium', 'belgique', 'polsky', 'poland',
         'polska', 'austria', 'schweiz', 'suisse', 'switzerland',
+        // UI / Navigation / Filters
+        'filter by', 'filtrar por', 'sort by', 'ordenar por', 'view as', 'ver como',
+        'grid', 'list', 'cuadrícula', 'lista', 'show', 'mostrar', 'page', 'página',
         // Promotions & Marketing
         'black friday', 'cyber monday', 'rebajas', 'sale', 'outlet', 'descuento',
         'descuentos', 'códigos', 'código', 'cupones', 'cupón', 'friends plan',
-        'sklum friends plan', 'códigos de descuento', 'muebles black friday 2026',
-        'rebajas muebles', 'muebles de madera',
+        'códigos de descuento', 'rebajas muebles', 'muebles de madera',
         'búsquedas', 'búsquedas interesantes', 'interesting searches',
         // Marketing & Slogans
         'descubrir', 'discover', 'aprovecho', 'best sellers', 'novedades', 'new arrivals',
@@ -120,23 +122,136 @@ export const isValidCategoryName = (text: string): boolean => {
     return true;
 };
 
-// Helper: Clean category name
-export const cleanName = (text: string): string => {
-    return text
+// Helper: Clean product titles, descriptions, etc.
+export const cleanText = (text: string): string => {
+    if (!text) return '';
+
+    // Remove technical elements before processing
+    let cleaned = text
+        .replace(/\s+/g, ' ') // Collapse whitespace
+
+    // 1. Remove JSON-like structures and technical blocks (Max 5 levels for deep hydration states)
+    for (let i = 0; i < 5; i++) {
+        cleaned = cleaned
+            .replace(/{[^{}]*}/g, ' ')
+            .replace(/\[[^\[\]]*\]/g, ' ');
+    }
+
+    // Capture leftover JSON fragments and common JS/Technical noise
+    cleaned = cleaned
+        .replace(/["']?[a-z0-9_\-]+["']?\s*:\s*(["']?[^"'}]+["']?|true|false|null|\d+)/gi, ' ') // Key: Value pairs
+        .replace(/\b(style|class|var|const|let|function|if|else|return|new|window|document)\b\s*[={(\[].*?[;})\]]/gi, ' ')
+        .replace(/\b[0-9a-f]{20,}\b/gi, ' ') // Long hex/IDs
+
+        // 2. Remove common UI / Marketing noise (Global)
+        .replace(/pague en \d+.*?veces.*?(gratuita)?.*?(con|de|en)?.*?alma/gi, '')
+        .replace(/pay in \d+.*?installments.*?(free)?.*?(with|by)?.*?alma/gi, '')
+        .replace(/alma\s*{[^}]*}/gi, '')
+        .replace(/añadir al carrito|add to cart|comprar ahora|buy now|ver en la web|view on web|envío gratuito|free shipping/gi, '')
+
+        // 3. Remove long numeric sequences or hex codes that look like IDs
+        .replace(/\b[0-9a-f]{20,}\b/gi, '')
+        .replace(/\b[0-9A-F]{20,}\b/gi, '')
+
+        // 4. Strip leftover technical symbols
+        .replace(/[{}|\\^~\[\]`;]/g, ' ')
         .replace(/\s+/g, ' ')
+        .trim();
+
+    // Strategy: If cleaning killed a legitimate long title, try a gentler approach
+    if (cleaned.length < 5 && text.trim().length > 20) {
+        // Just collapse whitespace and remove clear JSON markers
+        let gentle = text.replace(/\s+/g, ' ').trim();
+        if (gentle.includes('{') || gentle.includes('[')) {
+            gentle = gentle.replace(/\{.*\}/g, '').replace(/\[.*\]/g, '').trim();
+        }
+        return gentle.substring(0, 300);
+    }
+
+    return cleaned;
+};
+
+export const cleanName = (text: string): string => {
+    return cleanText(text)
         .replace(/^(ver|view|shop|descubrir|discover|rebajas|sale|outlet|promociones)\s+/gi, '')
         .replace(/\s+(now|ahora|más|more|descubrir|discover|rebajas|sale|outlet|promociones)$/gi, '')
         .trim();
 };
 
+export function parseJsonLd(html: string, baseUrl: string): ProductCandidate[] {
+    const $ = cheerio.load(html);
+    const candidates: ProductCandidate[] = [];
+
+    $('script[type="application/ld+json"]').each((_, el) => {
+        try {
+            const content = $(el).html() || '';
+            const json = JSON.parse(content);
+
+            const processItem = (item: any) => {
+                if (!item || typeof item !== 'object') return;
+
+                if (item['@type'] === 'Product' || (Array.isArray(item['@type']) && item['@type'].includes('Product'))) {
+                    const offers = Array.isArray(item.offers) ? item.offers[0] : item.offers;
+                    const price = offers?.price || offers?.lowPrice || offers?.highPrice;
+                    const currency = offers?.priceCurrency || '€';
+
+                    const candidate: ProductCandidate = {
+                        title: item.name,
+                        price: price ? `${price} ${currency}`.replace('EUR', '€') : undefined,
+                        image_url: Array.isArray(item.image) ? item.image[0] : (typeof item.image === 'string' ? item.image : item.image?.url),
+                        product_url: item.url ? resolveUrl(item.url, baseUrl) : undefined,
+                        description: item.description
+                    };
+
+                    if (isValidCandidate(candidate)) {
+                        candidates.push(candidate);
+                    }
+                }
+
+                if (item.itemListElement) {
+                    const elements = Array.isArray(item.itemListElement) ? item.itemListElement : [item.itemListElement];
+                    elements.forEach((subItem: any) => {
+                        if (subItem.item) processItem(subItem.item);
+                        else processItem(subItem);
+                    });
+                }
+
+                // Handle @graph if present (common in WordPress/Yoast)
+                if (item['@graph'] && Array.isArray(item['@graph'])) {
+                    item['@graph'].forEach(processItem);
+                }
+            };
+
+            if (Array.isArray(json)) {
+                json.forEach(processItem);
+            } else {
+                processItem(json);
+            }
+        } catch (e) {
+            // Ignore malformed JSON-LD
+        }
+    });
+
+    return candidates;
+}
+
 export function parseProductPage(html: string, baseUrl: string): ProductCandidate[] {
     const $ = cheerio.load(html);
+
+    // 1. Try JSON-LD first (most reliable for universal scraping)
+    const jsonLdCandidates = parseJsonLd(html, baseUrl);
+    if (jsonLdCandidates.length > 3) {
+        console.log(`[parseProductPage] Found ${jsonLdCandidates.length} candidates via JSON-LD`);
+        return dedupeCandidates(jsonLdCandidates).slice(0, 200);
+    }
+
     const candidates: ProductCandidate[] = [];
 
     const cardSelectors = [
         '.c-product-card', '.o-card', '.product-card', '.product-tile',
         '.product-item', '.listing-item', '.grid-item', 'article',
-        '[data-product-id]', '.card', 'li.product'
+        '[data-product-id]', '.card', 'li.product', '.collection-product',
+        '.shelf-item', '.item-product'
     ];
 
     let bestCandidates: ProductCandidate[] = [];
@@ -206,6 +321,34 @@ export function parseProductPage(html: string, baseUrl: string): ProductCandidat
         }
     }
 
+    // 3. Fallback: Repetitive Container Children (The "Ghost" Selector)
+    // If we still have few results, look for any container whose children look like products
+    if (bestCandidates.length < 6) {
+        $('div, section, ul').each((_, el) => {
+            const $el = $(el);
+            const children = $el.children().filter((_, child) => {
+                const $child = $(child);
+                return $child.find('img').length > 0 &&
+                    $child.find('a').length > 0 &&
+                    $child.text().length > 10;
+            });
+
+            if (children.length >= 6) {
+                const currentCandidates: ProductCandidate[] = [];
+                children.each((_, child) => {
+                    const candidate = extractFromCard($(child), $, baseUrl);
+                    if (isValidCandidate(candidate)) currentCandidates.push(candidate);
+                });
+
+                if (currentCandidates.length > bestCandidates.length) {
+                    bestCandidates = currentCandidates;
+                    bestMethod = 'Heuristic (repetitive children)';
+                }
+            }
+        });
+    }
+
+    console.log(`[parseProductPage] Captured ${bestCandidates.length} products using method: ${bestMethod}`);
     candidates.push(...bestCandidates);
     return dedupeCandidates(candidates).slice(0, 200);
 }
@@ -429,46 +572,69 @@ export function extractContentCategories(html: string, baseUrl: string): Categor
 }
 
 function extractFromCard(card: cheerio.Cheerio<any>, $: cheerio.CheerioAPI, baseUrl: string): ProductCandidate {
-    const img = card.find('img').first();
-    let titleEl = card.find('h1, h2, h3, h4, h5, .product-name, .product-title, .c-product-card__title, .o-card__title, a.product-link').first();
-    if (titleEl.length === 0 || !titleEl.text().trim()) {
-        const mainLink = card.find('a').first();
-        const linkTitle = mainLink.attr('title');
-        if (linkTitle && linkTitle.length > 3 && linkTitle.length < 150) {
-            titleEl = cheerio.load(`<span>${linkTitle}</span>`)('span');
-        }
+    // Clone to remove technical elements without affecting original DOM
+    const cloned = card.clone();
+    cloned.find('script, style, noscript, svg, .visually-hidden, [aria-hidden="true"]').remove();
+
+    // 1. Image Extraction
+    const img = cloned.find('img[itemprop="image"]').first().length > 0
+        ? cloned.find('img[itemprop="image"]').first()
+        : cloned.find('img').first();
+    const src = img.attr('src') || img.attr('data-src') || img.attr('data-lazy-src') || img.attr('srcset')?.split(' ')[0];
+
+    // 2. Title Extraction
+    let titleEl = cloned.find('[itemprop="name"], .product-name, .product-title, .c-product-card__title, .o-card__title, .title, h1, h2, h3, h4, h5').first();
+    let title = cleanText(titleEl.text());
+
+    if (!title || title.length < 3) {
+        // Fallback to link title or alt text
+        const mainLink = cloned.find('a').first();
+        title = cleanText(mainLink.attr('title') || img.attr('alt') || mainLink.text() || '');
     }
-    const src = img.attr('src') || img.attr('data-src');
-    const cardText = card.text();
-    const priceEl = card.find('.price, .amount, [data-price], [class*="price"], [class*="precio"], .c-product-card__price, .o-card__price, span:contains("€"), span:contains("$")').last();
-    let priceText = priceEl.text().trim();
+
+    // 3. Price Extraction
+    let priceEl = cloned.find('[itemprop="price"], [content*="."], .price, .amount, [data-price], [class*="price"], [class*="precio"], .c-product-card__price, .o-card__price, span:contains("€"), span:contains("$")').last();
+    let priceText = priceEl.text().trim() || priceEl.attr('content') || '';
+
+    // If still no price, try data attributes
+    if (!priceText) {
+        priceText = cloned.attr('data-product-price') || cloned.find('[data-price]').attr('data-price') || '';
+    }
+
+    const cardText = cloned.text();
+    // Improved Regex: Handle spaces in prices like "1 899€" or "1.899,00 €"
+    const priceRegex = /((?:\d{1,3}[\s.,]?)+\d{0,2})\s*[€$]|[€$]\s*((?:\d{1,3}[\s.,]?)+\d{0,2})/g;
+
+    // Process price text to find the most likely current price (usually the last one if it's a list)
     if (priceText.includes('\n')) {
         const lines = priceText.split('\n').map(l => l.trim()).filter(l => /\d/.test(l));
         if (lines.length > 0) priceText = lines[lines.length - 1];
     }
-    const priceRegex = /((?:\d{1,3}[.,\s]?)+\d{0,2})\s*[€$]|[€$]\s*((?:\d{1,3}[.,\s]?)+\d{0,2})/g;
+
     const matchesInPriceText = [...priceText.matchAll(priceRegex)];
     if (matchesInPriceText.length > 0) {
         priceText = matchesInPriceText[matchesInPriceText.length - 1][0];
     } else if (!priceText || priceText.length > 30 || !/\d/.test(priceText)) {
         const matches = [...cardText.matchAll(priceRegex)];
-        if (matches.length > 0) priceText = matches[matches.length - 1][0];
+        if (matches.length > 0) {
+            priceText = matches[matches.length - 1][0];
+        }
     }
-    let title = img.attr('alt') || '';
-    if (!title || title.length < 5) {
-        const linkEl = card.find('a').first();
-        const linkTitle = linkEl.attr('title');
-        if (linkTitle && linkTitle.trim() && linkTitle.length > 3 && linkTitle.length < 200) title = linkTitle.trim();
-    }
-    if (!title || title.length < 5) title = titleEl.text().trim();
-    if (!title) title = card.find('a').first().text().trim();
+
+    // 4. Product URL Extraction
+    const productLink = cloned.find('a[itemprop="url"]').first().length > 0
+        ? cloned.find('a[itemprop="url"]').first()
+        : cloned.find('a').first();
+    const productUrl = productLink.attr('href');
+
+    // 5. Clean Title
     if (title.length > 150) title = title.substring(0, 80) + '...';
 
     return {
         title: title || 'Sin título',
         price: priceText,
         image_url: (src && isValidImageUrl(src)) ? resolveUrl(src, baseUrl) : undefined,
-        product_url: card.find('a').first().attr('href') ? resolveUrl(card.find('a').first().attr('href')!, baseUrl) : undefined,
+        product_url: productUrl ? resolveUrl(productUrl, baseUrl) : undefined,
         html_block: card.html() || ''
     };
 }
@@ -477,19 +643,31 @@ function isValidCandidate(c: ProductCandidate): boolean {
     if (!c.title || c.title === 'Sin título' || c.title.length < 3) return false;
     if (!c.image_url) return false;
 
-    // For universal scraping, we are more lenient.
-    // However, we still need a way to filter out category cards.
-    // Category cards usually don't have a price.
-    // If a candidate has no price, we only accept it if the title doesn't look like a generic category.
-    if (!c.price || c.price.length < 2) {
-        // If no price, check if title is a single word or matches category patterns
-        if (!c.title.includes(' ') || isValidCategoryName(c.title)) return false;
+    // Filter out obvious noise in title
+    if (c.title.length > 150 || /\{|\}|\[|\]|;|:/.test(c.title)) return false;
 
-        // Also check if the URL looks like a product URL vs category URL
-        if (c.product_url && (c.product_url.includes('/c/') || c.product_url.includes('/categoria/'))) return false;
+    const hasPrice = c.price && c.price.length >= 2 && /\d/.test(c.price);
+
+    // If we have a price and an image, it's very likely a product
+    if (hasPrice) return true;
+
+    // If no price, be more strict to avoid catching categories or articles
+    const words = c.title.split(/\s+/).filter(w => w.length > 0);
+    if (words.length < 2) return false;
+
+    if (isValidCategoryName(c.title)) return false;
+
+    // Check if the URL looks like a product URL vs category URL
+    if (c.product_url) {
+        const lowerUrl = c.product_url.toLowerCase();
+        if (lowerUrl.includes('/c/') || lowerUrl.includes('/categoria/') || lowerUrl.includes('/category/') || lowerUrl.includes('/c-')) return false;
+
+        // Product URLs often have specific patterns or end with .html/extensions or have long IDs
+        if (/\/p\/|\/product\/|\/articulo\/|\/item\/|\.html|\d{5,}/.test(lowerUrl)) return true;
     }
 
-    return true;
+    // Default to true if title looks descriptive enough
+    return words.length >= 3;
 }
 
 function resolveUrl(url: string, base: string): string {
@@ -499,25 +677,49 @@ function resolveUrl(url: string, base: string): string {
 function isValidImageUrl(src: string | undefined): boolean {
     if (!src) return false;
     const lower = src.toLowerCase();
-    if (lower.includes('logo') || lower.includes('icon') || lower.includes('avatar') || lower.includes('hover') || lower.includes('spinner') || lower.includes('placeholder') || lower.includes('banner') || lower.includes('slideshow')) return false;
-    if (src.length < 15 || src.startsWith('data:')) return false;
+
+    // Common non-product image patterns
+    const exclusions = [
+        'logo', 'icon', 'avatar', 'hover', 'spinner', 'placeholder',
+        'banner', 'slideshow', 'header', 'footer', 'payment',
+        'trust', 'badge', 'sprite', 'pixel'
+    ];
+
+    if (exclusions.some(exc => lower.includes(exc))) return false;
+    if (src.length < 10 || src.startsWith('data:image/gif')) return false; // Common for 1x1 pixels
+
     return true;
 }
 
 export function parseProductDetail(html: string, baseUrl: string): ProductCandidate {
     const $ = cheerio.load(html);
-    let title = $('h1').first().text().trim() || $('meta[property="og:title"]').attr('content') || '';
+
+    // Cleanup body before extraction
+    $('script, style, noscript, svg, .visually-hidden, [aria-hidden="true"]').remove();
+
+    let title = cleanText($('h1').first().text()) || $('meta[property="og:title"]').attr('content') || '';
     let priceText = $('.price, .current-price, [itemprop="price"], .product-price').first().text().trim() || $('meta[property="product:price:amount"]').attr('content') || '';
-    let description = $('#description, .product-description, [itemprop="description"], .description').first().text().trim() || $('meta[property="og:description"]').attr('content') || '';
+    let description = cleanText($('#description, .product-description, [itemprop="description"], .description').first().text()) || $('meta[property="og:description"]').attr('content') || '';
     let image_url = $('meta[property="og:image"]').attr('content') || $('.product-image img, .main-image img').first().attr('src');
+
     const bodyText = $('body').text().replace(/\s+/g, ' ');
     const dimRegex1 = /\d+(?:[.,]\d+)?\s*(?:cm|mm|m)?\s*[x×*]\s*\d+(?:[.,]\d+)?\s*(?:cm|mm|m)?(?:\s*[x×*]\s*\d+(?:[.,]\d+)?)?\s*(?:cm|mm|m)/i;
     const dimRegex2 = /(?:medidas|dimensiones|alto|ancho|fondo|largo|profundo|altura|anchura|width|height|depth|dim)[:\s]+\d+(?:[.,]\d+)?\s*(?:cm|mm|m)/i;
     const dimRegex5 = /[HhWwDd]\s*\d+(?:[.,]\d+)?\s*[x×*]\s*[HhWwDd]\s*\d+(?:[.,]\d+)?/i;
+
     let dimensions: string | undefined;
     let match = bodyText.match(dimRegex1) || bodyText.match(dimRegex5) || bodyText.match(dimRegex2);
     if (match) dimensions = match[0];
-    return { title, price: priceText, description, image_url: image_url ? resolveUrl(image_url, baseUrl) : undefined, product_url: baseUrl, dimensions, html_block: html.substring(0, 2000) };
+
+    return {
+        title: title || 'Sin título',
+        price: priceText,
+        description: cleanText(description),
+        image_url: image_url ? resolveUrl(image_url, baseUrl) : undefined,
+        product_url: baseUrl,
+        dimensions,
+        html_block: html.substring(0, 2000)
+    };
 }
 
 function dedupeCandidates(candidates: ProductCandidate[]): ProductCandidate[] {

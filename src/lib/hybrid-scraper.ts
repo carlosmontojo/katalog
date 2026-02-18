@@ -21,13 +21,14 @@ export interface HybridScrapeResult {
  * 2. If Puppeteer fails or returns very small HTML, try Firecrawl
  * 3. Return whichever method succeeds
  */
-export async function scrapeUrlHybrid(url: string): Promise<HybridScrapeResult> {
+export async function scrapeUrlHybrid(url: string, options: any = {}): Promise<HybridScrapeResult> {
     const startTime = Date.now();
+    const quick = options.quickMode ?? false;
 
-    console.log('[Hybrid Scraper] Starting with Puppeteer...');
+    console.log(`[Hybrid Scraper] Starting with Puppeteer... (quick=${quick})`);
 
     // Try Puppeteer first
-    const puppeteerResult = await scrapeUrlWithPuppeteer(url);
+    const puppeteerResult = await scrapeUrlWithPuppeteer(url, { quickMode: quick });
 
     // Check if Puppeteer succeeded with good content
     const htmlLength = puppeteerResult.html?.length || 0;
@@ -69,9 +70,10 @@ export async function scrapeUrlHybrid(url: string): Promise<HybridScrapeResult> 
     console.log('[Hybrid Scraper] ⚠️  Puppeteer insufficient or blocked, trying Firecrawl fallback...');
 
     const firecrawlResult = await scrapeUrlWithFirecrawl(url, {
-        waitFor: 5000,
-        timeout: 30000,
-        onlyMainContent: false
+        waitFor: quick ? 2000 : 5000,
+        timeout: quick ? 15000 : 30000,
+        onlyMainContent: false,
+        ...options
     });
 
     const firecrawlHtmlLength = firecrawlResult.data?.html?.length || 0;
@@ -103,98 +105,5 @@ export async function scrapeUrlHybrid(url: string): Promise<HybridScrapeResult> 
             fallbackUsed: true
         }
     };
-}
-
-/**
- * Scrape individual product page to extract detailed dimensions
- * Uses Hybrid Scraper to ensure we get content even if Puppeteer is blocked
- * 
- * @param productUrl - URL of the product detail page
- * @returns Dimensions string or null if not found
- */
-export async function scrapeProductDetails(productUrl: string): Promise<{ dimensions?: string; error?: string }> {
-    try {
-        console.log(`[Deep Scrape] Fetching: ${productUrl}`);
-        // Use Hybrid Scraper instead of just Puppeteer
-        const result = await scrapeUrlHybrid(productUrl);
-
-        if (!result.success || !result.html) {
-            return { error: 'Failed to fetch product page' };
-        }
-
-        // Import cheerio dynamically to parse the HTML
-        const cheerio = await import('cheerio');
-        const $ = cheerio.load(result.html);
-
-        // Extract dimensions from the product page
-        const bodyText = $('body').text().replace(/\s+/g, ' ');
-
-        // Sklum-specific: Look for labeled dimensions like "Alto :70 cm"
-        // Pattern: "Alto :70 cm" or "Alto: 70 cm" or "Alto:70cm"
-        const labeledDimRegex = /(?:alto|ancho|profundo|fondo|largo|altura|anchura)\s*:?\s*(\d+(?:[.,]\d+)?)\s*(?:cm|mm|m)/gi;
-        const labeledMatches = [...bodyText.matchAll(labeledDimRegex)];
-
-        if (labeledMatches.length >= 2) {
-            // Build a dimensions string from labeled values
-            const dims: string[] = [];
-            for (const match of labeledMatches.slice(0, 3)) {
-                dims.push(match[0].trim());
-            }
-            const dimensions = dims.join(' x ');
-            console.log(`[Deep Scrape] Found labeled dimensions: ${dimensions}`);
-            return { dimensions };
-        }
-
-        // Generic pattern: "120x80x75 cm" or "120 x 80 cm"
-        const genericDimRegex = /\d+(?:[.,]\d+)?\s*(?:cm|mm|m)?\s*[x×*]\s*\d+(?:[.,]\d+)?\s*(?:cm|mm|m)?(?:\s*[x×*]\s*\d+(?:[.,]\d+)?)?\s*(?:cm|mm|m)/i;
-        const genericMatch = bodyText.match(genericDimRegex);
-
-        if (genericMatch) {
-            console.log(`[Deep Scrape] Found generic dimensions: ${genericMatch[0]}`);
-            return { dimensions: genericMatch[0] };
-        }
-
-        console.log(`[Deep Scrape] No dimensions found in: ${productUrl}`);
-        return {};
-
-    } catch (error: any) {
-        console.error(`[Deep Scrape] Error for ${productUrl}:`, error.message);
-        return { error: error.message };
-    }
-}
-
-/**
- * Deep scrape multiple product URLs in parallel (with concurrency limit)
- * 
- * @param productUrls - Array of product URLs to scrape
- * @param concurrency - Max concurrent scrapes (default: 3)
- * @returns Map of URL -> dimensions
- */
-export async function deepScrapeForDimensions(
-    productUrls: string[],
-    concurrency: number = 3
-): Promise<Map<string, string>> {
-    const results = new Map<string, string>();
-
-    console.log(`[Deep Scrape] Starting deep scrape for ${productUrls.length} products (concurrency: ${concurrency})`);
-
-    // Process in batches to limit concurrent requests
-    for (let i = 0; i < productUrls.length; i += concurrency) {
-        const batch = productUrls.slice(i, i + concurrency);
-
-        const batchPromises = batch.map(async (url) => {
-            const result = await scrapeProductDetails(url);
-            if (result.dimensions) {
-                results.set(url, result.dimensions);
-            }
-        });
-
-        await Promise.all(batchPromises);
-
-        console.log(`[Deep Scrape] Completed batch ${Math.floor(i / concurrency) + 1}/${Math.ceil(productUrls.length / concurrency)}`);
-    }
-
-    console.log(`[Deep Scrape] Finished! Found dimensions for ${results.size}/${productUrls.length} products`);
-    return results;
 }
 

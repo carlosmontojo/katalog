@@ -10,3 +10,24 @@ export function getStoreName(url: string | undefined): string {
         return 'Store';
     }
 }
+
+import { getLocalizedUrl } from './geo';
+
+export function normalizeUrl(url: string, localize: boolean = true): string {
+    let target = url.trim();
+    if (!target) return '';
+    if (!target.startsWith('http://') && !target.startsWith('https://')) {
+        // Basic check for common patterns like "localhost" to use http
+        if (target.startsWith('localhost') || target.startsWith('127.0.0.1')) {
+            target = 'http://' + target;
+        } else {
+            target = 'https://' + target;
+        }
+    }
+
+    if (localize) {
+        return getLocalizedUrl(target);
+    }
+
+    return target;
+}
