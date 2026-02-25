@@ -1,163 +1,133 @@
-# Kattlog - AI-Powered Product Catalog Creator
+# Kattlog — Software para Interioristas
 
-Transform any e-commerce website into beautiful, professional catalogs in seconds.
+Crea catálogos, moodboards y presupuestos profesionales a partir de cualquier web de mobiliario.
 
-## 🚀 Features
+## 🚀 Funcionalidades
 
-- **Smart Product Scraping**: Extract products from any e-commerce site with AI-powered detection
-- **Category Detection**: Automatically identifies and organizes product categories
-- **Visual Catalog Editor**: Drag-and-drop interface for creating stunning catalogs
-- **Multiple Export Formats**:
-  - PDF (print-ready)
-  - Excel (with embedded images)
-  - InDesign (IDML for professional editing)
-  - Photoshop (PSD with layers)
-  - SVG (for Illustrator)
-  - PNG (high-resolution images)
-- **Moodboard Creator**: Design custom product layouts with AI assistance
-- **Product Detail Extraction**: Automatically captures dimensions, materials, descriptions, and more
+- **Scraping inteligente** — Extrae productos de cualquier e-commerce con IA
+- **Detección de categorías** — Organiza productos automáticamente
+- **Editor visual de catálogos** — Drag & drop para maquetar catálogos
+- **Moodboards** — Diseña composiciones visuales con los productos
+- **Presupuestos** — Genera presupuestos profesionales en Excel (16 columnas)
+- **Exportación múltiple** — PDF, Excel, InDesign (IDML), Photoshop (PSD), SVG, PNG
 
-## 🛠️ Tech Stack
+## 🛠️ Stack
 
-- **Framework**: Next.js 16 (App Router)
-- **Database**: Supabase (PostgreSQL)
-- **AI**: OpenAI GPT-4
-- **Scraping**: Puppeteer + Firecrawl
-- **Styling**: Tailwind CSS
-- **Exports**: ExcelJS, jsPDF, ag-psd
+| Capa | Tecnología |
+|------|-----------|
+| Framework | Next.js 16 (App Router) |
+| Base de datos | Supabase (PostgreSQL) |
+| Auth | Supabase Auth |
+| IA | OpenAI GPT-4 + Google Gemini |
+| Scraping | Puppeteer + Firecrawl |
+| Styling | Tailwind CSS |
+| Desktop | Electron |
+| Exports | ExcelJS, jsPDF, ag-psd |
 
-## 📋 Prerequisites
+## 📋 Requisitos
 
-- Node.js 18+ 
-- npm or yarn
-- Supabase account
-- OpenAI API key
+- **Node.js v22+** (probado con v22.13.0)
+- npm v11+
+- Cuentas en: Supabase, OpenAI, Google AI Studio (Gemini)
+- Opcional: Firecrawl API key
 
-## 🔧 Installation
+---
 
-1. Clone the repository:
+## 🔧 Instalación (nuevo ordenador)
+
+### 1. Clonar el repositorio
 ```bash
-git clone https://github.com/YOUR_USERNAME/katalog.git
+git clone https://github.com/carlosmontojo/katalog.git
 cd katalog
 ```
 
-2. Install dependencies:
+### 2. Configurar variables de entorno
+```bash
+cp .env.example .env.local
+```
+Edita `.env.local` y rellena todas las API keys. Necesitas:
+
+| Variable | Dónde conseguirla |
+|----------|------------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | [Supabase Dashboard](https://supabase.com/dashboard) → Settings → API |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Dashboard → Settings → API |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase Dashboard → Settings → API (⚠️ clave privada) |
+| `GEMINI_API_KEY` | [Google AI Studio](https://aistudio.google.com/apikey) |
+| `OPENAI_API_KEY` | [OpenAI Platform](https://platform.openai.com/api-keys) |
+| `FIRECRAWL_API_KEY` | [Firecrawl](https://firecrawl.dev) (opcional) |
+
+> ⚠️ **Si vienes de otro ordenador**, lo más fácil es copiar el `.env.local` del ordenador anterior directamente.
+
+### 3. Instalar dependencias
 ```bash
 npm install
 ```
 
-3. Set up environment variables:
-Create a `.env.local` file in the root directory:
-```env
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-OPENAI_API_KEY=your_openai_api_key
-FIRECRAWL_API_KEY=your_firecrawl_key (optional)
-```
-
-4. Run the development server:
+### 4. Ejecutar
 ```bash
+# Web app (Next.js):
 npm run dev
+# → http://localhost:3000
+
+# App de escritorio (Electron):
+npm run electron:dev
 ```
-
-5. Open [http://localhost:3000](http://localhost:3000)
-
-## 🗄️ Database Setup
-
-Run the following SQL in your Supabase SQL editor:
-
-```sql
--- Create projects table
-create table projects (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users not null,
-  name text not null,
-  created_at timestamp with time zone default now()
-);
-
--- Create products table
-create table products (
-  id uuid primary key default gen_random_uuid(),
-  project_id uuid references projects not null,
-  title text not null,
-  price numeric,
-  currency text default 'EUR',
-  image_url text,
-  original_url text,
-  description text,
-  specifications jsonb,
-  attributes jsonb,
-  ai_metadata jsonb,
-  created_at timestamp with time zone default now()
-);
-
--- Create moodboards table
-create table moodboards (
-  id uuid primary key default gen_random_uuid(),
-  project_id uuid references projects not null,
-  name text not null,
-  image_url text,
-  settings jsonb,
-  created_at timestamp with time zone default now()
-);
-
--- Enable Row Level Security
-alter table projects enable row level security;
-alter table products enable row level security;
-alter table moodboards enable row level security;
-
--- Create policies
-create policy "Users can view their own projects"
-  on projects for select
-  using (auth.uid() = user_id);
-
-create policy "Users can create their own projects"
-  on projects for insert
-  with check (auth.uid() = user_id);
-
--- Similar policies for products and moodboards...
-```
-
-## 📦 Deployment
-
-### Vercel (Recommended)
-
-1. Push your code to GitHub
-2. Import your repository in Vercel
-3. Add environment variables in Vercel dashboard
-4. Deploy!
-
-### Custom Domain Setup
-
-1. Add your domain in Vercel dashboard
-2. Update DNS records at your registrar
-3. Wait for SSL certificate provisioning
-
-## 🎨 Usage
-
-1. **Create a Project**: Start by creating a new project
-2. **Add Products**: Enter any e-commerce URL to scrape products
-3. **Select Categories**: Choose which categories to import
-4. **Review Products**: View and edit product details
-5. **Create Catalog**: Use the visual editor to arrange products
-6. **Export**: Download in your preferred format
-
-## 🔒 Security
-
-- All API keys are stored securely in environment variables
-- Row Level Security (RLS) enabled on all database tables
-- Authentication handled by Supabase Auth
-- CORS configured for production domain
-
-## 📝 License
-
-Proprietary - All rights reserved
-
-## 🤝 Support
-
-For support, email support@kattlog.com
 
 ---
 
-Built with ❤️ for designers and e-commerce professionals
+## 🗄️ Base de datos
+
+La base de datos ya está configurada en Supabase con las siguientes tablas:
+- `projects` — Proyectos del usuario
+- `products` — Productos scrapeados
+- `moodboards` — Moodboards guardados
+- `budgets` — Presupuestos generados
+
+Todas las tablas tienen **Row Level Security (RLS)** activado.
+
+Si necesitas recrear la base de datos desde cero, los scripts SQL están en:
+- `supabase_budgets_migration.sql` — Migración de presupuestos
+
+---
+
+## 📦 Despliegue
+
+### Vercel (producción)
+1. Importa el repo en [Vercel](https://vercel.com)
+2. Añade las variables de entorno en Settings → Environment Variables
+3. Deploy automático con cada push a `main`
+
+### Electron (escritorio)
+```bash
+npm run electron:build        # macOS
+npm run electron:build:win    # Windows
+npm run electron:build:all    # Ambos
+```
+
+---
+
+## 🎨 Uso
+
+1. **Crear proyecto** → Dashboard → "Crear nuevo Katalog"
+2. **Añadir productos** → Introduce una URL de e-commerce → Selecciona categorías y productos
+3. **Crear catálogo** → Pestaña "Productos" → "Crear Catálogo"
+4. **Crear moodboard** → Pestaña "Moodboards" → "Crear Moodboard"
+5. **Generar presupuesto** → Pestaña "Presupuestos" → "Generar Presupuesto"
+6. **Exportar** → Descarga en PDF, Excel, IDML, PSD, SVG o PNG
+
+---
+
+## 🔒 Seguridad
+
+- API keys en variables de entorno (nunca en código)
+- Row Level Security (RLS) en todas las tablas
+- Auth gestionado por Supabase Auth
+- CORS configurado para dominio de producción
+
+## 📝 Licencia
+
+Propietario — Todos los derechos reservados
+
+---
+
+Hecho con ❤️ para interioristas y profesionales del diseño
