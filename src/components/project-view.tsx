@@ -26,23 +26,23 @@ export function ProjectView({ project, products, moodboards, budgets }: ProjectV
     return (
         <div className="flex flex-col gap-12">
             <Tabs defaultValue="products" className="w-full">
-                <div className="flex items-center gap-8 border-b border-slate-200/50 mb-8">
+                <div className="flex items-center gap-8 border-b border-border/50 mb-8">
                     <TabsList className="bg-transparent p-0 h-auto gap-8">
                         <TabsTrigger
                             value="products"
-                            className="bg-transparent p-0 h-auto text-[10px] font-bold tracking-[0.2em] uppercase text-slate-400 data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-none border-b-2 border-transparent data-[state=active]:border-foreground pb-4 transition-all"
+                            className="bg-transparent p-0 h-auto text-[11px] font-bold tracking-[0.2em] uppercase text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-none border-b-2 border-transparent data-[state=active]:border-foreground pb-4 transition-all"
                         >
-                            Products
+                            Productos
                         </TabsTrigger>
                         <TabsTrigger
                             value="moodboards"
-                            className="bg-transparent p-0 h-auto text-[10px] font-bold tracking-[0.2em] uppercase text-slate-400 data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-none border-b-2 border-transparent data-[state=active]:border-foreground pb-4 transition-all"
+                            className="bg-transparent p-0 h-auto text-[11px] font-bold tracking-[0.2em] uppercase text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-none border-b-2 border-transparent data-[state=active]:border-foreground pb-4 transition-all"
                         >
                             Moodboards
                         </TabsTrigger>
                         <TabsTrigger
                             value="budgets"
-                            className="bg-transparent p-0 h-auto text-[10px] font-bold tracking-[0.2em] uppercase text-slate-400 data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-none border-b-2 border-transparent data-[state=active]:border-foreground pb-4 transition-all"
+                            className="bg-transparent p-0 h-auto text-[11px] font-bold tracking-[0.2em] uppercase text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-none border-b-2 border-transparent data-[state=active]:border-foreground pb-4 transition-all"
                         >
                             Presupuestos
                         </TabsTrigger>
@@ -56,19 +56,19 @@ export function ProjectView({ project, products, moodboards, budgets }: ProjectV
                             products={products}
                             moodboards={moodboards}
                         />
-                        <div className="h-4 w-px bg-slate-200" />
-                        <div className="flex items-center gap-2 text-[10px] font-semibold tracking-[0.1em] text-slate-400 uppercase">
-                            Sort by:
+                        <div className="h-4 w-px bg-border" />
+                        <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
+                            Ordenar por:
                             <select className="bg-transparent text-foreground border-none focus:ring-0 cursor-pointer font-bold">
-                                <option>Product</option>
-                                <option>Price</option>
+                                <option>Producto</option>
+                                <option>Precio</option>
                             </select>
                         </div>
                     </div>
                 </div>
 
                 <TabsContent value="products" className="mt-0">
-                    <div className="mb-12 bg-white border border-slate-200/50 rounded-sm overflow-hidden">
+                    <div className="mb-12 bg-card border border-border/50 rounded-sm overflow-hidden">
                         <UrlInput projectId={project.id} />
                     </div>
 
@@ -80,9 +80,9 @@ export function ProjectView({ project, products, moodboards, budgets }: ProjectV
                             ))}
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center justify-center py-32 text-slate-400">
+                        <div className="flex flex-col items-center justify-center py-32 text-muted-foreground">
                             <Package className="w-12 h-12 opacity-20 mb-4" />
-                            <h3 className="text-sm font-medium tracking-[0.1em] uppercase">No products yet</h3>
+                            <h3 className="text-sm font-medium tracking-[0.1em] uppercase">Sin productos</h3>
                         </div>
                     )}
                 </TabsContent>
@@ -92,10 +92,10 @@ export function ProjectView({ project, products, moodboards, budgets }: ProjectV
                         <Button
                             onClick={() => setIsMoodboardModalOpen(true)}
                             variant="outline"
-                            className="h-10 px-6 border-slate-200 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-slate-50 rounded-sm"
+                            className="h-10 px-6 border-border text-[11px] font-bold uppercase tracking-[0.2em] hover:bg-muted/30 rounded-sm"
                         >
                             <Plus className="w-4 h-4 mr-2" />
-                            Create Moodboard
+                            Crear Moodboard
                         </Button>
                     </div>
 
@@ -106,9 +106,9 @@ export function ProjectView({ project, products, moodboards, budgets }: ProjectV
                             ))}
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center justify-center py-32 text-slate-400">
+                        <div className="flex flex-col items-center justify-center py-32 text-muted-foreground">
                             <LayoutTemplate className="w-12 h-12 opacity-20 mb-4" />
-                            <h3 className="text-sm font-medium tracking-[0.1em] uppercase">No moodboards yet</h3>
+                            <h3 className="text-sm font-medium tracking-[0.1em] uppercase">Sin moodboards</h3>
                         </div>
                     )}
                 </TabsContent>
@@ -119,10 +119,10 @@ export function ProjectView({ project, products, moodboards, budgets }: ProjectV
                             onClick={() => setIsBudgetModalOpen(true)}
                             variant="outline"
                             disabled={products.length === 0}
-                            className="h-10 px-6 border-slate-200 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-slate-50 rounded-sm"
+                            className="h-10 px-6 border-border text-[11px] font-bold uppercase tracking-[0.2em] hover:bg-muted/30 rounded-sm"
                         >
                             <Plus className="w-4 h-4 mr-2" />
-                            Generate Budget
+                            Generar Presupuesto
                         </Button>
                     </div>
 
@@ -133,13 +133,13 @@ export function ProjectView({ project, products, moodboards, budgets }: ProjectV
                             ))}
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center justify-center py-32 text-slate-400">
+                        <div className="flex flex-col items-center justify-center py-32 text-muted-foreground">
                             <FileSpreadsheet className="w-12 h-12 opacity-20 mb-4" />
-                            <h3 className="text-sm font-medium tracking-[0.1em] uppercase">No budgets yet</h3>
-                            <p className="text-xs text-slate-300 mt-2">
+                            <h3 className="text-sm font-medium tracking-[0.1em] uppercase">Sin presupuestos</h3>
+                            <p className="text-xs text-muted-foreground/50 mt-2">
                                 {products.length === 0
-                                    ? 'Add products first, then generate a budget'
-                                    : 'Click "Generate Budget" to create a professional Excel quote'
+                                    ? 'Añade productos primero para generar un presupuesto'
+                                    : 'Haz clic en "Generar Presupuesto" para crear un Excel profesional'
                                 }
                             </p>
                         </div>

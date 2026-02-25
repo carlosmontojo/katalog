@@ -86,56 +86,56 @@ export function SaveProductsModal({
             <DialogContent className="max-w-md bg-background border-none p-8 rounded-sm">
                 <DialogHeader className="mb-8">
                     <DialogTitle className="text-lg font-medium tracking-[0.05em] text-foreground">
-                        Add to Katalog(s)
+                        Añadir a Katalog(s)
                     </DialogTitle>
                 </DialogHeader>
 
                 {/* Preview of products being added */}
-                <div className="flex items-center gap-4 py-6 border-b border-slate-200/50 mb-6">
+                <div className="flex items-center gap-4 py-6 border-b border-border/50 mb-6">
                     <div className="flex -space-x-3">
                         {productImages.slice(0, 4).map((img, i) => (
                             <div
                                 key={i}
-                                className="w-12 h-12 rounded-sm border-2 border-white shadow-sm overflow-hidden bg-slate-100"
+                                className="w-12 h-12 rounded-sm border-2 border-card shadow-sm overflow-hidden bg-muted"
                             >
                                 {img ? (
                                     <img src={img} alt="" className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center">
-                                        <ShoppingBag className="w-4 h-4 text-slate-300" />
+                                        <ShoppingBag className="w-4 h-4 text-muted-foreground" />
                                     </div>
                                 )}
                             </div>
                         ))}
                         {productCount > 4 && (
-                            <div className="w-12 h-12 rounded-sm border-2 border-white shadow-sm bg-slate-50 flex items-center justify-center">
-                                <span className="text-[10px] font-bold text-slate-400">+{productCount - 4}</span>
+                            <div className="w-12 h-12 rounded-sm border-2 border-card shadow-sm bg-muted/50 flex items-center justify-center">
+                                <span className="text-[10px] font-bold text-muted-foreground">+{productCount - 4}</span>
                             </div>
                         )}
                     </div>
-                    <span className="text-xs font-medium text-slate-500 tracking-[0.05em]">
+                    <span className="text-xs font-medium text-muted-foreground tracking-[0.05em]">
                         {productCount} product{productCount !== 1 ? 's' : ''} selected
                     </span>
                 </div>
 
                 {/* Project selection */}
                 <div className="space-y-4">
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] mb-2">
-                        Select one or more Katalogs:
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.2em] mb-2">
+                        Selecciona uno o varios Katalogs:
                     </p>
 
                     {loadingProjects ? (
                         <div className="flex items-center justify-center py-12">
-                            <Loader2 className="w-6 h-6 animate-spin text-slate-300" />
+                            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                         </div>
                     ) : (
                         <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 scrollbar-hide">
                             {projects.map((project) => (
                                 <label
                                     key={project.id}
-                                    className={`flex items-center gap-4 p-4 bg-white border rounded-sm cursor-pointer transition-all ${selectedProjectIds.has(project.id)
-                                        ? 'border-slate-900 shadow-sm'
-                                        : 'border-slate-200/50 hover:border-slate-300'
+                                    className={`flex items-center gap-4 p-4 bg-card border rounded-sm cursor-pointer transition-all ${selectedProjectIds.has(project.id)
+                                        ? 'border-foreground shadow-sm'
+                                        : 'border-border/50 hover:border-muted-foreground/30'
                                         }`}
                                 >
                                     <Checkbox
@@ -162,7 +162,7 @@ export function SaveProductsModal({
                         ) : (
                             <Check className="w-4 h-4 mr-2" />
                         )}
-                        Add to {selectedProjectIds.size || '...'} Katalog{selectedProjectIds.size !== 1 ? 's' : ''}
+                        Añadir a {selectedProjectIds.size || '...'} Katalog{selectedProjectIds.size !== 1 ? 's' : ''}
                     </Button>
                 </div>
             </DialogContent>

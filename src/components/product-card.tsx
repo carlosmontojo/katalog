@@ -20,7 +20,7 @@ export function ProductCard({ product }: ProductCardProps) {
     return (
         <>
             <div className="flex flex-col group cursor-pointer">
-                <div className="relative aspect-square w-full bg-slate-100 rounded-sm overflow-hidden mb-4 shadow-sm">
+                <div className="relative aspect-square w-full bg-muted rounded-sm overflow-hidden mb-4 shadow-sm">
                     {product.image_url ? (
                         <img
                             src={product.image_url}
@@ -28,7 +28,7 @@ export function ProductCard({ product }: ProductCardProps) {
                             className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
                         />
                     ) : (
-                        <div className="flex items-center justify-center h-full text-slate-300">
+                        <div className="flex items-center justify-center h-full text-muted-foreground">
                             <Package className="w-8 h-8 opacity-20" />
                         </div>
                     )}
@@ -41,10 +41,10 @@ export function ProductCard({ product }: ProductCardProps) {
                             onClick={() => setIsDetailModalOpen(true)}
                             variant="secondary"
                             size="sm"
-                            className="bg-white hover:bg-white/90 text-foreground shadow-lg"
+                            className="bg-card hover:bg-card/90 text-foreground shadow-lg"
                         >
                             <Eye className="w-4 h-4 mr-2" />
-                            View Details
+                            Ver detalles
                         </Button>
                     </div>
                 </div>
@@ -54,7 +54,7 @@ export function ProductCard({ product }: ProductCardProps) {
                         <h3 className="text-[11px] font-medium text-foreground tracking-[0.05em] truncate uppercase" title={product.title}>
                             {product.title}
                         </h3>
-                        <p className="text-[10px] text-slate-400 mt-0.5 italic tracking-[0.05em]">
+                        <p className="text-[10px] text-muted-foreground mt-0.5 italic tracking-[0.05em]">
                             {product.brand || getStoreName(product.original_url)}
                         </p>
                     </div>

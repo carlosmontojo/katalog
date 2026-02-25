@@ -77,7 +77,7 @@ export default function LoginPage() {
                     <p className="text-muted-foreground text-center mt-2 px-10">Crea catálogos y moodboards profesionales en minutos.</p>
                 </div>
 
-                <Card className="border-border/50 shadow-2xl bg-card/50 backdrop-blur-sm overflow-hidden rounded-3xl">
+                <Card className="border-border/50 shadow-2xl bg-card/50 backdrop-blur-sm overflow-hidden rounded-sm">
                     <CardHeader className="space-y-1 pb-8">
                         <CardTitle className="text-xl font-bold italic tracking-tight">Iniciar Sesión</CardTitle>
                         <CardDescription>
@@ -98,7 +98,7 @@ export default function LoginPage() {
                                             value={email}
                                             onChange={(e) => setEmail(e.target.value)}
                                             required
-                                            className="pl-10 h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary rounded-xl"
+                                            className="pl-10 h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary rounded-sm"
                                         />
                                     </div>
                                 </div>
@@ -116,20 +116,20 @@ export default function LoginPage() {
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
                                             required
-                                            className="pl-10 h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary rounded-xl"
+                                            className="pl-10 h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary rounded-sm"
                                         />
                                     </div>
                                 </div>
                             </div>
 
                             {error && (
-                                <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium animate-in fade-in slide-in-from-top-1">
+                                <div className="p-3 rounded-sm bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium animate-in fade-in slide-in-from-top-1">
                                     {error}
                                 </div>
                             )}
 
                             {message && (
-                                <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 text-primary text-sm font-medium animate-in fade-in slide-in-from-top-1 text-center italic">
+                                <div className="p-3 rounded-sm bg-primary/10 border border-primary/20 text-primary text-sm font-medium animate-in fade-in slide-in-from-top-1 text-center italic">
                                     {message}
                                 </div>
                             )}
@@ -138,7 +138,7 @@ export default function LoginPage() {
                                 <Button
                                     type="submit"
                                     disabled={loading}
-                                    className="h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg rounded-xl shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                    className="h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg rounded-sm shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
                                 >
                                     {loading ? (
                                         <>
@@ -164,7 +164,7 @@ export default function LoginPage() {
                                     type="button"
                                     onClick={handleSignUp}
                                     disabled={loading}
-                                    className="h-12 border-border/50 hover:bg-secondary/50 rounded-xl transition-all"
+                                    className="h-12 border-border/50 hover:bg-secondary/50 rounded-sm transition-all"
                                 >
                                     Crea una cuenta gratuita
                                 </Button>

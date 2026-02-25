@@ -141,15 +141,15 @@ export function UrlInput({ projectId }: UrlInputProps) {
             {step === 'input' && (
                 <div className="flex flex-col gap-6">
                     {/* Header with manual add button */}
-                    <div className="flex items-center justify-between border-b border-slate-200/50 pb-4">
+                    <div className="flex items-center justify-between border-b border-border/50 pb-4">
                         <div className="flex flex-col gap-1">
                             <h2 className="text-lg font-medium tracking-[0.05em] text-foreground uppercase">Añadir Productos</h2>
-                            <p className="text-xs text-slate-400 tracking-[0.05em]">Navega por la web o añade productos manualmente.</p>
+                            <p className="text-xs text-muted-foreground tracking-[0.05em]">Navega por la web o añade productos manualmente.</p>
                         </div>
                         <Button
                             onClick={() => setShowManualForm(true)}
                             variant="outline"
-                            className="h-10 px-6 border-slate-200 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-slate-50 rounded-sm"
+                            className="h-10 px-6 border-border text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-muted/30 rounded-sm"
                         >
                             <Plus className="w-4 h-4 mr-2" />
                             Añadir Manual
@@ -160,14 +160,14 @@ export function UrlInput({ projectId }: UrlInputProps) {
                     <div className="flex gap-4">
                         <div className="relative flex-1">
                             <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                                <Globe className="w-5 h-5 text-slate-300" />
+                                <Globe className="w-5 h-5 text-muted-foreground/50" />
                             </div>
                             <Input
                                 placeholder="Pega la URL de cualquier tienda (ej: Sklum, Westwing...)"
                                 value={url}
                                 onChange={(e) => setUrl(e.target.value)}
                                 disabled={loading}
-                                className="h-12 pl-12 bg-white border-slate-200/50 rounded-sm focus-visible:ring-slate-200 text-sm tracking-[0.05em]"
+                                className="h-12 pl-12 bg-card border-border/50 rounded-sm focus-visible:ring-border text-sm tracking-[0.05em]"
                                 onKeyDown={(e) => e.key === 'Enter' && handleNavigate()}
                             />
                         </div>
@@ -202,9 +202,9 @@ export function UrlInput({ projectId }: UrlInputProps) {
                     <div className="flex items-center justify-between">
                         <div className="flex flex-col gap-1">
                             <h2 className="text-lg font-medium tracking-[0.05em] text-foreground uppercase">Select Category</h2>
-                            <p className="text-xs text-slate-400 tracking-[0.05em]">Choose a category to extract products from.</p>
+                            <p className="text-xs text-muted-foreground tracking-[0.05em]">Elige una categoría para extraer productos.</p>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => setStep('input')} className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Cancel</Button>
+                        <Button variant="ghost" size="sm" onClick={() => setStep('input')} className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Cancelar</Button>
                     </div>
 
                     <div className="flex flex-wrap gap-3">
@@ -213,7 +213,7 @@ export function UrlInput({ projectId }: UrlInputProps) {
                                 key={cat.name}
                                 className={`px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] rounded-sm transition-all ${selectedCategoryName === cat.name
                                     ? "bg-foreground text-background"
-                                    : "bg-white border border-slate-200/50 text-slate-400 hover:border-slate-300"
+                                    : "bg-card border border-border/50 text-muted-foreground hover:border-muted-foreground/30"
                                     } ${loading ? 'opacity-50 pointer-events-none' : ''}`}
                                 onClick={() => handleCategorySelect(cat.name)}
                             >
@@ -223,9 +223,9 @@ export function UrlInput({ projectId }: UrlInputProps) {
                     </div>
 
                     {loading && (
-                        <div className="flex items-center justify-center gap-3 py-12 text-slate-400">
+                        <div className="flex items-center justify-center gap-3 py-12 text-muted-foreground">
                             <Loader2 className="h-5 w-5 animate-spin" />
-                            <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Loading products...</span>
+                            <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Cargando productos...</span>
                         </div>
                     )}
                 </div>
@@ -236,32 +236,32 @@ export function UrlInput({ projectId }: UrlInputProps) {
                     <div className="flex items-center justify-between">
                         <div className="flex flex-col gap-1">
                             <h2 className="text-lg font-medium tracking-[0.05em] text-foreground uppercase">
-                                Found {previewProducts.length} products
+                                {previewProducts.length} productos encontrados
                             </h2>
-                            <p className="text-xs text-slate-400 tracking-[0.05em]">
+                            <p className="text-xs text-muted-foreground tracking-[0.05em]">
                                 {selectedCategoryName || 'Direct Import'}
                             </p>
                         </div>
                         <div className="flex gap-4">
-                            <Button variant="ghost" size="sm" onClick={() => setStep('category')} className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Back</Button>
-                            <Button variant="ghost" size="sm" onClick={() => setStep('input')} className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Cancel</Button>
+                            <Button variant="ghost" size="sm" onClick={() => setStep('category')} className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Volver</Button>
+                            <Button variant="ghost" size="sm" onClick={() => setStep('input')} className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Cancelar</Button>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-6 pb-4 border-b border-slate-200/50">
+                    <div className="flex items-center gap-6 pb-4 border-b border-border/50">
                         <div className="flex items-center gap-2">
                             <Checkbox
                                 id="select-all"
                                 checked={selectedProducts.size === previewProducts.length && previewProducts.length > 0}
                                 onCheckedChange={toggleAll}
-                                className="rounded-none border-slate-300 data-[state=checked]:bg-foreground data-[state=checked]:border-foreground"
+                                className="rounded-none border-border data-[state=checked]:bg-foreground data-[state=checked]:border-foreground"
                             />
-                            <label htmlFor="select-all" className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 cursor-pointer select-none">
-                                Select All
+                            <label htmlFor="select-all" className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground cursor-pointer select-none">
+                                Seleccionar todo
                             </label>
                         </div>
-                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                            {selectedProducts.size} selected
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                            {selectedProducts.size} seleccionados
                         </span>
                     </div>
 
@@ -272,11 +272,11 @@ export function UrlInput({ projectId }: UrlInputProps) {
                                 className="flex flex-col group cursor-pointer relative"
                                 onClick={(e) => openProductModal(idx, e)}
                             >
-                                <div className="relative aspect-square w-full bg-slate-100 rounded-sm overflow-hidden mb-4 shadow-sm">
+                                <div className="relative aspect-square w-full bg-muted rounded-sm overflow-hidden mb-4 shadow-sm">
                                     {product.image_url ? (
                                         <img src={product.image_url} alt={product.title} className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105" />
                                     ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                                             <ShoppingBag className="w-8 h-8 opacity-20" />
                                         </div>
                                     )}
@@ -286,14 +286,14 @@ export function UrlInput({ projectId }: UrlInputProps) {
                                         <Checkbox
                                             checked={selectedProducts.has(idx)}
                                             onCheckedChange={() => toggleProduct(idx)}
-                                            className="rounded-none border-white/50 bg-black/20 data-[state=checked]:bg-foreground data-[state=checked]:border-foreground"
+                                            className="rounded-none border-card/50 bg-black/20 data-[state=checked]:bg-foreground data-[state=checked]:border-foreground"
                                         />
                                     </div>
 
                                     {/* Hover overlay */}
                                     <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                         <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white bg-black/20 px-3 py-1 rounded-sm backdrop-blur-sm">
-                                            Details
+                                            Detalles
                                         </span>
                                     </div>
                                 </div>
@@ -302,7 +302,7 @@ export function UrlInput({ projectId }: UrlInputProps) {
                                         <h3 className="text-[11px] font-medium text-foreground tracking-[0.05em] truncate uppercase" title={product.title}>
                                             {product.title}
                                         </h3>
-                                        <p className="text-[10px] text-slate-400 mt-0.5 italic tracking-[0.05em]">
+                                        <p className="text-[10px] text-muted-foreground mt-0.5 italic tracking-[0.05em]">
                                             {product.brand || getStoreName(product.original_url)}
                                         </p>
                                     </div>
@@ -322,7 +322,7 @@ export function UrlInput({ projectId }: UrlInputProps) {
                         className="h-14 bg-foreground text-background hover:bg-foreground/90 rounded-sm text-xs font-bold uppercase tracking-[0.2em]"
                     >
                         {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                        Add {selectedProducts.size} Products to Catalog
+                        Añadir {selectedProducts.size} productos al catálogo
                     </Button>
                 </div>
             )}

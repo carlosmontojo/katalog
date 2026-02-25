@@ -28,10 +28,10 @@ export function GenerateCatalogButton({ projectId, products, moodboards }: Gener
             <Button
                 onClick={() => setOpen(true)}
                 variant="outline"
-                className="h-10 px-6 border-slate-200 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-slate-50 rounded-sm"
+                className="h-10 px-6 border-border text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-muted/30 rounded-sm"
             >
                 <LayoutTemplate className="w-4 h-4 mr-2" />
-                Create Catalog
+                Crear Catálogo
             </Button>
 
             <CatalogCreatorModal

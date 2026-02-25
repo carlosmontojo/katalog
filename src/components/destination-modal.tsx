@@ -109,39 +109,39 @@ export function DestinationModal({
                     <>
                         <DialogHeader className="mb-8">
                             <DialogTitle className="text-lg font-medium tracking-[0.05em] text-foreground">
-                                Where do you want to add products?
+                                ¿Dónde quieres añadir los productos?
                             </DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4">
                             <button
                                 onClick={() => setStep('new-form')}
-                                className="w-full flex items-center gap-6 p-6 bg-white border border-slate-200/50 rounded-sm hover:border-slate-300 transition-all text-left group"
+                                className="w-full flex items-center gap-6 p-6 bg-card border border-border/50 rounded-sm hover:border-muted-foreground/30 transition-all text-left group"
                             >
-                                <div className="w-12 h-12 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 group-hover:bg-white transition-colors">
-                                    <Plus className="w-5 h-5 text-slate-400" />
+                                <div className="w-12 h-12 rounded-full bg-muted/50 border border-border/50 flex items-center justify-center shrink-0 group-hover:bg-card transition-colors">
+                                    <Plus className="w-5 h-5 text-muted-foreground" />
                                 </div>
                                 <div>
-                                    <h3 className="text-sm font-semibold text-foreground tracking-[0.05em]">Create new Katalog</h3>
-                                    <p className="text-xs text-slate-400 mt-0.5">Start a fresh catalog</p>
+                                    <h3 className="text-sm font-semibold text-foreground tracking-[0.05em]">Crear nuevo Katalog</h3>
+                                    <p className="text-xs text-muted-foreground mt-0.5">Empezar un catálogo nuevo</p>
                                 </div>
                             </button>
 
                             <button
                                 onClick={() => onSelectExisting()}
                                 disabled={loadingProjects || !hasExistingProjects}
-                                className="w-full flex items-center gap-6 p-6 bg-white border border-slate-200/50 rounded-sm hover:border-slate-300 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full flex items-center gap-6 p-6 bg-card border border-border/50 rounded-sm hover:border-muted-foreground/30 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <div className="w-12 h-12 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 group-hover:bg-white transition-colors">
-                                    <FolderOpen className="w-5 h-5 text-slate-400" />
+                                <div className="w-12 h-12 rounded-full bg-muted/50 border border-border/50 flex items-center justify-center shrink-0 group-hover:bg-card transition-colors">
+                                    <FolderOpen className="w-5 h-5 text-muted-foreground" />
                                 </div>
                                 <div>
-                                    <h3 className="text-sm font-semibold text-foreground tracking-[0.05em]">Add to existing Katalog(s)</h3>
-                                    <p className="text-xs text-slate-400 mt-0.5">
+                                    <h3 className="text-sm font-semibold text-foreground tracking-[0.05em]">Añadir a Katalog existente</h3>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
                                         {loadingProjects
-                                            ? 'Loading...'
+                                            ? 'Cargando...'
                                             : hasExistingProjects
-                                                ? 'Choose catalog when adding products'
-                                                : 'No catalogs yet'}
+                                                ? 'Elige el catálogo al añadir productos'
+                                                : 'Aún no tienes catálogos'}
                                     </p>
                                 </div>
                             </button>
@@ -158,38 +158,38 @@ export function DestinationModal({
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => setStep('choose')}
-                                    className="h-8 w-8 rounded-full hover:bg-slate-50"
+                                    className="h-8 w-8 rounded-full hover:bg-muted/30"
                                 >
-                                    <ArrowLeft className="w-4 h-4 text-slate-400" />
+                                    <ArrowLeft className="w-4 h-4 text-muted-foreground" />
                                 </Button>
                                 <DialogTitle className="text-lg font-medium tracking-[0.05em] text-foreground">
-                                    Create new Katalog
+                                    Crear nuevo Katalog
                                 </DialogTitle>
                             </div>
                         </DialogHeader>
                         <div className="space-y-6">
                             <div>
-                                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] mb-2 block">
-                                    Name *
+                                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.2em] mb-2 block">
+                                    Nombre *
                                 </label>
                                 <Input
-                                    placeholder="e.g., Living Room Furniture 2025"
+                                    placeholder="ej. Mobiliario Salón 2025"
                                     value={newName}
                                     onChange={(e) => setNewName(e.target.value)}
                                     autoFocus
-                                    className="h-10 text-xs tracking-[0.05em] bg-white border-slate-200/50 rounded-sm focus-visible:ring-1 focus-visible:ring-slate-300 focus-visible:ring-offset-0"
+                                    className="h-10 text-xs tracking-[0.05em] bg-card border-border/50 rounded-sm focus-visible:ring-1 focus-visible:ring-border focus-visible:ring-offset-0"
                                 />
                             </div>
                             <div>
-                                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] mb-2 block">
-                                    Description (optional)
+                                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.2em] mb-2 block">
+                                    Descripción (opcional)
                                 </label>
                                 <Textarea
-                                    placeholder="Add a description..."
+                                    placeholder="Añade una descripción..."
                                     value={newDescription}
                                     onChange={(e) => setNewDescription(e.target.value)}
                                     rows={3}
-                                    className="text-xs tracking-[0.05em] bg-white border-slate-200/50 rounded-sm focus-visible:ring-1 focus-visible:ring-slate-300 focus-visible:ring-offset-0 resize-none"
+                                    className="text-xs tracking-[0.05em] bg-card border-border/50 rounded-sm focus-visible:ring-1 focus-visible:ring-border focus-visible:ring-offset-0 resize-none"
                                 />
                             </div>
                         </div>
@@ -204,7 +204,7 @@ export function DestinationModal({
                                 ) : (
                                     <Plus className="w-4 h-4 mr-2" />
                                 )}
-                                Create & Continue
+                                Crear y continuar
                             </Button>
                         </div>
                     </>

@@ -92,7 +92,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return (
         <div className="grid min-h-screen w-full md:grid-cols-[240px_1fr] lg:grid-cols-[280px_1fr] bg-background">
             {/* Desktop Sidebar */}
-            <div className="hidden md:block bg-background border-r border-slate-200/50">
+            <div className="hidden md:block bg-background border-r border-border/50">
                 <div className="flex h-full max-h-screen flex-col">
                     {/* Navigation Section */}
                     <div className="flex-1 overflow-y-auto py-12 px-8">
@@ -103,7 +103,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                                     className="flex items-center gap-2 text-sm font-medium tracking-[0.1em] text-foreground uppercase hover:opacity-70 transition-opacity mb-4"
                                     onClick={() => {/* Toggle Projects */ }}
                                 >
-                                    Projects -
+                                    Proyectos -
                                 </button>
 
                                 <div className="space-y-6 pl-2">
@@ -112,9 +112,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                                             <div className="text-sm font-medium text-foreground mb-2">{year}</div>
                                             <div className="space-y-1.5 pl-4">
                                                 {loadingProjects ? (
-                                                    <Loader2 className="h-3 w-3 animate-spin text-slate-400" />
+                                                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
                                                 ) : !groupedProjects[year] || groupedProjects[year].length === 0 ? (
-                                                    <div className="text-[13px] text-slate-400">No projects</div>
+                                                    <div className="text-[13px] text-muted-foreground">Sin proyectos</div>
                                                 ) : (
                                                     groupedProjects[year].map((project) => (
                                                         <Link
@@ -124,7 +124,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                                                                 "block text-[13px] transition-all hover:opacity-70",
                                                                 pathname === `/dashboard/projects/${project.id}`
                                                                     ? "text-foreground font-semibold underline underline-offset-4"
-                                                                    : "text-slate-500"
+                                                                    : "text-muted-foreground"
                                                             )}
                                                         >
                                                             {project.name}
@@ -140,7 +140,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                             {/* SUPPLIERS */}
                             <div>
                                 <button className="flex items-center gap-2 text-sm font-medium tracking-[0.1em] text-foreground uppercase hover:opacity-70 transition-opacity">
-                                    Suppliers +
+                                    Proveedores +
                                 </button>
                             </div>
                         </nav>
@@ -155,7 +155,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                                 pathname === '/dashboard/settings' && "underline underline-offset-4"
                             )}
                         >
-                            Settings
+                            Ajustes
                         </Link>
                     </div>
                 </div>
@@ -164,7 +164,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             {/* Main Content */}
             <div className="flex flex-col">
                 {/* Header */}
-                <header className="relative flex h-20 items-center justify-between bg-background px-8 border-b border-slate-200/50">
+                <header className="relative flex h-20 items-center justify-between bg-background px-8 border-b border-border/50">
                     {/* Mobile Menu Trigger (Simplified) */}
                     <div className="md:hidden">
                         <Sheet>
@@ -176,9 +176,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                             <SheetContent side="left" className="bg-background p-8">
                                 {/* Mobile Nav Content (Same as Desktop) */}
                                 <nav className="space-y-8 mt-8">
-                                    <div className="text-sm font-medium tracking-[0.1em] uppercase">Projects -</div>
-                                    <div className="text-sm font-medium tracking-[0.1em] uppercase">Suppliers +</div>
-                                    <div className="text-sm font-medium tracking-[0.1em] uppercase">Settings</div>
+                                    <div className="text-sm font-medium tracking-[0.1em] uppercase">Proyectos -</div>
+                                    <div className="text-sm font-medium tracking-[0.1em] uppercase">Proveedores +</div>
+                                    <div className="text-sm font-medium tracking-[0.1em] uppercase">Ajustes</div>
                                 </nav>
                             </SheetContent>
                         </Sheet>
@@ -202,7 +202,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                                 <Button variant="ghost" size="icon" className="rounded-full ring-0 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-transparent">
                                     <Avatar className="h-8 w-8">
                                         <AvatarImage src="/placeholder-user.jpg" alt="User" />
-                                        <AvatarFallback className="bg-transparent text-slate-600">
+                                        <AvatarFallback className="bg-transparent text-muted-foreground">
                                             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                                                 <circle cx="12" cy="7" r="4" />
@@ -212,15 +212,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                                <DropdownMenuLabel>Mi cuenta</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem asChild>
-                                    <Link href="/dashboard/settings">Settings</Link>
+                                    <Link href="/dashboard/settings">Ajustes</Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={handleSignOut} className="text-red-600">
                                     <LogOut className="mr-2 h-4 w-4" />
-                                    <span>Logout</span>
+                                    <span>Cerrar sesión</span>
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>

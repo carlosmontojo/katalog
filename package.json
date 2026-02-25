@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "electron:dev": "NODE_ENV=development electron .",
+    "electron:dev": "unset ELECTRON_RUN_AS_NODE && NODE_ENV=development electron .",
     "electron:build": "next build && electron-builder --mac",
     "electron:build:win": "next build && electron-builder --win",
     "electron:build:all": "next build && electron-builder --mac --win"
@@ -62,7 +62,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "electron": "^33.0.0",
+    "electron": "^33.4.11",
     "electron-builder": "^25.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.0.4",

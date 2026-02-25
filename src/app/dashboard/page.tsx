@@ -366,23 +366,23 @@ export default function Dashboard() {
                 <div className="relative z-10 flex flex-col items-center justify-center h-full px-8">
                     <div className="w-full max-w-5xl bg-white/40 backdrop-blur-md rounded-sm p-16 md:p-24 flex flex-col items-center text-center">
                         <h1 className="text-2xl md:text-3xl font-medium tracking-[0.1em] text-foreground uppercase mb-2">
-                            Start creating your project
+                            Empieza a crear tu proyecto
                         </h1>
-                        <p className="text-sm tracking-[0.05em] text-slate-500 mb-12">
-                            or add products to your existing Katalog
+                        <p className="text-sm tracking-[0.05em] text-muted-foreground mb-12">
+                            o añade productos a un Katalog existente
                         </p>
 
                         <div className="w-full max-w-3xl flex flex-col gap-8">
                             <div className="w-full max-w-2xl flex flex-col gap-6">
                                 <div className="relative w-full">
                                     <div className="absolute left-6 top-1/2 -translate-y-1/2">
-                                        <Globe className="w-5 h-5 text-slate-300" />
+                                        <Globe className="w-5 h-5 text-muted-foreground/50" />
                                     </div>
                                     <Input
-                                        placeholder="Paste a URL from any online store to extract products automatically..."
+                                        placeholder="Pega la URL de cualquier tienda online..."
                                         value={url}
                                         onChange={(e) => setUrl(e.target.value)}
-                                        className="h-16 pl-14 pr-6 text-lg tracking-[0.05em] bg-white border-slate-100 rounded-sm focus-visible:ring-1 focus-visible:ring-slate-200 focus-visible:ring-offset-0 shadow-sm transition-all"
+                                        className="h-16 pl-14 pr-6 text-lg tracking-[0.05em] bg-card border-border/50 rounded-sm focus-visible:ring-1 focus-visible:ring-border focus-visible:ring-offset-0 shadow-sm transition-all"
                                         onKeyDown={(e) => e.key === 'Enter' && setIsBrowserOpen(true)}
                                     />
                                 </div>
@@ -392,7 +392,7 @@ export default function Dashboard() {
                                     disabled={!url.trim()}
                                     className="h-16 px-16 bg-foreground text-background hover:bg-foreground/90 rounded-sm text-[12px] font-bold uppercase tracking-[0.25em] shadow-xl hover:scale-[1.02] active:scale-100 transition-all font-serif"
                                 >
-                                    Search
+                                    Buscar
                                 </Button>
                             </div>
                         </div>
@@ -438,17 +438,17 @@ export default function Dashboard() {
                             <ArrowLeft className="w-5 h-5" />
                         </Button>
                         <div>
-                            <h1 className="text-2xl font-bold text-slate-900">
-                                {selectedCategoryName ? selectedCategoryName : 'Select a Category'}
+                            <h1 className="text-2xl font-bold text-foreground">
+                                {selectedCategoryName ? selectedCategoryName : 'Selecciona una categoría'}
                             </h1>
                             {destination?.type === 'new' && destination.projectName && (
-                                <p className="text-sm text-slate-500">
-                                    Adding to: <span className="font-medium">{destination.projectName}</span>
+                                <p className="text-sm text-muted-foreground">
+                                    Añadiendo a: <span className="font-medium">{destination.projectName}</span>
                                 </p>
                             )}
                             {destination?.type === 'existing' && (
-                                <p className="text-sm text-slate-500">
-                                    You'll choose the Katalog(s) when adding products
+                                <p className="text-sm text-muted-foreground">
+                                    Elegirás el Katalog al añadir productos
                                 </p>
                             )}
                         </div>
@@ -460,12 +460,12 @@ export default function Dashboard() {
                                 key={cat.name}
                                 onClick={() => handleCategorySelect(cat.name, cat.url)}
                                 disabled={analyzing}
-                                className="p-4 border rounded-xl text-left hover:border-slate-400 hover:bg-slate-50 transition-all disabled:opacity-50 disabled:cursor-wait relative"
+                                className="p-4 border rounded-sm text-left hover:border-muted-foreground/30 hover:bg-muted/30 transition-all disabled:opacity-50 disabled:cursor-wait relative"
                             >
-                                <span className="font-medium text-slate-900">{cat.name}</span>
+                                <span className="font-medium text-foreground">{cat.name}</span>
                                 {analyzing && selectedCategoryName === cat.name && ( // Only show spinner on clicked item if we tracked it, but for now global is fine or we can improve UX
                                     <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                                        <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                                     </div>
                                 )}
                             </button>
@@ -498,12 +498,12 @@ export default function Dashboard() {
                         animationDelay: `${i * 100}ms`,
                     }}
                 >
-                    <div className="w-12 h-12 rounded-lg overflow-hidden shadow-lg bg-white border-2 border-slate-900">
+                    <div className="w-12 h-12 rounded-sm overflow-hidden shadow-lg bg-card border-2 border-foreground">
                         {fp.imageUrl ? (
                             <img src={fp.imageUrl} alt="" className="w-full h-full object-cover" />
                         ) : (
-                            <div className="w-full h-full bg-slate-100 flex items-center justify-center">
-                                <ShoppingBag className="w-5 h-5 text-slate-400" />
+                            <div className="w-full h-full bg-muted flex items-center justify-center">
+                                <ShoppingBag className="w-5 h-5 text-muted-foreground" />
                             </div>
                         )}
                     </div>
@@ -514,42 +514,42 @@ export default function Dashboard() {
             {showSuccessMessage && (
                 <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-emerald-500 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-4">
                     <Check className="w-5 h-5" />
-                    <span className="font-medium">{savedCount} products added successfully!</span>
+                    <span className="font-medium">{savedCount} ¡productos añadidos!</span>
                 </div>
             )}
 
             {/* Header */}
-            <div className="border-b bg-white px-6 py-4">
+            <div className="border-b bg-card px-6 py-4">
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="icon" onClick={handleBack}>
                         <ArrowLeft className="w-5 h-5" />
                     </Button>
                     <div className="flex-1">
-                        <h1 className="text-xl font-bold text-slate-900">
-                            {selectedCategoryName || 'Select Products'}
+                        <h1 className="text-xl font-bold text-foreground">
+                            {selectedCategoryName || 'Seleccionar productos'}
                         </h1>
-                        <p className="text-sm text-slate-500">
+                        <p className="text-sm text-muted-foreground">
                             {destination?.type === 'new' && destination.projectName
-                                ? `Adding to: ${destination.projectName}`
-                                : 'Select products and choose Katalog(s) when adding'
+                                ? `Añadiendo a: ${destination.projectName}`
+                                : 'Selecciona productos y elige el Katalog al añadir'
                             }
                         </p>
                     </div>
                     <div className="flex items-center gap-4">
-                        <span className="text-sm text-slate-500">
-                            {selectedProducts.size} selected
+                        <span className="text-sm text-muted-foreground">
+                            {selectedProducts.size} seleccionados
                         </span>
                         <Button
                             onClick={handleAddProductsClick}
                             disabled={saving || selectedProducts.size === 0}
-                            className="bg-slate-900 hover:bg-slate-800"
+                            className="bg-foreground hover:bg-foreground/90 text-background"
                         >
                             {saving ? (
                                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
                             ) : (
                                 <Check className="w-4 h-4 mr-2" />
                             )}
-                            Add {selectedProducts.size} Products
+                            Añadir {selectedProducts.size} productos
                         </Button>
                     </div>
                 </div>
@@ -559,20 +559,20 @@ export default function Dashboard() {
             {loadingProducts ? (
                 <div className="flex-1 flex items-center justify-center">
                     <div className="text-center">
-                        <Loader2 className="w-10 h-10 animate-spin text-slate-400 mx-auto mb-4" />
-                        <p className="text-slate-600">Loading products...</p>
+                        <Loader2 className="w-10 h-10 animate-spin text-muted-foreground mx-auto mb-4" />
+                        <p className="text-muted-foreground">Cargando productos...</p>
                     </div>
                 </div>
             ) : (
                 <>
-                    <div className="px-6 py-3 border-b bg-slate-50 flex items-center gap-4">
+                    <div className="px-6 py-3 border-b bg-muted/30 flex items-center gap-4">
                         <Checkbox
                             id="select-all"
                             checked={selectedProducts.size === products.length && products.length > 0}
                             onCheckedChange={toggleAll}
                         />
                         <label htmlFor="select-all" className="text-sm cursor-pointer">
-                            Select all ({products.length} products)
+                            Seleccionar todo ({products.length} productos)
                         </label>
                     </div>
 
@@ -582,9 +582,9 @@ export default function Dashboard() {
                                 <div
                                     key={idx}
                                     data-product-card
-                                    className={`relative border rounded-lg p-2 cursor-pointer transition-all group bg-white ${selectedProducts.has(idx)
-                                        ? 'ring-2 ring-slate-900 border-slate-900'
-                                        : 'hover:border-slate-300 hover:shadow-sm'
+                                    className={`relative border rounded-sm p-2 cursor-pointer transition-all group bg-card ${selectedProducts.has(idx)
+                                        ? 'ring-2 ring-foreground border-foreground'
+                                        : 'hover:border-muted-foreground/30 hover:shadow-sm'
                                         }`}
                                     onClick={() => openProductDetail(idx)}
                                 >
@@ -598,13 +598,13 @@ export default function Dashboard() {
                                         <Checkbox checked={selectedProducts.has(idx)} />
                                     </div>
 
-                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-sm flex items-center justify-center">
                                         <span className="text-white text-xs flex items-center gap-1">
-                                            <Eye className="w-3 h-3" /> View details
+                                            <Eye className="w-3 h-3" /> Ver detalles
                                         </span>
                                     </div>
 
-                                    <div className="aspect-square bg-slate-100 rounded-md overflow-hidden mb-2">
+                                    <div className="aspect-square bg-muted rounded-sm overflow-hidden mb-2">
                                         {product.image_url ? (
                                             <img
                                                 src={product.image_url}
@@ -613,12 +613,12 @@ export default function Dashboard() {
                                             />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center">
-                                                <ShoppingBag className="w-6 h-6 text-slate-300" />
+                                                <ShoppingBag className="w-6 h-6 text-muted-foreground/50" />
                                             </div>
                                         )}
                                     </div>
                                     <p className="text-xs font-medium line-clamp-2">{product.title}</p>
-                                    <p className="text-xs font-bold text-slate-900 mt-1">
+                                    <p className="text-xs font-bold text-foreground mt-1">
                                         {product.price > 0
                                             ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: product.currency || 'EUR' }).format(product.price)
                                             : '—'}

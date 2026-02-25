@@ -43,7 +43,7 @@ export function MoodboardCard({ moodboard, projectId }: MoodboardCardProps) {
 
     return (
         <div className="flex flex-col group cursor-pointer">
-            <div className="relative aspect-[4/3] w-full bg-slate-100 rounded-sm overflow-hidden mb-4 shadow-sm">
+            <div className="relative aspect-[4/3] w-full bg-muted rounded-sm overflow-hidden mb-4 shadow-sm">
                 <img
                     src={moodboard.image_url}
                     alt={moodboard.name}
@@ -54,15 +54,15 @@ export function MoodboardCard({ moodboard, projectId }: MoodboardCardProps) {
                 <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
                     <button
                         onClick={(e) => { e.stopPropagation(); window.open(moodboard.image_url, '_blank'); }}
-                        className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center hover:bg-white transition-colors"
+                        className="w-10 h-10 rounded-full bg-card/90 backdrop-blur-sm flex items-center justify-center hover:bg-card transition-colors"
                     >
-                        <Eye className="w-4 h-4 text-slate-600" />
+                        <Eye className="w-4 h-4 text-muted-foreground" />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); handleDownload(); }}
-                        className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center hover:bg-white transition-colors"
+                        className="w-10 h-10 rounded-full bg-card/90 backdrop-blur-sm flex items-center justify-center hover:bg-card transition-colors"
                     >
-                        <Download className="w-4 h-4 text-slate-600" />
+                        <Download className="w-4 h-4 text-muted-foreground" />
                     </button>
                 </div>
             </div>
