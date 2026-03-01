@@ -211,24 +211,20 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                     )
 
                     if (productsToEnrich.length > 0) {
-                        setInitStatus(`Fetching prices (${productsToEnrich.length} products)...`)
-                        console.log(`[Catalog] ${productsToEnrich.length} products need price enrichment`)
+                        console.log(`[Catalog] ${productsToEnrich.length} products need enrichment`)
 
-                        // Fetch all in parallel with 15s timeout per product
-                        const TIMEOUT_MS = 15000
-                        await Promise.all(productsToEnrich.map(async (product) => {
+                        // Fetch SEQUENTIALLY to avoid Puppeteer resource contention & API rate limits
+                        const TIMEOUT_MS = 30000
+                        for (let ei = 0; ei < productsToEnrich.length; ei++) {
+                            const product = productsToEnrich[ei]
+                            setInitStatus(`Fetching product details (${ei + 1}/${productsToEnrich.length})...`)
                             try {
-                                const controller = new AbortController()
-                                const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS)
-
                                 const result = await Promise.race([
                                     fetchProductDetails(product.original_url!),
                                     new Promise<{ success: false }>((_, reject) =>
                                         setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS)
                                     )
                                 ]) as any
-
-                                clearTimeout(timeout)
 
                                 if (result?.success && result.details) {
                                     const idx = enrichedProducts.findIndex(p => p.id === product.id)
@@ -258,7 +254,7 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                             } catch (e) {
                                 console.warn(`[Catalog] Skipped enrichment for ${product.title}:`, e)
                             }
-                        }))
+                        }
                     }
 
                     setInitProgress(50)
@@ -361,6 +357,20 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                                 else if (titleLower.includes('taburete')) tipologia = 'Taburete'
                                 else if (titleLower.includes('macetero') || titleLower.includes('maceta')) tipologia = 'Macetero'
                                 else if (titleLower.includes('butaca')) tipologia = 'Butaca'
+                                else if (titleLower.includes('alfombra')) tipologia = 'Alfombra'
+                                else if (titleLower.includes('cojín') || titleLower.includes('cojin')) tipologia = 'Cojín'
+                                else if (titleLower.includes('espejo')) tipologia = 'Espejo'
+                                else if (titleLower.includes('cuadro')) tipologia = 'Cuadro'
+                                else if (titleLower.includes('jarrón') || titleLower.includes('jarron')) tipologia = 'Jarrón'
+                                else if (titleLower.includes('perchero')) tipologia = 'Perchero'
+                                else if (titleLower.includes('aparador')) tipologia = 'Aparador'
+                                else if (titleLower.includes('biombo')) tipologia = 'Biombo'
+                                else if (titleLower.includes('puf') || titleLower.includes('pouf')) tipologia = 'Puf'
+                                else if (titleLower.includes('consola')) tipologia = 'Consola'
+                                else if (titleLower.includes('cómoda') || titleLower.includes('comoda')) tipologia = 'Cómoda'
+                                else if (titleLower.includes('banco')) tipologia = 'Banco'
+                                else if (titleLower.includes('mesita')) tipologia = 'Mesita'
+                                else if (titleLower.includes('estante')) tipologia = 'Estante'
                             }
                             if (tipologia) addText(`Tipo: ${tipologia}`, '#64748b')
 
@@ -400,8 +410,14 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                             }
 
                             // 5. Medidas — full display
-                            const dims = orig.specifications?.dimensions || orig.attributes?.dimensions
-                            if (dims && typeof dims === 'string') {
+                            let dimsRaw = orig.specifications?.dimensions || orig.attributes?.dimensions
+                            // Handle non-string dimensions (objects/arrays from DB)
+                            if (dimsRaw && typeof dimsRaw === 'object') {
+                                if (Array.isArray(dimsRaw)) dimsRaw = dimsRaw.join(', ')
+                                else dimsRaw = Object.entries(dimsRaw).map(([k, v]) => `${k}: ${v}`).join(', ')
+                            }
+                            const dims = typeof dimsRaw === 'string' ? dimsRaw : ''
+                            if (dims) {
                                 const heightMatch = dims.match(/alto?\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(cm|mm|m)?/i)
                                 const widthMatch = dims.match(/ancho?\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(cm|mm|m)?/i)
                                 const depthMatch = dims.match(/(?:profundidad|fondo|prof)\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(cm|mm|m)?/i)
@@ -415,20 +431,31 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
 
                                 if (parts.length > 0) {
                                     addText(`Medidas: ${parts.join(' | ')}`, '#64748b')
+                                } else {
+                                    // Dimensions exist but couldn't parse labeled parts — show raw
+                                    addText(`Medidas: ${dims}`, '#64748b')
                                 }
                             }
 
                             // 6. Materiales — full, cleaned
-                            const materials = orig.specifications?.materials || orig.attributes?.materials
-                            if (materials) {
-                                const matClean = cleanField(materials)
+                            let materialsRaw = orig.specifications?.materials || orig.attributes?.materials
+                            if (materialsRaw && typeof materialsRaw === 'object') {
+                                if (Array.isArray(materialsRaw)) materialsRaw = materialsRaw.join(', ')
+                                else materialsRaw = Object.values(materialsRaw).join(', ')
+                            }
+                            if (materialsRaw) {
+                                const matClean = cleanField(materialsRaw)
                                 if (matClean) addText(`Materiales: ${matClean}`, '#64748b')
                             }
 
                             // 7. Colores — full, cleaned
-                            const colors = orig.specifications?.colors || orig.attributes?.colors
-                            if (colors) {
-                                const colClean = cleanField(colors)
+                            let colorsRaw = orig.specifications?.colors || orig.attributes?.colors
+                            if (colorsRaw && typeof colorsRaw === 'object') {
+                                if (Array.isArray(colorsRaw)) colorsRaw = colorsRaw.join(', ')
+                                else colorsRaw = Object.values(colorsRaw).join(', ')
+                            }
+                            if (colorsRaw) {
+                                const colClean = cleanField(colorsRaw)
                                 if (colClean) addText(`Colores: ${colClean}`, '#64748b')
                             }
 
