@@ -17,15 +17,10 @@ import {
 import { Menu, Package2, FolderOpen, Settings, LogOut, Plus, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
+import { Project } from '@/lib/types'
 
 interface DashboardLayoutProps {
     children: React.ReactNode
-}
-
-interface Project {
-    id: string
-    name: string
-    created_at: string
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {

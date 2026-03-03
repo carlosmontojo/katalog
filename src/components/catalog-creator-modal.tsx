@@ -37,26 +37,7 @@ import {
 import { exportToPSD, exportToSVG, exportToPDF, exportToExcel, exportToInDesign } from '@/lib/moodboard-exporter'
 import { fetchProductDetails, saveProductDetails } from '@/app/scraping-actions'
 import { CatalogStyleSelector, CATALOG_STYLES, CatalogStyle } from './catalog-style-selector'
-
-interface Product {
-    id: string
-    title: string
-    image_url: string
-    price?: number
-    currency?: string
-    description?: string
-    specifications?: any
-    attributes?: any
-    original_url?: string
-    brand?: string
-}
-
-interface Moodboard {
-    id: string
-    name: string
-    image_url: string
-    settings?: any
-}
+import { Product, Moodboard } from '@/lib/types'
 
 interface CatalogPage {
     id: string
@@ -264,7 +245,7 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                         enrichedProducts.map(p => ({
                             id: p.id,
                             title: p.title,
-                            imageUrl: p.image_url
+                            imageUrl: p.image_url || ''
                         })),
                         undefined,
                         { removeBackground: false }
@@ -749,8 +730,8 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                     img.src = mb.image_url
                 })
 
-                const mbWidth = mb.settings?.width || 1200
-                const mbHeight = mb.settings?.height || 800
+                const mbWidth = Number(mb.settings?.width) || 1200
+                const mbHeight = Number(mb.settings?.height) || 800
 
                 const scaleX = baseWidth / mbWidth
                 const scaleY = baseHeight / mbHeight
@@ -844,8 +825,8 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                 if (page.type === 'moodboard') {
                     const mb = moodboards.find(m => m.id === page.moodboardId)
                     if (mb?.settings?.layout) {
-                        const mbWidth = mb.settings.width || 1200
-                        const mbHeight = mb.settings.height || 800
+                        const mbWidth = Number(mb.settings.width) || 1200
+                        const mbHeight = Number(mb.settings.height) || 800
                         const scaleX = baseWidth / mbWidth
                         const scaleY = baseHeight / mbHeight
                         const fitScale = Math.min(scaleX, scaleY)
@@ -935,7 +916,7 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
             const processed = await generator.processImages([{
                 id: product.id,
                 title: product.title,
-                imageUrl: product.image_url
+                imageUrl: product.image_url || ''
             }], undefined, { removeBackground: false })
 
             if (processed.length > 0) {

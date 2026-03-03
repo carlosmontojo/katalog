@@ -1,20 +1,7 @@
 import * as cheerio from 'cheerio';
 
-export interface ProductCandidate {
-    title?: string;
-    price?: string;
-    image_url?: string;
-    product_url?: string;
-    description?: string;
-    dimensions?: string;
-    html_block?: string; // The raw HTML of the card for AI analysis
-}
-
-export interface Category {
-    name: string;
-    url?: string;
-    type?: 'card' | 'text';
-}
+import type { ProductCandidate, Category } from '@/lib/types';
+export type { ProductCandidate, Category };
 
 // Helper: Check if text is a valid category name
 export const isValidCategoryName = (text: string): boolean => {

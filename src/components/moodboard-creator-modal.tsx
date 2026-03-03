@@ -20,14 +20,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { exportToPSD, exportToSVG, exportToPDF } from '@/lib/moodboard-exporter'
-
-interface Product {
-    id: string
-    title: string
-    image_url: string
-    images?: string[]
-    original_url: string
-}
+import { Product } from '@/lib/types'
 
 interface MoodboardCreatorModalProps {
     isOpen: boolean
@@ -80,7 +73,7 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
 
                 products.slice(0, 5).forEach(p => {
                     initial.add(p.id)
-                    initialImages[p.id] = p.image_url
+                    initialImages[p.id] = p.image_url || ''
                 })
 
                 setSelectedProductIds(initial)
@@ -135,7 +128,7 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
         // Process sequentially to avoid overwhelming the server/browser
         for (const product of selectedProducts) {
             try {
-                const result = await updateProductWithMoreImages(product.id, product.original_url)
+                const result = await updateProductWithMoreImages(product.id, product.original_url || '')
 
                 if (result.success && result.images && result.images.length > 0) {
                     // Filter out images with extreme aspect ratios by LOADING them
@@ -273,7 +266,7 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
             const moodboardProducts = selectedProducts.map(p => ({
                 id: p.id,
                 title: p.title,
-                imageUrl: selectedImages[p.id] || p.image_url
+                imageUrl: selectedImages[p.id] || p.image_url || ''
             }))
 
             // 1. Process Images
@@ -611,7 +604,7 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
                                                         ? 'ring-2 ring-primary border-primary bg-primary/5'
                                                         : 'hover:border-primary/50'}
                                             `}
-                                                onClick={() => toggleProduct(product.id, product.image_url)}
+                                                onClick={() => toggleProduct(product.id, product.image_url || '')}
                                             >
                                                 <Checkbox checked={isSelected} />
                                                 <div className="w-16 h-16 bg-slate-100 rounded-md overflow-hidden flex-shrink-0">
@@ -658,7 +651,7 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
                                                         relative min-h-[120px] rounded-md border-2 overflow-hidden cursor-pointer group bg-slate-50 flex items-center justify-center
                                                         ${selectedImages[product.id] === product.image_url ? 'border-primary ring-2 ring-primary/20' : 'border-transparent hover:border-slate-300'}
                                                     `}
-                                                    onClick={() => handleSelectImage(product.id, product.image_url)}
+                                                    onClick={() => handleSelectImage(product.id, product.image_url || '')}
                                                 >
                                                     <img
                                                         src={product.image_url}

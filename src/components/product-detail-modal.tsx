@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { LoadingProgress } from "@/components/ui/loading-progress"
 import { Loader2, Plus, X, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react"
 import { fetchProductDetails, saveProductDetails } from "@/app/scraping-actions"
+import { ProductDetails } from '@/lib/types'
 
 interface ProductDetailModalProps {
     product: {
@@ -27,21 +28,6 @@ interface ProductDetailModalProps {
     onClose: () => void
     onAddToCatalog: () => void
     isSelected: boolean
-}
-
-interface ProductDetails {
-    images: string[]
-    price?: string
-    brand?: string
-    dimensions?: string
-    description?: string
-    materials?: string
-    colors?: string
-    weight?: string
-    capacity?: string
-    style?: string
-    features?: string[]
-    careInstructions?: string
 }
 
 export function ProductDetailModal({

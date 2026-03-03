@@ -4,13 +4,7 @@ import { useState } from 'react'
 import { Download, Eye } from 'lucide-react'
 import { deleteMoodboard } from '@/app/moodboard-actions'
 import { toast } from 'sonner'
-
-interface Moodboard {
-    id: string
-    name: string
-    image_url: string
-    created_at: string
-}
+import { Moodboard } from '@/lib/types'
 
 interface MoodboardCardProps {
     moodboard: Moodboard

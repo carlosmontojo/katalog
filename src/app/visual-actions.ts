@@ -5,8 +5,9 @@ import { revalidatePath } from 'next/cache'
 import OpenAI from 'openai'
 import { JSDOM } from 'jsdom'
 import { parsePrice } from '@/lib/utils/price'
+import { VisualCapture } from '@/lib/types'
 
-export async function processVisualCaptures(projectId: string, captures: any[], supabaseClient?: any) {
+export async function processVisualCaptures(projectId: string, captures: VisualCapture[], supabaseClient?: any) {
     const supabase = supabaseClient || await createClient()
 
     const openai = new OpenAI({
@@ -17,9 +18,9 @@ export async function processVisualCaptures(projectId: string, captures: any[], 
 
     // OPTIMIZATION: Process ALL captures in parallel with timeout
     const TIMEOUT_MS = 8000; // 8 second max per product
-    const productsToSave: any[] = [];
+    const productsToSave: Record<string, unknown>[] = [];
 
-    const processCapture = async (capture: any, index: number) => {
+    const processCapture = async (capture: VisualCapture, index: number) => {
         const captureStart = Date.now()
         try {
             const dom = new JSDOM(capture.html)
@@ -70,7 +71,7 @@ export async function processVisualCaptures(projectId: string, captures: any[], 
             // Use preview image from visual selection (already validated client-side)
             const mainImage = capture.previewImage || snippetImage || null;
 
-            const product: any = {
+            const product: Record<string, unknown> = {
                 project_id: projectId,
                 title: basicInfo.name || 'Producto capturado',
                 brand: brand,
@@ -100,7 +101,7 @@ export async function processVisualCaptures(projectId: string, captures: any[], 
     }
 
     // Wrap each capture with timeout
-    const withTimeout = async (capture: any, index: number) => {
+    const withTimeout = async (capture: VisualCapture, index: number) => {
         return Promise.race([
             processCapture(capture, index),
             new Promise<null>((resolve) => {

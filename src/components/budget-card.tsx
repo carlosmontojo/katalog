@@ -4,16 +4,7 @@ import { useState } from 'react'
 import { Download, Trash2, FileSpreadsheet } from 'lucide-react'
 import { deleteBudget } from '@/app/budget-actions'
 import { toast } from 'sonner'
-
-interface Budget {
-    id: string
-    name: string
-    file_url: string
-    total: number
-    product_ids: string[]
-    created_at: string
-    settings?: any
-}
+import { Budget } from '@/lib/types'
 
 interface BudgetCardProps {
     budget: Budget
