@@ -13,7 +13,6 @@ export async function processVisualCaptures(projectId: string, captures: any[], 
         apiKey: process.env.OPENAI_API_KEY,
     })
 
-    console.log(`[Visual Processor] 🚀 FAST MODE: Starting for project ${projectId} with ${captures.length} captures`)
     const startTime = Date.now()
 
     // OPTIMIZATION: Process ALL captures in parallel with timeout
@@ -23,8 +22,6 @@ export async function processVisualCaptures(projectId: string, captures: any[], 
     const processCapture = async (capture: any, index: number) => {
         const captureStart = Date.now()
         try {
-            console.log(`[Visual Processor] [${index + 1}/${captures.length}] Processing: ${capture.url?.substring(0, 50)}...`)
-
             const dom = new JSDOM(capture.html)
             const doc = dom.window.document
 
@@ -94,8 +91,6 @@ export async function processVisualCaptures(projectId: string, captures: any[], 
                 }
             }
 
-            const elapsed = Date.now() - captureStart
-            console.log(`[Visual Processor] ✅ [${index + 1}] ${product.title?.substring(0, 30)} - ${elapsed}ms`)
             return product
 
         } catch (error) {
@@ -117,8 +112,7 @@ export async function processVisualCaptures(projectId: string, captures: any[], 
         ])
     }
 
-    // Process ALL in parallel (no batching)
-    console.log(`[Visual Processor] 🔄 Processing ${captures.length} products in parallel...`)
+    // Process ALL in parallel
     const results = await Promise.allSettled(captures.map((c, i) => withTimeout(c, i)))
 
     for (const result of results) {
@@ -127,11 +121,7 @@ export async function processVisualCaptures(projectId: string, captures: any[], 
         }
     }
 
-    const totalElapsed = Date.now() - startTime
-    console.log(`[Visual Processor] ⚡ Processed ${productsToSave.length}/${captures.length} in ${totalElapsed}ms`)
-
     if (productsToSave.length > 0) {
-        console.log(`[Visual Processor] Saving ${productsToSave.length} products to DB...`)
 
         // Try inserting with brand/status. If it fails due to column mismatch, try without them.
         const { data, error } = await supabase
@@ -144,7 +134,6 @@ export async function processVisualCaptures(projectId: string, captures: any[], 
 
             // Fallback: If column 'brand' or 'status' is missing, remove them and try again
             if (error.message?.includes('brand') || error.message?.includes('status') || error.code === 'PGRST204') {
-                console.log('[Visual Processor] retrying without brand/status columns...')
                 const fallbackProducts = productsToSave.map(p => {
                     const { brand, status, ...rest } = p;
                     // Move brand to attributes so it's not lost
@@ -158,7 +147,6 @@ export async function processVisualCaptures(projectId: string, captures: any[], 
 
                 if (retryError) throw retryError;
 
-                console.log(`[Visual Processor] Successfully saved ${retryData.length} products (fallback mode).`)
                 revalidatePath(`/dashboard/projects/${projectId}`)
                 return retryData;
             }
@@ -166,11 +154,9 @@ export async function processVisualCaptures(projectId: string, captures: any[], 
             throw error
         }
 
-        console.log(`[Visual Processor] Successfully saved ${data.length} products.`)
         revalidatePath(`/dashboard/projects/${projectId}`)
         return data
     }
 
-    console.log('[Visual Processor] No products were successfully processed')
     return []
 }

@@ -211,8 +211,6 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                     )
 
                     if (productsToEnrich.length > 0) {
-                        console.log(`[Catalog] ${productsToEnrich.length} products need enrichment`)
-
                         // Fetch SEQUENTIALLY to avoid Puppeteer resource contention & API rate limits
                         const TIMEOUT_MS = 30000
                         for (let ei = 0; ei < productsToEnrich.length; ei++) {

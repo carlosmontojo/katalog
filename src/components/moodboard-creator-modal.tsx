@@ -131,15 +131,10 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
         // or use Promise.all with concurrency limit if needed. 
         const updatedProducts = [...localProducts]
 
-        console.log('Starting image fetch for', selectedProducts.length, 'products')
-
         // Process sequentially to avoid overwhelming the server/browser
         for (const product of selectedProducts) {
-            console.log(`Processing product: ${product.title} (${product.id})`)
-
             try {
                 const result = await updateProductWithMoreImages(product.id, product.original_url)
-                console.log(`Result for ${product.title}:`, result.success, result.images?.length)
 
                 if (result.success && result.images && result.images.length > 0) {
                     // Filter out images with extreme aspect ratios by LOADING them
@@ -152,22 +147,18 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
                                     const ratio = img.width / img.height;
                                     // Filter out extreme aspect ratios (strips/slices)
                                     if (ratio > 3.5 || ratio < 0.28) {
-                                        console.log(`[Moodboard] Filtering strip image: ${img.width}x${img.height}, ratio: ${ratio.toFixed(2)}, url: ${imgUrl.slice(-50)}`);
                                         resolve(null);
                                     } else if (img.width < 100 || img.height < 100) {
-                                        console.log(`[Moodboard] Filtering tiny image: ${img.width}x${img.height}`);
                                         resolve(null);
                                     } else {
                                         resolve(imgUrl);
                                     }
                                 };
                                 img.onerror = () => {
-                                    console.log(`[Moodboard] Image failed to load, keeping anyway: ${imgUrl.slice(-50)}`);
                                     resolve(imgUrl); // Keep on error - might work later
                                 };
                                 // Timeout after 8 seconds
                                 setTimeout(() => {
-                                    console.log(`[Moodboard] Image timeout, keeping: ${imgUrl.slice(-50)}`);
                                     resolve(imgUrl);
                                 }, 8000);
                                 img.src = imgUrl;
@@ -176,7 +167,6 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
                     );
 
                     const filteredImages = validImages.filter((img): img is string => img !== null);
-                    console.log(`[Moodboard] Filtered ${result.images.length - filteredImages.length} strip images for ${product.title}`);
 
                     // Update local state
                     const index = updatedProducts.findIndex(p => p.id === product.id)
@@ -194,7 +184,6 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
             setFetchProgress(Math.round((completed / total) * 100))
         }
 
-        console.log('All fetches completed')
         setLocalProducts(updatedProducts)
         setStep('select-images')
     }
@@ -703,7 +692,6 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
                                                                 const ratio = imgEl.naturalWidth / imgEl.naturalHeight;
                                                                 // Hide strip/slice images with extreme aspect ratios
                                                                 if (ratio > 3.5 || ratio < 0.28 || imgEl.naturalWidth < 80 || imgEl.naturalHeight < 80) {
-                                                                    console.log(`[UI] Hiding strip image: ${imgEl.naturalWidth}x${imgEl.naturalHeight}, ratio: ${ratio.toFixed(2)}`);
                                                                     const container = imgEl.closest('div');
                                                                     if (container) container.style.display = 'none';
                                                                 }

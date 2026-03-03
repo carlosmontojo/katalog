@@ -170,17 +170,13 @@ Si realmente no puedes determinar las dimensiones ni siquiera aproximadas:
 `;
 
     try {
-        console.log(`[Gemini] Searching dimensions for: ${searchContext}`);
         const result = await model.generateContent(prompt);
         const responseText = result.response.text();
-        console.log(`[Gemini] Raw response: ${responseText.substring(0, 200)}`);
 
         const data = JSON.parse(responseText);
         if (data.found && data.dimensions) {
-            console.log(`[Gemini] Found dimensions: ${data.dimensions} (estimated: ${data.estimated})`);
             return data.dimensions;
         }
-        console.log(`[Gemini] No dimensions found in response`);
         return null;
     } catch (error) {
         console.error("[Gemini] Search Dimensions Error:", error);

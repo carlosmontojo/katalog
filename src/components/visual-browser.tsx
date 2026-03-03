@@ -86,7 +86,6 @@ export function VisualBrowser({ projectId, initialUrl = '', onClose, onSuccess }
     useEffect(() => {
         const sendMode = () => {
             if (iframeRef.current?.contentWindow) {
-                console.log(`[VisualBrowser] Sending mode: ${selectionMode} to iframe`);
                 iframeRef.current.contentWindow.postMessage({ type: 'SET_MODE', mode: selectionMode }, '*')
             }
         };
@@ -346,14 +345,12 @@ export function VisualBrowser({ projectId, initialUrl = '', onClose, onSuccess }
                         }
                     }, true);
 
-                    console.log('[Kattlog] Premium capture script injected');
                 })();
             `;
             webview.executeJavaScript(script).catch(console.error)
         }
 
         const handleDomReady = () => {
-            console.log('[VisualBrowser] Webview DOM ready, injecting script...')
             setWebviewReady(true)
             injectCaptureScript()
         }
@@ -397,7 +394,6 @@ export function VisualBrowser({ projectId, initialUrl = '', onClose, onSuccess }
                 setCapturedItems(prev => [...prev, item])
             }
             if (event.data?.type === 'READY') {
-                console.log('[VisualBrowser] Iframe ready, syncing mode...');
                 iframeRef.current?.contentWindow?.postMessage({ type: 'SET_MODE', mode: selectionMode }, '*')
             }
         }

@@ -86,7 +86,6 @@ export function ProductDetailModal({
 
                 // SAVE DETAILS TO DATABASE (fire-and-forget to avoid revalidation race)
                 if (product.id) {
-                    console.log('[ProductDetail] Saving details to database for product:', product.id)
                     saveProductDetails(product.id, {
                         description: result.details.description,
                         dimensions: result.details.dimensions,

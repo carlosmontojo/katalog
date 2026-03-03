@@ -92,8 +92,6 @@ export class MoodboardGenerator {
 
         const processedImages = await Promise.all(products.map(async (p, index) => {
             try {
-                console.log(`Processing image for ${p.title} (${p.id})...`)
-
                 // 1. Fetch image via server to avoid CORS
                 const base64Image = await fetchImage(p.imageUrl)
                 if (!base64Image) throw new Error('Failed to fetch image from server')
@@ -108,7 +106,6 @@ export class MoodboardGenerator {
                         // VALIDATION: Check if blob is valid
                         if (blob && blob.size > 5000) {
                             url = URL.createObjectURL(blob)
-                            console.log(`Background removed for ${p.title}`)
                         } else {
                             console.warn(`Generated blob too small for ${p.title}, using original.`)
                         }

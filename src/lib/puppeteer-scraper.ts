@@ -22,8 +22,6 @@ export async function scrapeUrlWithPuppeteer(url: string, options?: { quickMode?
     let browser;
 
     try {
-        console.log(`[Puppeteer] Starting scrape for: ${url}`);
-
         // Launch browser with stealthier args
         browser = await puppeteer.launch({
             headless: true,
@@ -60,7 +58,6 @@ export async function scrapeUrlWithPuppeteer(url: string, options?: { quickMode?
         });
 
         // Navigate to the page
-        console.log(`[Puppeteer] Navigating to ${url}... (quick=${quick})`);
         const response = await page.goto(url, {
             waitUntil: quick ? 'domcontentloaded' : 'networkidle2',
             timeout: quick ? 10000 : 20000
@@ -70,7 +67,6 @@ export async function scrapeUrlWithPuppeteer(url: string, options?: { quickMode?
         let statusCode = 0;
         if (response) {
             statusCode = response.status();
-            console.log(`[Puppeteer] Response status: ${statusCode}`);
         }
 
         // Wait for JS rendering — shorter in quick mode
@@ -78,7 +74,6 @@ export async function scrapeUrlWithPuppeteer(url: string, options?: { quickMode?
 
         if (!quick) {
             // Full scroll for catalog/listing pages
-            console.log(`[Puppeteer] Scrolling to load content...`);
             await autoScroll(page);
             await new Promise(resolve => setTimeout(resolve, 2000));
         }
@@ -102,8 +97,6 @@ export async function scrapeUrlWithPuppeteer(url: string, options?: { quickMode?
                 }
             };
         }
-
-        console.log(`[Puppeteer] Success! HTML size: ${html.length} bytes, Duration: ${duration}ms`);
 
         await browser.close();
 
@@ -182,7 +175,6 @@ async function autoScroll(page: any) {
                         if (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
                             btn.click();
                             loadMoreFound++;
-                            console.log(`[AutoScroll] Clicked Load More button #${loadMoreFound}: ${btn.textContent?.trim()}`);
                             // Wait a bit more after a click to let content load
                             scrollAttempts = 0;
                         }
@@ -199,7 +191,6 @@ async function autoScroll(page: any) {
                 // If we've reached the end or max attempts or max height
                 if (scrollAttempts >= maxAttempts || totalHeight >= maxScrollHeight) {
                     clearInterval(timer);
-                    console.log(`[AutoScroll] Finished at ${totalHeight}px with ${loadMoreFound} load more clicks`);
                     resolve();
                 }
             }, 600); // 600ms to allow clicks and loading and rendering

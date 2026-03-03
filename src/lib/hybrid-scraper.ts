@@ -25,8 +25,6 @@ export async function scrapeUrlHybrid(url: string, options: any = {}): Promise<H
     const startTime = Date.now();
     const quick = options.quickMode ?? false;
 
-    console.log(`[Hybrid Scraper] Starting with Puppeteer... (quick=${quick})`);
-
     // Try Puppeteer first
     const puppeteerResult = await scrapeUrlWithPuppeteer(url, { quickMode: quick });
 
@@ -49,11 +47,8 @@ export async function scrapeUrlHybrid(url: string, options: any = {}): Promise<H
         htmlContent.includes('Página no encontrada')
     ) && htmlLength < 30000; // Only a soft 404 if HTML is small
 
-    console.log(`[Hybrid Scraper] Puppeteer result: success=${puppeteerResult.success}, htmlLength=${htmlLength}, statusCode=${puppeteerResult.statusCode}, hasProductContent=${hasProductContent}, isTrueSoft404=${isTrueSoft404}`);
-
     // Accept Puppeteer result if: success AND (has product content OR large HTML) AND not a true soft 404
     if (puppeteerResult.success && puppeteerResult.html && (hasProductContent || htmlLength > 10000) && !isTrueSoft404) {
-        console.log('[Hybrid Scraper] ✅ Puppeteer succeeded with sufficient HTML!');
         return {
             success: true,
             html: puppeteerResult.html,
@@ -67,8 +62,6 @@ export async function scrapeUrlHybrid(url: string, options: any = {}): Promise<H
     }
 
     // Puppeteer failed or returned insufficient content - try Firecrawl
-    console.log('[Hybrid Scraper] ⚠️  Puppeteer insufficient or blocked, trying Firecrawl fallback...');
-
     const firecrawlResult = await scrapeUrlWithFirecrawl(url, {
         waitFor: quick ? 2000 : 5000,
         timeout: quick ? 15000 : 30000,
@@ -76,11 +69,7 @@ export async function scrapeUrlHybrid(url: string, options: any = {}): Promise<H
         ...options
     });
 
-    const firecrawlHtmlLength = firecrawlResult.data?.html?.length || 0;
-    console.log(`[Hybrid Scraper] Firecrawl result: success=${firecrawlResult.success}, htmlLength=${firecrawlHtmlLength}`);
-
     if (firecrawlResult.success && firecrawlResult.data?.html) {
-        console.log('[Hybrid Scraper] ✅ Firecrawl fallback succeeded!');
         return {
             success: true,
             html: firecrawlResult.data.html,

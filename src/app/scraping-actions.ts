@@ -37,7 +37,6 @@ export async function createProjectAction(name: string, description?: string) {
 
 export async function detectCategories(url: string, countryCode?: string) {
     try {
-        console.log(`[detectCategories] Scraping ${url} with Hybrid scraper (Country: ${countryCode || 'Default'})...`);
         const scrapeResult = await scrapeUrlHybrid(url, { location: countryCode });
         const html = scrapeResult.html;
 
@@ -45,11 +44,8 @@ export async function detectCategories(url: string, countryCode?: string) {
             return { success: false, error: 'Failed to scrape HTML' };
         }
 
-        console.log('[detectCategories] HTML fetched, length:', html.length);
-
         // 0. Check if it's a Product Detail Page (PDP)
         if (isProductDetailPage(html)) {
-            console.log('[detectCategories] Product Detail Page detected. Returning empty categories to trigger product view.');
             return { success: true, categories: [] };
         }
 
@@ -73,15 +69,11 @@ export async function detectCategories(url: string, countryCode?: string) {
             /^\/[a-z]{2}$/i.test(path);
 
         if (isRoot) {
-            console.log('[detectCategories] Root URL detected. Extracting Global Navigation with AI.');
-
             // 1. Extract Navigation HTML
             const navHtml = extractNavHtml(html);
-            console.log(`[detectCategories] Extracted Nav HTML (length: ${navHtml.length})`);
 
             // 2. Ask AI to extract structured categories
             const aiCategories = await inferCategoriesFromOpenAI(navHtml, url);
-            console.log(`[detectCategories] AI found ${aiCategories.length} categories.`);
 
             if (aiCategories.length > 0) {
                 // Map to Category interface
@@ -94,48 +86,33 @@ export async function detectCategories(url: string, countryCode?: string) {
             }
 
             // 3. Fallback to DOM if AI fails
-            console.log('[detectCategories] AI returned no categories (likely quota issue). Fallback to DOM using Nav HTML snippet.');
-
             // Try to extract from the snippet first (more precise)
             let categories = extractGlobalNavigation(navHtml, url);
-            console.log(`[detectCategories] Found ${categories.length} categories from Nav HTML snippet.`);
 
             // If snippet failed or returned too few, try the whole page
             if (categories.length < 3) {
-                console.log('[detectCategories] Snippet extraction failed or too small. Fallback to full page DOM.');
                 categories = extractGlobalNavigation(html, url);
-                console.log(`[detectCategories] Found ${categories.length} categories from full page DOM.`);
             }
 
             return { success: true, categories: deduplicate(categories) };
         }
 
         // 2. Inner Page Strategy
-        console.log('[detectCategories] Inner Page detected. Analyzing Content...');
-
         // A. Check for Products (PLP)
         const products = parseProductPage(html, url);
-        console.log(`[detectCategories] Found ${products.length} products.`);
 
         // B. Check for Content Categories (Department Page)
         // We look for visual cards that are NOT products (no price)
         const contentCategories = extractContentCategories(html, url);
-        console.log(`[detectCategories] Found ${contentCategories.length} content categories.`);
 
         // DECISION LOGIC
         const totalCategories = contentCategories.length;
         const totalProducts = products.length;
 
-        console.log(`[detectCategories] Analysis: ${totalCategories} categories, ${totalProducts} products, isRoot: ${isRoot}`);
-
         // Case 1: Found Categories -> ALWAYS show categories
-        // We remove all "intelligent" bypasses. If there are categories, the user MUST choose.
         if (totalCategories > 0) {
-            console.log(`[detectCategories] Found ${totalCategories} categories. Showing category view.`);
-
             // If it's the root or we found very few sub-categories, merge with global nav to be exhaustive
             if (isRoot || totalCategories < 10) {
-                console.log('[detectCategories] Merging with Global Navigation for better coverage.');
                 const globalNav = extractGlobalNavigation(html, url);
                 return { success: true, categories: deduplicate([...contentCategories, ...globalNav]) };
             }
@@ -145,12 +122,10 @@ export async function detectCategories(url: string, countryCode?: string) {
 
         // Case 2: No Categories but HAS Products -> Show Product View
         if (totalProducts > 0) {
-            console.log(`[detectCategories] No categories found but ${totalProducts} products exist. Showing Product View.`);
             return { success: true, categories: [] }; // Empty categories = Product View
         }
 
         // Case 3: Fallback to Global Nav (Last resort)
-        console.log('[detectCategories] No content found. Fallback to Global Navigation.');
         const globalNav = extractGlobalNavigation(html, url);
         return { success: true, categories: deduplicate(globalNav) };
 
@@ -163,11 +138,8 @@ export async function detectCategories(url: string, countryCode?: string) {
 export async function scrapeProducts(projectId: string, url: string, category: string, preview: boolean = false, skipKeywordFilter: boolean = false, countryCode?: string) {
     const supabase = await createClient();
 
-    console.log(`[Scrape Products] Starting scrape for:`, { url, category, preview, skipKeywordFilter, countryCode });
-
     try {
         // 1. Fetch Full HTML using Hybrid Scraper (Puppeteer → Firecrawl fallback)
-        console.log(`[Scrape Products] Using Hybrid scraper for: ${url} (Country: ${countryCode || 'Default'})`);
         const scrapeResult = await scrapeUrlHybrid(url, { location: countryCode });
 
         if (!scrapeResult.html || scrapeResult.html.length < 1000) {
@@ -179,27 +151,14 @@ export async function scrapeProducts(projectId: string, url: string, category: s
             };
         }
 
-        console.log(`[Scrape Products] Success! Method: ${scrapeResult.method}, HTML: ${scrapeResult.html.length} chars`);
         const html = scrapeResult.html;
 
         // 2. Parse DOM for Candidates
         let candidates = parseProductPage(html, url);
-        console.log(`[Scrape Products] Parsed ${candidates.length} product candidates`);
 
         // IF NO CANDIDATES FOUND: Use AI to identify product cards from a snippet
         if (candidates.length === 0) {
-            console.log(`[Scrape Products] No products found via DOM parsing. Falling back to AI identification...`);
             candidates = await identifyProductsViaAI(html, url);
-        }
-
-        // DEBUG: Show sample candidates
-        if (candidates.length > 0) {
-            console.log(`[Scrape Products] Sample candidates:`, candidates.slice(0, 5).map(c => ({
-                title: c.title,
-                price: c.price,
-                hasImage: !!c.image_url,
-                hasUrl: !!c.product_url
-            })));
         }
 
         if (candidates.length === 0) {
@@ -240,7 +199,6 @@ export async function scrapeProducts(projectId: string, url: string, category: s
                 return keywords.some((k: string) => text.includes(k.toLowerCase()));
             });
 
-            console.log(`Filtered ${candidates.length} -> ${filteredCandidates.length} products using keywords:`, keywords);
         }
 
         if (filteredCandidates.length === 0) {
@@ -302,20 +260,11 @@ export async function scrapeProducts(projectId: string, url: string, category: s
                 is_visible: true
             };
 
-            // Debug logging
-            console.log('[Product Mapped]', {
-                title: product.title?.substring(0, 30),
-                priceRaw: c.price,
-                priceParsed: product.price,
-                descriptionLength: product.description?.length || 0
-            });
-
             return product;
         });
 
         // IF PREVIEW: Return the products without saving
         if (preview) {
-            console.log(`[Preview Mode] Returning ${validProducts.length} products`);
             return { success: true, count: validProducts.length, products: validProducts };
         }
 
@@ -360,12 +309,9 @@ export async function enrichProductDimensions(productId: string, productTitle: s
     const supabase = await createClient();
 
     try {
-        console.log(`[Enrich] Searching dimensions for: ${productTitle}`);
-
         const dimensions = await searchProductDimensions(productTitle, siteName);
 
         if (dimensions) {
-            console.log(`[Enrich] Found dimensions: ${dimensions}`);
 
             // Update the product in the database
             const { error } = await supabase
@@ -379,7 +325,6 @@ export async function enrichProductDimensions(productId: string, productTitle: s
 
             return { success: true, dimensions };
         } else {
-            console.log(`[Enrich] No dimensions found for: ${productTitle}`);
             return { success: false, error: 'No dimensions found' };
         }
     } catch (error: any) {
@@ -398,8 +343,6 @@ export async function enrichProductDimensions(productId: string, productTitle: s
  */
 export async function fetchProductDetails(productUrl: string) {
     try {
-        console.log(`[FetchDetails] Scraping product page: ${productUrl}`);
-
         const scrapeResult = await scrapeUrlHybrid(productUrl, { quickMode: true });
 
         if (!scrapeResult.success || !scrapeResult.html) {
@@ -457,7 +400,6 @@ export async function fetchProductDetails(productUrl: string) {
         };
 
         // P1: JSON-LD (Most reliable for e-commerce)
-        console.log('[FetchDetails] P1: Extracting from JSON-LD...');
         $('script[type="application/ld+json"]').each((_, el) => {
             try {
                 const json = JSON.parse($(el).html() || '{}');
@@ -483,10 +425,7 @@ export async function fetchProductDetails(productUrl: string) {
                 // Silent fail for JSON-LD parse errors
             }
         });
-        console.log(`[FetchDetails] P1 JSON-LD found: ${images.length} images`);
-
         // P2: OpenGraph meta tags
-        console.log('[FetchDetails] P2: Extracting from og:image...');
         const ogImages = $('meta[property="og:image"], meta[property="og:image:secure_url"]');
         ogImages.each((_, el) => {
             addImage($(el).attr('content'));
@@ -495,10 +434,7 @@ export async function fetchProductDetails(productUrl: string) {
         $('meta[name="twitter:image"], meta[name="twitter:image:src"]').each((_, el) => {
             addImage($(el).attr('content'));
         });
-        console.log(`[FetchDetails] P2 after og:image: ${images.length} images`);
-
         // P3: Universal gallery detection - find containers with multiple product images
-        console.log('[FetchDetails] P3: Universal gallery detection...');
 
         // Data attributes that commonly hold high-res image URLs
         const srcAttrs = [
@@ -588,12 +524,8 @@ export async function fetchProductDetails(productUrl: string) {
                 // Invalid selector, skip
             }
         });
-        console.log(`[FetchDetails] P3 after galleries: ${images.length} images`);
-
         // P4: All remaining images — ONLY if we have fewer than 5 good images
-        // Otherwise P4 tends to pick up low-res thumbnails from other page sections
         if (images.length < 5) {
-            console.log('[FetchDetails] P4: Scanning all images with data attributes...');
             const mainContent = $('main, article, .product-container, .product-detail, .pdp, #main-content, .page-content, .product-page, [role="main"]').first();
             const context = mainContent.length ? mainContent : $('body');
 
@@ -626,14 +558,10 @@ export async function fetchProductDetails(productUrl: string) {
                     }
                 }
             });
-            console.log(`[FetchDetails] P4 after all imgs: ${images.length} images`);
-        } else {
-            console.log(`[FetchDetails] P4: Skipped (already have ${images.length} good images)`);
         }
 
         // P5: If still very few images, try background images in style attrs
         if (images.length < 3) {
-            console.log('[FetchDetails] P5: Checking background images...');
             $('body').find('[style*="background-image"]').each((_: any, el: any) => {
                 const style = $(el).attr('style') || '';
                 const match = style.match(/background-image:\s*url\(['"]?([^'")\s]+)['"]?\)/i);
@@ -645,7 +573,6 @@ export async function fetchProductDetails(productUrl: string) {
 
         // P6: Regex search for CDN image URLs in raw HTML (catches SPAs/React apps)
         if (images.length < 5) {
-            console.log('[FetchDetails] P6: Searching for CDN URLs in raw HTML...');
             const rawHtml = scrapeResult.html;
 
             // Known e-commerce image CDN patterns
@@ -682,7 +609,6 @@ export async function fetchProductDetails(productUrl: string) {
                     addImage(url);
                 }
             });
-            console.log(`[FetchDetails] P6 after regex: ${images.length} images`);
         }
 
         // Final cleanup and deduplication
@@ -719,7 +645,6 @@ export async function fetchProductDetails(productUrl: string) {
 
         // Limit to 15 images
         const finalImages = validatedImages.slice(0, 15);
-        console.log(`[FetchDetails] Final: ${finalImages.length} validated images (from ${images.length} candidates)`);
 
         // Get body text for extraction
         const bodyText = $('body').text().replace(/\s+/g, ' ');
@@ -899,14 +824,6 @@ export async function fetchProductDetails(productUrl: string) {
                             }
                         }
 
-                        console.log('[FetchDetails] JSON-LD extracted:', {
-                            hasDescription: !!jsonLdDescription,
-                            hasPrice: !!extractedPrice,
-                            hasMaterials: !!materials,
-                            hasColors: !!colors,
-                            hasDimensions: !!dimensions,
-                            hasWeight: !!weight
-                        });
                     }
                 }
             } catch (e) {
@@ -1010,8 +927,6 @@ export async function fetchProductDetails(productUrl: string) {
                     textForAI = cleanBody.text().replace(/\s+/g, ' ').trim().substring(0, 15000);
                 }
 
-                console.log(`[FetchDetails] Sending ${textForAI.length} chars to AI for extraction (need: dims=${!dimensions}, mats=${!materials}, colors=${!colors}, desc=${!description})`);
-
                 const aiResponse = await openai.chat.completions.create({
                     model: 'gpt-4o-mini',
                     messages: [
@@ -1053,7 +968,6 @@ RULES:
                 });
 
                 const aiSpecs = JSON.parse(aiResponse.choices[0].message.content || '{}');
-                console.log('[FetchDetails] AI extracted specs:', aiSpecs);
 
                 // Map AI results - only if not already found from JSON-LD
                 if (!extractedPrice && aiSpecs.price) extractedPrice = aiSpecs.price;
@@ -1211,7 +1125,6 @@ export async function updateProductWithMoreImages(productId: string, productUrl:
     const supabase = await createClient();
 
     try {
-        console.log(`[UpdateImages] Fetching details and images for: ${productUrl}`);
         const result = await fetchProductDetails(productUrl);
 
         if (!result.success || !result.details) {
@@ -1219,7 +1132,6 @@ export async function updateProductWithMoreImages(productId: string, productUrl:
         }
 
         const { images, dimensions, description, materials, colors, weight, price } = result.details;
-        console.log(`[UpdateImages] Found ${images.length} images, dimensions: ${dimensions}, materials: ${materials}, price: ${price}`);
 
         // Build update object with all available data
         const updateData: Record<string, any> = {};
@@ -1281,7 +1193,6 @@ export async function saveProductDetails(productId: string, details: {
     const supabase = await createClient();
 
     try {
-        console.log(`[SaveDetails] Saving details for product ${productId}`);
 
         const updateData: Record<string, any> = {};
 
@@ -1322,7 +1233,6 @@ export async function saveProductDetails(productId: string, details: {
 
         if (error) throw error;
 
-        console.log(`[SaveDetails] Saved product details:`, Object.keys(updateData));
         revalidatePath('/dashboard/projects/[id]');
         return { success: true };
 
@@ -1349,8 +1259,6 @@ async function identifyProductsViaAI(html: string, baseUrl: string): Promise<Pro
         // Take a chunk of the main content
         const mainContent = $('main, #content, .content, #main, .main').first().html() || $('body').html() || '';
         const snippet = mainContent.substring(0, 50000); // 50k chars is usually enough for a list
-
-        console.log(`[identifyProductsViaAI] Sending ${snippet.length} chars to AI for product list extraction...`);
 
         const response = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
@@ -1379,8 +1287,6 @@ Return a JSON object with a "products" array:
 
         const result = JSON.parse(response.choices[0].message.content || '{"products":[]}');
         const rawProducts = result.products || [];
-
-        console.log(`[identifyProductsViaAI] AI found ${rawProducts.length} potential products`);
 
         return rawProducts.map((p: any) => ({
             ...p,
