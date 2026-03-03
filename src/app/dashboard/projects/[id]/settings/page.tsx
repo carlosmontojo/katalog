@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, FileText, ArrowLeft, Check } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 import { useParams } from 'next/navigation'
 
@@ -48,11 +49,11 @@ export default function CatalogSettingsPage() {
                 }
             } else {
                 const err = await response.text()
-                alert(`Failed to generate PDF: ${err}`)
+                toast.error(`Error al generar el PDF: ${err}`)
             }
         } catch (e) {
             console.error(e)
-            alert("Error generating PDF")
+            toast.error("Error al generar el PDF")
         } finally {
             setLoading(false)
         }

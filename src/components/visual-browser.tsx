@@ -9,6 +9,7 @@ import { Loader2, Globe, ArrowLeft, ArrowRight, RotateCcw, X, ShoppingBag, Plus,
 import { saveSelectedProducts } from '@/app/scraping-actions'
 import { processVisualCaptures } from '@/app/visual-actions'
 import { normalizeUrl } from '@/lib/utils/url'
+import { toast } from 'sonner'
 
 interface VisualBrowserProps {
     projectId?: string // Optional for dashboard home
@@ -416,7 +417,7 @@ export function VisualBrowser({ projectId, initialUrl = '', onClose, onSuccess }
             onSuccess()
         } catch (error) {
             console.error(error)
-            alert("Error al procesar las capturas.")
+            toast.error("Error al procesar las capturas.")
         } finally {
             setSaving(false)
         }

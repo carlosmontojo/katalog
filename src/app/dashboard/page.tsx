@@ -14,6 +14,7 @@ import { VisualBrowser } from '@/components/visual-browser'
 import { LoadingProgress } from '@/components/ui/loading-progress'
 import { processVisualCaptures } from '@/app/visual-actions'
 import { getUserCountryCode } from '@/lib/utils/geo'
+import { toast } from 'sonner'
 
 type ViewState = 'home' | 'category-select' | 'product-select'
 type DestinationType = 'new' | 'existing'
@@ -201,7 +202,7 @@ export default function Dashboard() {
             }
         } catch (e) {
             console.error('Error navigating category:', e)
-            alert('Error loading category')
+            toast.error('Error al cargar la categoría')
         } finally {
             setAnalyzing(false)
             setLoadingProducts(false)
@@ -298,7 +299,7 @@ export default function Dashboard() {
             }
         } catch (e) {
             console.error('Error saving products:', e)
-            alert('Error saving products')
+            toast.error('Error al guardar los productos')
         } finally {
             setSaving(false)
             setTimeout(() => setFlyingProducts([]), 800)

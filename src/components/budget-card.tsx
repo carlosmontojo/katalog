@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Download, Trash2, FileSpreadsheet } from 'lucide-react'
 import { deleteBudget } from '@/app/budget-actions'
+import { toast } from 'sonner'
 
 interface Budget {
     id: string
@@ -29,7 +30,7 @@ export function BudgetCard({ budget, projectId }: BudgetCardProps) {
             await deleteBudget(budget.id, projectId)
         } catch (e) {
             console.error(e)
-            alert('Failed to delete budget')
+            toast.error('Error al eliminar el presupuesto')
             setDeleting(false)
         }
     }

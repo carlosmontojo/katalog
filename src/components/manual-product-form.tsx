@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Loader2, Plus, Upload, X } from 'lucide-react'
 import { saveSelectedProducts } from '@/app/scraping-actions'
 import { uploadProductImage } from '@/app/product-actions'
+import { toast } from 'sonner'
 
 interface ManualProductFormProps {
     projectId: string
@@ -61,11 +62,11 @@ export function ManualProductForm({ projectId, onSuccess, onCancel }: ManualProd
             if (result.success && result.url) {
                 setFormData(prev => ({ ...prev, image_url: result.url! }))
             } else {
-                alert("Error al subir la imagen: " + result.error)
+                toast.error("Error al subir la imagen: " + result.error)
             }
         } catch (error) {
             console.error(error)
-            alert("Error al procesar la imagen")
+            toast.error("Error al procesar la imagen")
         } finally {
             setUploading(false)
         }
@@ -103,11 +104,11 @@ export function ManualProductForm({ projectId, onSuccess, onCancel }: ManualProd
             if (result.success) {
                 onSuccess()
             } else {
-                alert("Error al guardar el producto manual.")
+                toast.error("Error al guardar el producto manual.")
             }
         } catch (error) {
             console.error(error)
-            alert("Error al guardar el producto.")
+            toast.error("Error al guardar el producto.")
         } finally {
             setLoading(false)
         }

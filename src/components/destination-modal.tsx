@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Loader2, Plus, FolderOpen, ArrowLeft } from "lucide-react"
 import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 import { createProjectAction } from '@/app/scraping-actions'
 
 interface DestinationModalProps {
@@ -91,10 +92,10 @@ export function DestinationModal({
         } catch (e: any) {
             console.error('Error creating katalog:', e)
             if (e.message?.includes('authenticated') || e.message?.includes('JWT')) {
-                alert('Tu sesión ha expirado. Por favor, recarga la página e inicia sesión de nuevo.')
+                toast.error('Tu sesión ha expirado. Por favor, recarga la página e inicia sesión de nuevo.')
                 window.location.reload()
             } else {
-                alert('Error al crear el catálogo: ' + (e.message || 'Desconocido'))
+                toast.error('Error al crear el catálogo: ' + (e.message || 'Desconocido'))
             }
         } finally {
             setCreating(false)

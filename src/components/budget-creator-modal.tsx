@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress'
 import { generateBudget, saveBudget } from '@/app/budget-actions'
 import { fetchProductDetails, saveProductDetails } from '@/app/scraping-actions'
 import { exportBudgetToExcel, type BudgetLineItem } from '@/lib/moodboard-exporter'
+import { toast } from 'sonner'
 
 interface BudgetCreatorModalProps {
     isOpen: boolean
@@ -370,7 +371,7 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
 
         } catch (error) {
             console.error('Budget generation failed:', error)
-            alert('Error generating budget. Please try again.')
+            toast.error('Error al generar el presupuesto. Inténtalo de nuevo.')
             setGenerating(false)
             setGenerationProgress(0)
         }

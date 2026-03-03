@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { updateProduct } from '@/app/product-actions'
 import { Edit } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface ProductEditDialogProps {
     product: any
@@ -37,11 +38,11 @@ export function ProductEditDialog({ product }: ProductEditDialogProps) {
             if (result.success) {
                 setOpen(false)
             } else {
-                alert("Failed to update product")
+                toast.error("Error al actualizar el producto")
             }
         } catch (e) {
             console.error(e)
-            alert("Error updating product")
+            toast.error("Error al actualizar el producto")
         } finally {
             setLoading(false)
         }

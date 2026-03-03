@@ -23,6 +23,7 @@ import {
     ZoomOut,
     Minus as MinusIcon
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { MoodboardGenerator, MoodboardProduct, MoodboardText } from '@/lib/moodboard-generator'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -911,7 +912,7 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
             }
         } catch (e) {
             console.error('Export failed:', e)
-            alert('Export failed. Please try again.')
+            toast.error('Error al exportar. Inténtalo de nuevo.')
         } finally {
             setGenerating(false)
         }
@@ -1061,7 +1062,7 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
             }
         } catch (e) {
             console.error('Failed to add product:', e)
-            alert('Failed to add product.')
+            toast.error('Error al añadir el producto.')
         } finally {
             setGenerating(false)
         }

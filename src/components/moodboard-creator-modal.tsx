@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress'
 import { Loader2, Wand2, Download, Save, RefreshCw, ArrowRight, ImagePlus, Check, Type, AlignLeft, RotateCw, Trash2 } from 'lucide-react'
 import { MoodboardGenerator, MoodboardProduct, MoodboardText } from '@/lib/moodboard-generator'
 import { saveMoodboard } from '@/app/moodboard-actions'
+import { toast } from 'sonner'
 import { updateProductWithMoreImages } from '@/app/scraping-actions'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -288,7 +289,7 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
             setStep('preview')
         } catch (e) {
             console.error('Error generating moodboard:', e)
-            alert('Failed to generate moodboard. Please try again.')
+            toast.error('Error al generar el moodboard. Inténtalo de nuevo.')
         } finally {
             setGenerating(false)
         }
@@ -451,13 +452,13 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
                     onClose()
                     // Ideally refresh the list or show success
                 } else {
-                    alert('Failed to save moodboard')
+                    toast.error('Error al guardar el moodboard')
                 }
                 setSaving(false)
             }
         } catch (e) {
             console.error('Error saving moodboard:', e)
-            alert('Failed to save moodboard')
+            toast.error('Error al guardar el moodboard')
             setSaving(false)
         }
     }
@@ -546,7 +547,7 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
             }
 
             if (!blob || blob.size === 0) {
-                alert('Error: Generated file is empty')
+                toast.error('Error: El archivo generado está vacío')
                 return
             }
 
@@ -561,7 +562,7 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
             setTimeout(() => window.URL.revokeObjectURL(url), 100)
         } catch (e) {
             console.error('Export failed:', e)
-            alert(`Failed to export as ${format.toUpperCase()}`)
+            toast.error(`Error al exportar como ${format.toUpperCase()}`)
         }
     }
 

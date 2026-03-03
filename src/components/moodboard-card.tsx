@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Download, Eye } from 'lucide-react'
 import { deleteMoodboard } from '@/app/moodboard-actions'
+import { toast } from 'sonner'
 
 interface Moodboard {
     id: string
@@ -27,7 +28,7 @@ export function MoodboardCard({ moodboard, projectId }: MoodboardCardProps) {
             await deleteMoodboard(moodboard.id, projectId)
         } catch (e) {
             console.error(e)
-            alert('Failed to delete moodboard')
+            toast.error('Error al eliminar el moodboard')
             setDeleting(false)
         }
     }

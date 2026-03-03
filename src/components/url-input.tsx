@@ -10,6 +10,7 @@ import { ProductDetailModal } from './product-detail-modal'
 import { getStoreName, normalizeUrl } from '@/lib/utils/url'
 import { getUserCountryCode } from '@/lib/utils/geo'
 import { ManualProductForm } from './manual-product-form'
+import { toast } from 'sonner'
 import { VisualBrowser } from './visual-browser'
 
 interface UrlInputProps {
@@ -60,11 +61,11 @@ export function UrlInput({ projectId }: UrlInputProps) {
                 setSelectedProducts(new Set());
                 setStep('preview');
             } else {
-                alert(`No se encontraron productos en la categoría "${categoryName}". Error: ${result.error || 'Desconocido'}`);
+                toast.error(`No se encontraron productos en la categoría "${categoryName}"`);
             }
         } catch (e) {
             console.error('[Category Select] Error:', e);
-            alert("Error al cargar productos de esta categoría");
+            toast.error("Error al cargar productos de esta categoría");
         } finally {
             setLoading(false);
         }
@@ -78,7 +79,7 @@ export function UrlInput({ projectId }: UrlInputProps) {
             const result = await saveSelectedProducts(projectId, productsToSave);
 
             if (result.success) {
-                alert(`Successfully added ${result.count} products to catalog!`);
+                toast.success(`${result.count} productos añadidos al catálogo`);
                 setStep('input');
                 setUrl('');
                 setCategories([]);
@@ -86,11 +87,11 @@ export function UrlInput({ projectId }: UrlInputProps) {
                 setPreviewProducts([]);
                 setSelectedProducts(new Set());
             } else {
-                alert("Failed to save products.");
+                toast.error("Error al guardar los productos");
             }
         } catch (e) {
             console.error(e);
-            alert("Error saving products");
+            toast.error("Error al guardar los productos");
         } finally {
             setLoading(false);
         }
@@ -127,7 +128,7 @@ export function UrlInput({ projectId }: UrlInputProps) {
                 <ManualProductForm
                     projectId={projectId}
                     onSuccess={() => {
-                        alert("Producto añadido correctamente");
+                        toast.success("Producto añadido correctamente");
                         setShowManualForm(false);
                     }}
                     onCancel={() => setShowManualForm(false)}
@@ -190,7 +191,7 @@ export function UrlInput({ projectId }: UrlInputProps) {
                     projectId={projectId}
                     onClose={() => setShowBrowser(false)}
                     onSuccess={() => {
-                        alert("Productos importados correctamente")
+                        toast.success("Productos importados correctamente")
                         setShowBrowser(false)
                         setUrl('')
                     }}
