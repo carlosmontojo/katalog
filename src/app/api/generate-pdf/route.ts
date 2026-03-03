@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { createClient as createServerClient } from '@/lib/supabase/server'
 import { generateHtml } from '@/lib/templates'
 import puppeteer from 'puppeteer'
 
@@ -10,14 +11,17 @@ const supabaseAdmin = createClient(
 
 export async function POST(req: Request) {
     try {
+        // Auth check: verify user is logged in and owns the project
+        const supabase = await createServerClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+            return new Response('Unauthorized', { status: 401 })
+        }
+
         const { projectId, template, options } = await req.json()
 
-        // 1. Fetch Data (using admin to ensure we get everything, but RLS protects the endpoint caller usually)
-        // Ideally we should use the user's session client to fetch data to respect RLS, 
-        // but for the PDF generation worker pattern, admin is often used for stability.
-        // Let's use the admin client here for simplicity and robustness in this demo.
-
-        const { data: project } = await supabaseAdmin
+        // Verify ownership via user's session (respects RLS)
+        const { data: project } = await supabase
             .from('projects')
             .select('*')
             .eq('id', projectId)
@@ -25,22 +29,12 @@ export async function POST(req: Request) {
 
         if (!project) return new Response('Project not found', { status: 404 })
 
-        const { data: products } = await supabaseAdmin
+        const { data: products } = await supabase
             .from('products')
             .select('*')
             .eq('project_id', projectId)
             .eq('is_visible', true)
             .order('sort_order', { ascending: true })
-
-        // DEBUG: Check if products have dimensions
-        if (products && products.length > 0) {
-            console.log('[PDF Gen] Product count:', products.length);
-            console.log('[PDF Gen] First 3 products specs:', products.slice(0, 3).map(p => ({
-                title: p.title,
-                specs: p.specifications,
-                attrs: p.attributes
-            })));
-        }
 
         // 2. Generate HTML
         const html = generateHtml(project, products || [], template, options)
@@ -77,7 +71,6 @@ export async function POST(req: Request) {
             })
 
         if (uploadError) {
-            console.error("Upload Error:", uploadError)
             throw new Error("Failed to upload PDF")
         }
 
@@ -98,7 +91,6 @@ export async function POST(req: Request) {
         return Response.json({ url: publicUrl })
 
     } catch (error: any) {
-        console.error("PDF Generation Error:", error);
         return new Response(JSON.stringify({ error: error.message }), { status: 500 })
     }
 }

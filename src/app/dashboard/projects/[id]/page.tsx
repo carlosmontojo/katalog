@@ -10,14 +10,21 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
     const supabase = await createClient()
     const { id } = await params
 
+    // Verify authenticated user
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+        return <div>No autorizado</div>
+    }
+
     const { data: project } = await supabase
         .from('projects')
         .select('*')
         .eq('id', id)
+        .eq('user_id', user.id)
         .single()
 
     if (!project) {
-        return <div>Project not found</div>
+        return <div>Proyecto no encontrado</div>
     }
 
     const { data: products } = await supabase
