@@ -7,16 +7,14 @@ import { parseProductPage, extractGlobalNavigation, extractContentCategories, ex
 import { inferCategoriesFromOpenAI, inferCategoryKeywords, analyzePageForCatalog, searchProductDimensions } from '@/lib/openai';
 import { scrapeUrlHybrid } from '@/lib/hybrid-scraper';
 import { createClient } from '@/lib/supabase/server';
+import { getAuthenticatedClient } from '@/lib/supabase/helpers';
 import { revalidatePath } from 'next/cache';
 import { getStoreName } from '@/lib/utils/url';
 import { parsePrice } from '@/lib/utils/price';
 
 // --- NEW PROJECTS ACTIONS ---
 export async function createProjectAction(name: string, description?: string) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) throw new Error('Not authenticated')
+    const { supabase, user } = await getAuthenticatedClient()
 
     const { data, error } = await supabase
         .from('projects')
@@ -129,9 +127,9 @@ export async function detectCategories(url: string, countryCode?: string) {
         const globalNav = extractGlobalNavigation(html, url);
         return { success: true, categories: deduplicate(globalNav) };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Category Detection Error:", error);
-        return { success: false, error: error.message };
+        return { success: false, error: (error as Error).message };
     }
 }
 
@@ -279,13 +277,13 @@ export async function scrapeProducts(projectId: string, url: string, category: s
         revalidatePath(`/dashboard/projects/${projectId}`);
         return { success: true, count: validProducts.length };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Product Scraping Error:", error);
-        return { success: false, error: error.message || "Failed to scrape products" };
+        return { success: false, error: (error as Error).message || "Failed to scrape products" };
     }
 }
 
-export async function saveSelectedProducts(projectId: string, products: any[]) {
+export async function saveSelectedProducts(projectId: string, products: Record<string, unknown>[]) {
     const supabase = await createClient();
 
     try {
@@ -298,9 +296,9 @@ export async function saveSelectedProducts(projectId: string, products: any[]) {
 
         revalidatePath(`/dashboard/projects/${projectId}`);
         return { success: true, count: products.length };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Save Selected Error:", error);
-        return { success: false, error: error.message };
+        return { success: false, error: (error as Error).message };
     }
 }
 
@@ -327,9 +325,9 @@ export async function enrichProductDimensions(productId: string, productTitle: s
         } else {
             return { success: false, error: 'No dimensions found' };
         }
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[Enrich] Error:", error);
-        return { success: false, error: error.message };
+        return { success: false, error: (error as Error).message };
     }
 }
 
@@ -1115,9 +1113,9 @@ RULES:
             }
         };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[FetchDetails] Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: (error as Error).message };
     }
 }
 
@@ -1134,7 +1132,7 @@ export async function updateProductWithMoreImages(productId: string, productUrl:
         const { images, dimensions, description, materials, colors, weight, price } = result.details;
 
         // Build update object with all available data
-        const updateData: Record<string, any> = {};
+        const updateData: Record<string, unknown> = {};
 
         if (images.length > 0) {
             updateData.images = images;
@@ -1171,9 +1169,9 @@ export async function updateProductWithMoreImages(productId: string, productUrl:
 
         return { success: true, images: [], message: 'No additional data found' };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[UpdateImages] Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: (error as Error).message };
     }
 }
 
@@ -1194,7 +1192,7 @@ export async function saveProductDetails(productId: string, details: {
 
     try {
 
-        const updateData: Record<string, any> = {};
+        const updateData: Record<string, unknown> = {};
 
         if (details.description) {
             updateData.description = details.description;
@@ -1236,9 +1234,9 @@ export async function saveProductDetails(productId: string, details: {
         revalidatePath('/dashboard/projects/[id]');
         return { success: true };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[SaveDetails] Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: (error as Error).message };
     }
 }
 

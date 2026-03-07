@@ -1,9 +1,10 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { uploadAndGetUrl } from '@/lib/supabase/helpers'
 import { revalidatePath } from 'next/cache'
 
-export async function updateProduct(projectId: string, productId: string, data: any) {
+export async function updateProduct(projectId: string, productId: string, data: Record<string, unknown>) {
     const supabase = await createClient()
 
     const { error } = await supabase
@@ -39,8 +40,6 @@ export async function deleteProduct(projectId: string, productId: string) {
 }
 
 export async function uploadProductImage(projectId: string, fileName: string, fileData: string) {
-    const supabase = await createClient()
-
     // fileData is a base64 string
     const base64Data = fileData.split(';base64,').pop()
     if (!base64Data) return { success: false, error: "Invalid image data" }
@@ -48,21 +47,15 @@ export async function uploadProductImage(projectId: string, fileName: string, fi
     const buffer = Buffer.from(base64Data, 'base64')
     const path = `${projectId}/${Date.now()}_${fileName}`
 
-    const { data, error } = await supabase.storage
-        .from('product-images')
-        .upload(path, buffer, {
+    try {
+        const publicUrl = await uploadAndGetUrl('product-images', path, buffer, {
             contentType: 'image/jpeg', // Default or sniffed
             upsert: true
         })
 
-    if (error) {
+        return { success: true, url: publicUrl }
+    } catch (error: unknown) {
         console.error("Storage Upload Error:", error)
-        return { success: false, error: error.message }
+        return { success: false, error: (error as Error).message }
     }
-
-    const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(path)
-
-    return { success: true, url: publicUrl }
 }

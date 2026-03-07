@@ -15,7 +15,7 @@ export function MoodboardCard({ moodboard, projectId }: MoodboardCardProps) {
     const [deleting, setDeleting] = useState(false)
 
     const handleDelete = async () => {
-        if (!confirm('Are you sure you want to delete this moodboard?')) return
+        if (!confirm('¿Estás seguro de que quieres eliminar este moodboard?')) return
 
         setDeleting(true)
         try {

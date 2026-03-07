@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { LoadingProgress } from "@/components/ui/loading-progress"
-import { Loader2, Plus, X, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react"
+import { Loader2, ChevronLeft, ChevronRight } from "lucide-react"
 import { fetchProductDetails, saveProductDetails } from "@/app/scraping-actions"
 import { ProductDetails } from '@/lib/types'
 
@@ -85,8 +85,8 @@ export function ProductDetailModal({
             } else {
                 setError(result.error || 'No se pudo cargar la información')
             }
-        } catch (e: any) {
-            setError(e.message || 'Error al cargar detalles')
+        } catch (e: unknown) {
+            setError((e as Error).message || 'Error al cargar detalles')
         } finally {
             setLoading(false)
         }

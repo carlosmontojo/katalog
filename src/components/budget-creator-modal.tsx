@@ -11,12 +11,13 @@ import { generateBudget, saveBudget } from '@/app/budget-actions'
 import { fetchProductDetails, saveProductDetails } from '@/app/scraping-actions'
 import { exportBudgetToExcel, type BudgetLineItem } from '@/lib/moodboard-exporter'
 import { toast } from 'sonner'
+import { Product } from '@/lib/types'
 
 interface BudgetCreatorModalProps {
     isOpen: boolean
     onClose: () => void
     projectId: string
-    products: any[]
+    products: Product[]
 }
 
 interface EditableLineItem {
@@ -40,17 +41,17 @@ interface EditableLineItem {
 }
 
 const STATUS_OPTIONS = [
-    '', 'Internal Review', 'Client Review', 'Client Approved', 'Ordered', 'Installed', 'In Stock'
+    '', 'Revisión Interna', 'Revisión del Cliente', 'Aprobado por Cliente', 'Pedido', 'Instalado', 'En Stock'
 ]
 
 const LEAD_TIME_OPTIONS = [
-    '', '1-2 weeks', '2-4 weeks', '4-6 weeks', '6-8 weeks', '8-10 weeks', '10-12 weeks', '12+ weeks'
+    '', '1-2 semanas', '2-4 semanas', '4-6 semanas', '6-8 semanas', '8-10 semanas', '10-12 semanas', '12+ semanas'
 ]
 
 export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: BudgetCreatorModalProps) {
     const [budgetName, setBudgetName] = useState('Presupuesto')
-    const [studioName, setStudioName] = useState('STUDIO NAME')
-    const [sectionTitle, setSectionTitle] = useState('FURNITURE')
+    const [studioName, setStudioName] = useState('NOMBRE ESTUDIO')
+    const [sectionTitle, setSectionTitle] = useState('MOBILIARIO')
     const [lineItems, setLineItems] = useState<EditableLineItem[]>([])
     const [generating, setGenerating] = useState(false)
     const [generationProgress, setGenerationProgress] = useState(0)
@@ -87,31 +88,31 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
     }
 
     // Helper: infer category from product title
-    const inferCategory = (title: string, specs?: any, attrs?: any): string => {
+    const inferCategory = (title: string, specs?: Record<string, unknown>, attrs?: Record<string, unknown>): string => {
         const rawCat = specs?.category || attrs?.category || specs?.type || attrs?.type || ''
         if (rawCat && typeof rawCat === 'string' && !rawCat.includes('{') && !rawCat.includes(':') && rawCat.length < 50) return rawCat
         const t = title.toLowerCase()
-        if (t.includes('mesa') || t.includes('table')) return 'Tables'
-        if (t.includes('silla') || t.includes('chair')) return 'Seating'
-        if (t.includes('sofá') || t.includes('sofa')) return 'Seating'
-        if (t.includes('butaca') || t.includes('armchair')) return 'Seating'
-        if (t.includes('taburete') || t.includes('stool')) return 'Seating'
-        if (t.includes('lámpara') || t.includes('lampara') || t.includes('lamp')) return 'Lighting'
-        if (t.includes('estantería') || t.includes('estanteria') || t.includes('shelf')) return 'Shelving'
-        if (t.includes('armario') || t.includes('cabinet') || t.includes('wardrobe')) return 'Cabinets/Sideboards'
-        if (t.includes('cama') || t.includes('bed')) return 'Beds'
-        if (t.includes('escritorio') || t.includes('desk')) return 'Desks'
-        if (t.includes('alfombra') || t.includes('rug')) return 'Rugs'
-        if (t.includes('espejo') || t.includes('mirror')) return 'Mirrors'
+        if (t.includes('mesa') || t.includes('table')) return 'Mesas'
+        if (t.includes('silla') || t.includes('chair')) return 'Asientos'
+        if (t.includes('sofá') || t.includes('sofa')) return 'Asientos'
+        if (t.includes('butaca') || t.includes('armchair')) return 'Asientos'
+        if (t.includes('taburete') || t.includes('stool')) return 'Asientos'
+        if (t.includes('lámpara') || t.includes('lampara') || t.includes('lamp')) return 'Iluminación'
+        if (t.includes('estantería') || t.includes('estanteria') || t.includes('shelf')) return 'Estanterías'
+        if (t.includes('armario') || t.includes('cabinet') || t.includes('wardrobe')) return 'Armarios/Aparadores'
+        if (t.includes('cama') || t.includes('bed')) return 'Camas'
+        if (t.includes('escritorio') || t.includes('desk')) return 'Escritorios'
+        if (t.includes('alfombra') || t.includes('rug')) return 'Alfombras'
+        if (t.includes('espejo') || t.includes('mirror')) return 'Espejos'
         if (t.includes('cojín') || t.includes('cushion') || t.includes('pillow')) return 'Textiles'
         if (t.includes('cortina') || t.includes('curtain')) return 'Textiles'
-        if (t.includes('jarrón') || t.includes('vase')) return 'Accessories'
-        if (t.includes('maceta') || t.includes('planter')) return 'Accessories'
+        if (t.includes('jarrón') || t.includes('vase')) return 'Accesorios'
+        if (t.includes('maceta') || t.includes('planter')) return 'Accesorios'
         return ''
     }
 
     // Helper: parse price from a string like "149,99 €", "€149.99", "2.220€"
-    const parseSpecPrice = (specPrice: any): number => {
+    const parseSpecPrice = (specPrice: unknown): number => {
         if (!specPrice) return 0
         const s = String(specPrice).trim()
         const match = s.match(/(\d[\d.,]*\d|\d)/g)
@@ -143,7 +144,7 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
     }
 
     // Helper: extract price robustly
-    const extractPrice = (product: any): number => {
+    const extractPrice = (product: Product): number => {
         if (product.price && product.price > 0) return product.price
         const specPrice = product.specifications?.price || product.attributes?.price
         if (specPrice) {
@@ -271,7 +272,7 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
         }
     }, [isOpen, products])
 
-    const updateLineItem = (index: number, field: keyof EditableLineItem, value: any) => {
+    const updateLineItem = (index: number, field: keyof EditableLineItem, value: string | number) => {
         setLineItems(prev => {
             const copy = [...prev]
             copy[index] = { ...copy[index], [field]: value }
@@ -324,7 +325,7 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                 projectName: budgetName,
                 sectionTitle,
                 currency: '€',
-                revisionDate: new Date().toLocaleDateString('en-GB')
+                revisionDate: new Date().toLocaleDateString('es-ES')
             })
 
             setGenerationProgress(70)
@@ -384,14 +385,14 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                 <DialogHeader className="px-8 py-6 border-b border-slate-100 shrink-0">
                     <DialogTitle className="text-[12px] font-bold tracking-[0.2em] uppercase text-foreground flex items-center gap-3">
                         <FileSpreadsheet className="w-5 h-5" />
-                        Generate Budget
+                        Generar Presupuesto
                     </DialogTitle>
                 </DialogHeader>
 
                 {/* Settings Bar */}
                 <div className="px-8 py-4 bg-slate-50/50 border-b border-slate-100 flex flex-wrap items-center gap-6 shrink-0">
                     <div className="flex items-center gap-2">
-                        <label className="text-[9px] font-bold tracking-[0.15em] uppercase text-slate-400">Name:</label>
+                        <label className="text-[9px] font-bold tracking-[0.15em] uppercase text-slate-400">Nombre:</label>
                         <Input
                             value={budgetName}
                             onChange={(e) => setBudgetName(e.target.value)}
@@ -399,7 +400,7 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                         />
                     </div>
                     <div className="flex items-center gap-2">
-                        <label className="text-[9px] font-bold tracking-[0.15em] uppercase text-slate-400">Studio:</label>
+                        <label className="text-[9px] font-bold tracking-[0.15em] uppercase text-slate-400">Estudio:</label>
                         <Input
                             value={studioName}
                             onChange={(e) => setStudioName(e.target.value)}
@@ -407,7 +408,7 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                         />
                     </div>
                     <div className="flex items-center gap-2">
-                        <label className="text-[9px] font-bold tracking-[0.15em] uppercase text-slate-400">Section:</label>
+                        <label className="text-[9px] font-bold tracking-[0.15em] uppercase text-slate-400">Sección:</label>
                         <Input
                             value={sectionTitle}
                             onChange={(e) => setSectionTitle(e.target.value)}
@@ -433,9 +434,9 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                     <table className="w-full text-sm">
                         <thead className="sticky top-0 bg-white z-10">
                             <tr className="border-b border-slate-200">
-                                {['Image', 'Product', 'CAD Ref', 'Category', 'Area', 'Supplier',
-                                    'Dimensions', 'Colour', 'Material', 'Status', 'Lead Time',
-                                    'Qty', 'Unit Cost', 'Total', 'Notes'].map(header => (
+                                {['Imagen', 'Producto', 'Ref CAD', 'Categoría', 'Área', 'Proveedor',
+                                    'Dimensiones', 'Color', 'Material', 'Estado', 'Plazo',
+                                    'Cant.', 'Coste Ud.', 'Total', 'Notas'].map(header => (
                                         <th key={header} className="px-3 py-3 text-left text-[8px] font-bold tracking-[0.15em] uppercase text-slate-400 whitespace-nowrap">
                                             {header}
                                         </th>
@@ -474,7 +475,7 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                                             value={item.category}
                                             onChange={(e) => updateLineItem(idx, 'category', e.target.value)}
                                             className="h-7 text-xs w-24 rounded-sm border-slate-200"
-                                            placeholder="Seating"
+                                            placeholder="Asientos"
                                         />
                                     </td>
                                     {/* Area */}
@@ -483,7 +484,7 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                                             value={item.area}
                                             onChange={(e) => updateLineItem(idx, 'area', e.target.value)}
                                             className="h-7 text-xs w-24 rounded-sm border-slate-200"
-                                            placeholder="Lounge"
+                                            placeholder="Salón"
                                         />
                                     </td>
                                     {/* Supplier */}
@@ -525,12 +526,12 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                                             onValueChange={(v) => updateLineItem(idx, 'status', v)}
                                         >
                                             <SelectTrigger className="h-7 text-xs w-32 rounded-sm border-slate-200">
-                                                <SelectValue placeholder="Select..." />
+                                                <SelectValue placeholder="Selecciona..." />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {STATUS_OPTIONS.map(s => (
                                                     <SelectItem key={s || '__empty'} value={s || ' '} className="text-xs">
-                                                        {s || '(None)'}
+                                                        {s || '(Ninguno)'}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -543,12 +544,12 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                                             onValueChange={(v) => updateLineItem(idx, 'leadTime', v)}
                                         >
                                             <SelectTrigger className="h-7 text-xs w-28 rounded-sm border-slate-200">
-                                                <SelectValue placeholder="Select..." />
+                                                <SelectValue placeholder="Selecciona..." />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {LEAD_TIME_OPTIONS.map(lt => (
                                                     <SelectItem key={lt || '__empty'} value={lt || ' '} className="text-xs">
-                                                        {lt || '(None)'}
+                                                        {lt || '(Ninguno)'}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -600,7 +601,7 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                                             value={item.notes}
                                             onChange={(e) => updateLineItem(idx, 'notes', e.target.value)}
                                             className="h-7 text-xs w-40 rounded-sm border-slate-200"
-                                            placeholder="Add notes..."
+                                            placeholder="Añade notas..."
                                         />
                                     </td>
                                 </tr>
@@ -613,11 +614,11 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                 <DialogFooter className="px-8 py-5 border-t border-slate-100 shrink-0">
                     <div className="flex items-center justify-between w-full">
                         <span className="text-[10px] font-bold tracking-[0.1em] uppercase text-slate-400">
-                            {lineItems.length} products · Total: {formatCurrency(total)}
+                            {lineItems.length} productos · Total: {formatCurrency(total)}
                         </span>
                         <div className="flex gap-3">
                             <Button variant="outline" onClick={onClose} className="h-10 px-6 text-[10px] font-bold uppercase tracking-[0.15em] rounded-sm">
-                                Cancel
+                                Cancelar
                             </Button>
                             <Button
                                 onClick={handleGenerate}
@@ -627,12 +628,12 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                                 {generating ? (
                                     <>
                                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                        Generating... {generationProgress}%
+                                        Generando... {generationProgress}%
                                     </>
                                 ) : (
                                     <>
                                         <Download className="w-4 h-4 mr-2" />
-                                        Generate Budget
+                                        Generar Presupuesto
                                     </>
                                 )}
                             </Button>

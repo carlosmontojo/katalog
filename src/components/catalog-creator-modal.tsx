@@ -36,8 +36,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { exportToPSD, exportToSVG, exportToPDF, exportToExcel, exportToInDesign } from '@/lib/moodboard-exporter'
 import { fetchProductDetails, saveProductDetails } from '@/app/scraping-actions'
+import { saveMoodboard } from '@/app/moodboard-actions'
 import { CatalogStyleSelector, CATALOG_STYLES, CatalogStyle } from './catalog-style-selector'
 import { Product, Moodboard } from '@/lib/types'
+import { arrangeInGrid, generateProductAnnotations, A4_WIDTH, A4_HEIGHT, GRID_PADDING } from '@/lib/catalog-helpers'
 
 interface CatalogPage {
     id: string
@@ -82,79 +84,17 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
     const generatorRef = useRef<MoodboardGenerator | null>(null)
     const scrollContainerRef = useRef<HTMLDivElement>(null)
 
-    // Helper to arrange products in a grid
-    const arrangeInGrid = (processedProducts: (MoodboardProduct & { imgElement: HTMLImageElement })[]) => {
-        const gridProducts = [...processedProducts]
-        const padding = 60 // More padding for a premium feel
-        const canvasWidth = 210 * 3.78
-        const canvasHeight = 297 * 3.78
-        const colWidth = (canvasWidth - padding * 3) / 2
-        const rowHeight = (canvasHeight - padding * 3) / 2
-
-        return gridProducts.map((p, i) => {
-            const col = i % 2
-            const row = Math.floor(i / 2)
-
-            // Calculate size to fit in cell while maintaining aspect ratio
-            const cellW = colWidth
-            const cellH = rowHeight - 180 // Much more space for detailed info with all dimensions
-            const imgAspect = (p.width || 200) / (p.height || 200)
-
-            let w = cellW
-            let h = w / imgAspect
-            if (h > cellH) {
-                h = cellH
-                w = h * imgAspect
-            }
-
-            return {
-                ...p,
-                x: padding + col * (colWidth + padding) + (colWidth - w) / 2,
-                y: padding + row * (rowHeight + padding) + (cellH - h) / 2,
-                width: w,
-                height: h,
-                zIndex: 10 + i
-            }
-        })
-    }
-
-    // Helper to calculate text height for wrapping
-    const calculateTextHeight = (text: string, fontSize: number, fontFamily: string, maxWidth: number) => {
-        if (typeof document === 'undefined') return fontSize * 1.2;
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return fontSize * 1.2;
-        ctx.font = `${fontSize}px ${fontFamily}`;
-
-        const words = text.split(' ');
-        let line = '';
-        let lines = 1;
-
-        for (let n = 0; n < words.length; n++) {
-            const testLine = line + words[n] + ' ';
-            const metrics = ctx.measureText(testLine);
-            const testWidth = metrics.width;
-            if (testWidth > maxWidth && n > 0) {
-                line = words[n] + ' ';
-                lines++;
-            } else {
-                line = testLine;
-            }
-        }
-        return lines * fontSize * 1.2;
-    }
-
     // Initialize with a cover page and product pages
     useEffect(() => {
         const init = async () => {
             if (isOpen && view === 'editor' && pages.length === 0) {
                 setGenerating(true)
                 setInitProgress(0)
-                setInitStatus('Initializing editor...')
+                setInitStatus('Inicializando editor...')
                 try {
                     const generator = new MoodboardGenerator({
-                        width: 210 * 3.78,
-                        height: 297 * 3.78,
+                        width: A4_WIDTH,
+                        height: A4_HEIGHT,
                         backgroundColor: selectedStyle.backgroundColor,
                         productStyle: selectedStyle.productStyle,
                         fontFamily: typographyTheme === 'serif' ? selectedStyle.titleFont : selectedStyle.fontFamily
@@ -164,12 +104,12 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                     const coverPage: CatalogPage = {
                         id: crypto.randomUUID(),
                         type: 'custom',
-                        title: 'Cover Page',
+                        title: 'Portada',
                         products: [],
                         texts: [
                             {
                                 id: crypto.randomUUID(),
-                                text: 'Product Catalog',
+                                text: 'Catálogo de Productos',
                                 x: 100,
                                 y: 300,
                                 fontSize: 60,
@@ -197,7 +137,7 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                         const TIMEOUT_MS = 30000
                         for (let ei = 0; ei < productsToEnrich.length; ei++) {
                             const product = productsToEnrich[ei]
-                            setInitStatus(`Fetching product details (${ei + 1}/${productsToEnrich.length})...`)
+                            setInitStatus(`Obteniendo detalles del producto (${ei + 1}/${productsToEnrich.length})...`)
                             try {
                                 const result = await Promise.race([
                                     fetchProductDetails(product.original_url!),
@@ -240,7 +180,7 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                     setInitProgress(50)
 
                     // 3. Process all product images (NO BACKGROUND REMOVAL)
-                    setInitStatus('Loading product images...')
+                    setInitStatus('Cargando imágenes de productos...')
                     const allProcessed = await generator.processImages(
                         enrichedProducts.map(p => ({
                             id: p.id,
@@ -251,13 +191,11 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                         { removeBackground: false }
                     )
 
-                    setInitStatus('Creating layout...')
+                    setInitStatus('Creando diseño...')
 
                     // 3. Create product pages (4 per page)
                     const productPages: CatalogPage[] = []
-                    const padding = 60
-                    const canvasWidth = 210 * 3.78
-                    const colWidth = (canvasWidth - padding * 3) / 2
+                    const colWidth = (A4_WIDTH - GRID_PADDING * 3) / 2
 
                     for (let i = 0; i < allProcessed.length; i += 4) {
                         const pageProducts = allProcessed.slice(i, i + 4)
@@ -267,189 +205,22 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                         arranged.forEach((p, idx) => {
                             const orig = enrichedProducts.find(o => o.id === p.id)
                             if (!orig) return
-
-                            let currentY = p.y + p.height + 12
-                            const fontSize = 8
-                            const lineSpacing = 12
-                            const fontFamily = selectedStyle.fontFamily
-                            const titleFont = selectedStyle.titleFont
-                            const textMaxWidth = colWidth - 16
-                            // Average char width at fontSize 8 (~4.8px)
-                            const avgCharWidth = 4.8
-
-                            // Helper: clean scraped field values — strip HTML/code but keep product text
-                            const cleanField = (val: unknown): string => {
-                                if (!val) return ''
-                                if (typeof val === 'object') return ''
-                                let s = typeof val === 'string' ? val : String(val)
-                                // Reject obvious code/JSON
-                                if (s.includes('{') || s.includes('}') || s.includes('className') ||
-                                    s.includes('function(') || s.includes('useState') || s.includes('onClick') ||
-                                    s.includes('[object') || s.includes('undefined')) return ''
-                                // Strip HTML tags
-                                s = s.replace(/<[^>]*>/g, '')
-                                // Collapse whitespace
-                                s = s.replace(/[\n\r\t]+/g, ', ').replace(/\s{2,}/g, ' ').trim()
-                                // Clean edges
-                                s = s.replace(/^[,.\s]+/, '').replace(/[,.\s]+$/, '').trim()
-                                // Truncate if too long
-                                if (s.length > 200) {
-                                    const cut = s.lastIndexOf(',', 200)
-                                    s = cut > 50 ? s.substring(0, cut).trim() : s.substring(0, 200).trim()
-                                }
-                                return s
-                            }
-
-
-                            const addText = (text: string, color: string = '#1a1a1a', isBold: boolean = false, fontOverride?: string) => {
-                                pageTexts.push({
-                                    id: crypto.randomUUID(),
-                                    text: text,
-                                    x: p.x,
-                                    y: currentY,
-                                    fontSize: isBold ? fontSize + 1 : fontSize,
-                                    fontFamily: fontOverride || fontFamily,
-                                    color: color,
-                                    zIndex: 20 + idx * 20 + pageTexts.length,
-                                    maxWidth: textMaxWidth
-                                })
-                                // Estimate how many lines this text occupies
-                                const estWidth = text.length * avgCharWidth
-                                const lines = Math.max(1, Math.ceil(estWidth / textMaxWidth))
-                                currentY += lineSpacing * lines
-                            }
-
-                            // 1. Nombre (full, no truncation)
-                            addText(orig.title || 'Sin título', '#000000', true, titleFont)
-
-                            // 2. Tipología
-                            let tipologia = orig.specifications?.category || orig.attributes?.category || orig.specifications?.type || orig.attributes?.type || ''
-                            if (!tipologia) {
-                                const titleLower = orig.title.toLowerCase()
-                                if (titleLower.includes('mesa')) tipologia = 'Mesa'
-                                else if (titleLower.includes('silla')) tipologia = 'Silla'
-                                else if (titleLower.includes('sofá') || titleLower.includes('sofa')) tipologia = 'Sofá'
-                                else if (titleLower.includes('lámpara') || titleLower.includes('lampara')) tipologia = 'Lámpara'
-                                else if (titleLower.includes('estantería') || titleLower.includes('estanteria')) tipologia = 'Estantería'
-                                else if (titleLower.includes('armario')) tipologia = 'Armario'
-                                else if (titleLower.includes('cama')) tipologia = 'Cama'
-                                else if (titleLower.includes('escritorio')) tipologia = 'Escritorio'
-                                else if (titleLower.includes('taburete')) tipologia = 'Taburete'
-                                else if (titleLower.includes('macetero') || titleLower.includes('maceta')) tipologia = 'Macetero'
-                                else if (titleLower.includes('butaca')) tipologia = 'Butaca'
-                                else if (titleLower.includes('alfombra')) tipologia = 'Alfombra'
-                                else if (titleLower.includes('cojín') || titleLower.includes('cojin')) tipologia = 'Cojín'
-                                else if (titleLower.includes('espejo')) tipologia = 'Espejo'
-                                else if (titleLower.includes('cuadro')) tipologia = 'Cuadro'
-                                else if (titleLower.includes('jarrón') || titleLower.includes('jarron')) tipologia = 'Jarrón'
-                                else if (titleLower.includes('perchero')) tipologia = 'Perchero'
-                                else if (titleLower.includes('aparador')) tipologia = 'Aparador'
-                                else if (titleLower.includes('biombo')) tipologia = 'Biombo'
-                                else if (titleLower.includes('puf') || titleLower.includes('pouf')) tipologia = 'Puf'
-                                else if (titleLower.includes('consola')) tipologia = 'Consola'
-                                else if (titleLower.includes('cómoda') || titleLower.includes('comoda')) tipologia = 'Cómoda'
-                                else if (titleLower.includes('banco')) tipologia = 'Banco'
-                                else if (titleLower.includes('mesita')) tipologia = 'Mesita'
-                                else if (titleLower.includes('estante')) tipologia = 'Estante'
-                            }
-                            if (tipologia) addText(`Tipo: ${tipologia}`, '#64748b')
-
-                            // 3. Marca - extract from URL
-                            let marca = ''
-                            if (orig.original_url) {
-                                const url = orig.original_url.toLowerCase()
-                                if (url.includes('sklum')) marca = 'Sklum'
-                                else if (url.includes('westwing')) marca = 'Westwing'
-                                else if (url.includes('ikea')) marca = 'IKEA'
-                                else if (url.includes('maisons-du-monde')) marca = 'Maisons du Monde'
-                                else if (url.includes('zara')) marca = 'Zara Home'
-                                else if (url.includes('hm.com')) marca = 'H&M Home'
-                                else if (url.includes('elcorteingles')) marca = 'El Corte Inglés'
-                                else if (url.includes('amazon')) marca = 'Amazon'
-                                else if (url.includes('leroy')) marca = 'Leroy Merlin'
-                            }
-                            if (marca) addText(`Marca: ${marca}`, '#64748b')
-
-                            // 4. Precio — check multiple sources
-                            let precioStr = ''
-                            if (orig.price && orig.price > 0) {
-                                precioStr = `${orig.price} ${orig.currency || '€'}`
-                            }
-                            if (!precioStr) {
-                                const specPrice = orig.specifications?.price || orig.attributes?.price
-                                if (specPrice && typeof specPrice === 'string' && specPrice.trim()) {
-                                    precioStr = specPrice.trim()
-                                }
-                            }
-                            if (!precioStr && orig.description) {
-                                const priceMatch = orig.description.match(/(\d+[.,]\d{2})\s*€/)
-                                if (priceMatch) precioStr = `${priceMatch[1]} €`
-                            }
-                            if (precioStr) {
-                                addText(`Precio: ${precioStr}`, '#b45309')
-                            }
-
-                            // 5. Medidas — full display
-                            let dimsRaw = orig.specifications?.dimensions || orig.attributes?.dimensions
-                            // Handle non-string dimensions (objects/arrays from DB)
-                            if (dimsRaw && typeof dimsRaw === 'object') {
-                                if (Array.isArray(dimsRaw)) dimsRaw = dimsRaw.join(', ')
-                                else dimsRaw = Object.entries(dimsRaw).map(([k, v]) => `${k}: ${v}`).join(', ')
-                            }
-                            const dims = typeof dimsRaw === 'string' ? dimsRaw : ''
-                            if (dims) {
-                                const heightMatch = dims.match(/alto?\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(cm|mm|m)?/i)
-                                const widthMatch = dims.match(/ancho?\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(cm|mm|m)?/i)
-                                const depthMatch = dims.match(/(?:profundidad|fondo|prof)\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(cm|mm|m)?/i)
-                                const diameterMatch = dims.match(/(?:diámetro|diametro|Ø)\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(cm|mm|m)?/i)
-
-                                const parts: string[] = []
-                                if (heightMatch) parts.push(`Alto: ${heightMatch[1]} cm`)
-                                if (widthMatch) parts.push(`Ancho: ${widthMatch[1]} cm`)
-                                if (depthMatch) parts.push(`Prof: ${depthMatch[1]} cm`)
-                                if (diameterMatch) parts.push(`Ø${diameterMatch[1]} cm`)
-
-                                if (parts.length > 0) {
-                                    addText(`Medidas: ${parts.join(' | ')}`, '#64748b')
-                                } else {
-                                    // Dimensions exist but couldn't parse labeled parts — show raw
-                                    addText(`Medidas: ${dims}`, '#64748b')
-                                }
-                            }
-
-                            // 6. Materiales — full, cleaned
-                            let materialsRaw = orig.specifications?.materials || orig.attributes?.materials
-                            if (materialsRaw && typeof materialsRaw === 'object') {
-                                if (Array.isArray(materialsRaw)) materialsRaw = materialsRaw.join(', ')
-                                else materialsRaw = Object.values(materialsRaw).join(', ')
-                            }
-                            if (materialsRaw) {
-                                const matClean = cleanField(materialsRaw)
-                                if (matClean) addText(`Materiales: ${matClean}`, '#64748b')
-                            }
-
-                            // 7. Colores — full, cleaned
-                            let colorsRaw = orig.specifications?.colors || orig.attributes?.colors
-                            if (colorsRaw && typeof colorsRaw === 'object') {
-                                if (Array.isArray(colorsRaw)) colorsRaw = colorsRaw.join(', ')
-                                else colorsRaw = Object.values(colorsRaw).join(', ')
-                            }
-                            if (colorsRaw) {
-                                const colClean = cleanField(colorsRaw)
-                                if (colClean) addText(`Colores: ${colClean}`, '#64748b')
-                            }
-
-                            // 8-11. Additional fields (blank for manual entry)
-                            addText('Ubicación en plano:', '#64748b')
-                            addText('Unidades:', '#64748b')
-                            addText('Tiempo de entrega:', '#64748b')
-                            addText('Coste del porte:', '#64748b')
+                            const { texts: productTexts } = generateProductAnnotations(
+                                orig,
+                                p.x,
+                                p.y + p.height + 12,
+                                colWidth - 16,
+                                selectedStyle.fontFamily,
+                                selectedStyle.titleFont,
+                                20 + idx * 20 + pageTexts.length
+                            )
+                            pageTexts.push(...productTexts)
                         })
 
                         productPages.push({
                             id: crypto.randomUUID(),
                             type: 'product-grid',
-                            title: `Products ${i + 1}-${Math.min(i + 4, allProcessed.length)}`,
+                            title: `Productos ${i + 1}-${Math.min(i + 4, allProcessed.length)}`,
                             products: arranged,
                             texts: pageTexts
                         })
@@ -458,7 +229,7 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                     setPages([coverPage, ...productPages])
                 } catch (e) {
                     console.error('Failed to initialize catalog:', e)
-                    setInitStatus('Error initializing catalog. Please try again.')
+                    setInitStatus('Error al inicializar el catálogo. Inténtalo de nuevo.')
                 } finally {
                     setGenerating(false)
                 }
@@ -473,7 +244,7 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
         const newPage: CatalogPage = {
             id: crypto.randomUUID(),
             type,
-            title: moodboardId ? moodboards.find(m => m.id === moodboardId)?.name || 'Moodboard' : 'New Page',
+            title: moodboardId ? moodboards.find(m => m.id === moodboardId)?.name || 'Moodboard' : 'Nueva Página',
             products: [],
             texts: [],
             moodboardId
@@ -639,7 +410,7 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
         const id = crypto.randomUUID()
         const newText: MoodboardText = {
             id,
-            text: 'Double click to edit',
+            text: 'Doble clic para editar',
             x: 100,
             y: 100,
             fontSize: 40,
@@ -676,12 +447,141 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
         if (activeTextId === id) setActiveTextId(null)
     }
 
+    const handleSave = async () => {
+        if (pages.length === 0) return
+
+        setSaving(true)
+        try {
+            // Render the first page as the preview image (4x for high quality)
+            const exportScale = 4
+            const baseWidth = A4_WIDTH
+            const baseHeight = A4_HEIGHT
+
+            const generator = new MoodboardGenerator({
+                width: baseWidth * exportScale,
+                height: baseHeight * exportScale,
+                backgroundColor: selectedStyle.backgroundColor || '#ffffff'
+            })
+
+            const firstPage = pages[0]
+            let blob: Blob
+
+            if (firstPage.type === 'moodboard') {
+                const mb = moodboards.find(m => m.id === firstPage.moodboardId)
+                if (mb) {
+                    const mbImage = await new Promise<HTMLImageElement>((resolve, reject) => {
+                        const img = new Image()
+                        img.crossOrigin = 'anonymous'
+                        img.onload = () => resolve(img)
+                        img.onerror = reject
+                        img.src = mb.image_url
+                    })
+                    const mbWidth = Number(mb.settings?.width) || 1200
+                    const mbHeight = Number(mb.settings?.height) || 800
+                    const scaleX = baseWidth / mbWidth
+                    const scaleY = baseHeight / mbHeight
+                    const fitScale = Math.min(scaleX, scaleY)
+                    const finalW = mbWidth * fitScale * exportScale
+                    const finalH = mbHeight * fitScale * exportScale
+                    const offsetX = (baseWidth * exportScale - finalW) / 2
+                    const offsetY = (baseHeight * exportScale - finalH) / 2
+
+                    const ctx = (generator as unknown as { ctx: CanvasRenderingContext2D }).ctx
+                    ctx.fillStyle = '#ffffff'
+                    ctx.fillRect(0, 0, baseWidth * exportScale, baseHeight * exportScale)
+                    ctx.drawImage(mbImage, offsetX, offsetY, finalW, finalH)
+
+                    blob = await new Promise<Blob>((resolve) => {
+                        (generator as unknown as { canvas: HTMLCanvasElement }).canvas.toBlob(
+                            (b) => resolve(b!), 'image/png'
+                        )
+                    })
+                } else {
+                    blob = await generator.render([], [])
+                }
+            } else {
+                // Product grid page — process images and scale
+                const processedImages = await generator.processImages(firstPage.products, undefined, { removeBackground: false })
+                const pageProducts = firstPage.products.map(p => {
+                    const processed = processedImages.find(img => img.id === p.id)
+                    if (!processed) return null
+                    return {
+                        ...p,
+                        imgElement: processed.imgElement,
+                        x: (p.x || 0) * exportScale,
+                        y: (p.y || 0) * exportScale,
+                        width: (p.width || 0) * exportScale,
+                        height: (p.height || 0) * exportScale
+                    }
+                }).filter((p): p is NonNullable<typeof p> => p !== null)
+
+                const pageTexts = firstPage.texts.map(t => ({
+                    ...t,
+                    x: t.x * exportScale,
+                    y: t.y * exportScale,
+                    fontSize: t.fontSize * exportScale,
+                    maxWidth: t.maxWidth ? t.maxWidth * exportScale : undefined
+                }))
+
+                blob = await generator.render(pageProducts, pageTexts)
+            }
+
+            // Convert blob to base64 and save
+            const reader = new FileReader()
+            reader.readAsDataURL(blob)
+            reader.onloadend = async () => {
+                try {
+                    const base64data = reader.result as string
+
+                    // Collect all product IDs from all pages
+                    const allProductIds = pages.flatMap(p =>
+                        p.products.map(prod => prod.id)
+                    )
+
+                    const result = await saveMoodboard({
+                        projectId,
+                        imageData: base64data,
+                        products: allProductIds.map(id => ({
+                            id,
+                            x: 0, y: 0, width: 0, height: 0
+                        })),
+                        texts: [],
+                        name: `Catálogo ${new Date().toLocaleDateString('es-ES')}`,
+                        settings: {
+                            type: 'catalog',
+                            style: selectedStyle.id,
+                            pageCount: pages.length,
+                            width: A4_WIDTH,
+                            height: A4_HEIGHT
+                        }
+                    })
+
+                    if (result.success) {
+                        toast.success('Catálogo guardado correctamente')
+                        onClose()
+                    } else {
+                        toast.error('Error al guardar el catálogo')
+                    }
+                } catch (err) {
+                    console.error('Error saving catalog:', err)
+                    toast.error('Error al guardar el catálogo')
+                } finally {
+                    setSaving(false)
+                }
+            }
+        } catch (e) {
+            console.error('Error saving catalog:', e)
+            toast.error('Error al guardar el catálogo')
+            setSaving(false)
+        }
+    }
+
     const handleExport = async (format: 'png' | 'pdf' | 'psd' | 'svg' | 'excel' | 'indesign') => {
         setGenerating(true)
         try {
             const exportScale = 4 // 4x resolution for high quality (approx 300dpi)
-            const baseWidth = 210 * 3.78
-            const baseHeight = 297 * 3.78
+            const baseWidth = A4_WIDTH
+            const baseHeight = A4_HEIGHT
 
             const generator = new MoodboardGenerator({
                 width: baseWidth * exportScale,
@@ -906,8 +806,8 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
         setIsAddProductOpen(false)
         try {
             const generator = new MoodboardGenerator({
-                width: 210 * 3.78,
-                height: 297 * 3.78,
+                width: A4_WIDTH,
+                height: A4_HEIGHT,
                 backgroundColor: selectedStyle.backgroundColor,
                 productStyle: selectedStyle.productStyle,
                 fontFamily: typographyTheme === 'serif' ? selectedStyle.titleFont : selectedStyle.fontFamily
@@ -929,110 +829,20 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                     zIndex: 10 + currentPage.products.length
                 }
 
-                let currentY = newProduct.y + newProduct.height + 12
                 const centerX = newProduct.x + newProduct.width / 2
-                const newTexts: MoodboardText[] = []
-                const fontSize = 8
-                const lineSpacing = 12
                 const fontFamily = typographyTheme === 'serif' ? 'Inter, serif' : 'Inter, sans-serif'
                 const titleFont = typographyTheme === 'serif' ? 'Playfair Display, serif' : 'Inter, sans-serif'
 
-                // Helper to add a single line
-                const addSingleLine = (text: string, color: string = '#1a1a1a', isBold: boolean = false, fontOverride?: string) => {
-                    const maxChars = 45
-                    const truncatedText = text.length > maxChars ? text.substring(0, maxChars) + '...' : text
-                    newTexts.push({
-                        id: crypto.randomUUID(),
-                        text: truncatedText,
-                        x: centerX,
-                        y: currentY,
-                        fontSize: isBold ? fontSize + 1 : fontSize,
-                        fontFamily: fontOverride || fontFamily,
-                        color: color,
-                        zIndex: 20 + currentPage.texts.length + newTexts.length,
-                        textAlign: 'center'
-                    })
-                    currentY += lineSpacing
-                }
-
-                // 1. Nombre
-                const nombreTruncado = product.title.length > 40 ? product.title.substring(0, 40) + '...' : product.title
-                addSingleLine(nombreTruncado, '#000000', true, titleFont)
-
-                // 2. Tipología
-                let tipologia = product.specifications?.category || product.attributes?.category || product.specifications?.type || product.attributes?.type || ''
-                if (!tipologia) {
-                    const titleLower = product.title.toLowerCase()
-                    if (titleLower.includes('mesa')) tipologia = 'Mesa'
-                    else if (titleLower.includes('silla')) tipologia = 'Silla'
-                    else if (titleLower.includes('sofá') || titleLower.includes('sofa')) tipologia = 'Sofá'
-                    else if (titleLower.includes('lámpara') || titleLower.includes('lampara')) tipologia = 'Lámpara'
-                    else if (titleLower.includes('estantería') || titleLower.includes('estanteria')) tipologia = 'Estantería'
-                    else if (titleLower.includes('armario')) tipologia = 'Armario'
-                    else if (titleLower.includes('cama')) tipologia = 'Cama'
-                    else if (titleLower.includes('escritorio')) tipologia = 'Escritorio'
-                }
-                if (tipologia) addSingleLine(`Tipo: ${tipologia}`, '#64748b')
-
-                // 3. Marca - extract from URL
-                let marca = ''
-                if (product.original_url) {
-                    const url = product.original_url.toLowerCase()
-                    if (url.includes('sklum')) marca = 'Sklum'
-                    else if (url.includes('westwing')) marca = 'Westwing'
-                    else if (url.includes('ikea')) marca = 'IKEA'
-                    else if (url.includes('maisons-du-monde')) marca = 'Maisons du Monde'
-                    else if (url.includes('zara')) marca = 'Zara Home'
-                    else if (url.includes('hm.com')) marca = 'H&M Home'
-                    else if (url.includes('elcorteingles')) marca = 'El Corte Inglés'
-                    else if (url.includes('amazon')) marca = 'Amazon'
-                    else if (url.includes('leroy')) marca = 'Leroy Merlin'
-                }
-                if (marca) addSingleLine(`Marca: ${marca}`, '#64748b')
-
-                // 4. Precio
-                if (product.price) {
-                    addSingleLine(`Precio: ${product.price} ${product.currency || 'EUR'}`, '#b45309')
-                }
-
-                // 5. Medidas - PARSE and format as single compact line
-                const dims = product.specifications?.dimensions || product.attributes?.dimensions
-                if (dims && typeof dims === 'string') {
-                    const heightMatch = dims.match(/alto?\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(cm|mm|m)?/i)
-                    const widthMatch = dims.match(/ancho?\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(cm|mm|m)?/i)
-                    const depthMatch = dims.match(/(?:profundidad|fondo|prof)\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(cm|mm|m)?/i)
-                    const diameterMatch = dims.match(/(?:diámetro|diametro|Ø)\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(cm|mm|m)?/i)
-
-                    const parts: string[] = []
-                    if (heightMatch) parts.push(`Alto: ${heightMatch[1]} cm`)
-                    if (widthMatch) parts.push(`Ancho: ${widthMatch[1]} cm`)
-                    if (depthMatch) parts.push(`Prof: ${depthMatch[1]} cm`)
-                    if (diameterMatch) parts.push(`Ø${diameterMatch[1]} cm`)
-
-                    if (parts.length > 0) {
-                        addSingleLine(`Medidas: ${parts.join(' | ')}`, '#64748b')
-                    }
-                }
-
-                // 6. Materiales - simplified
-                const materials = product.specifications?.materials || product.attributes?.materials
-                if (materials) {
-                    const matClean = typeof materials === 'string' ? materials.split('\n')[0] : String(materials)
-                    addSingleLine(`Materiales: ${matClean}`, '#64748b')
-                }
-
-                // 7. Colores - simplified
-                const colors = product.specifications?.colors || product.attributes?.colors
-                if (colors) {
-                    const colClean = typeof colors === 'string' ? colors.split('\n')[0] : String(colors)
-                    addSingleLine(`Colores: ${colClean}`, '#64748b')
-                }
-
-                // 8-11. Additional fields (blank for manual entry)
-                addSingleLine('Ubicación en plano:', '#64748b')
-                addSingleLine('Unidades:', '#64748b')
-                addSingleLine('Tiempo de entrega:', '#64748b')
-                addSingleLine('Coste del porte:', '#64748b')
+                const { texts: newTexts } = generateProductAnnotations(
+                    product,
+                    centerX,
+                    newProduct.y + newProduct.height + 12,
+                    200,
+                    fontFamily,
+                    titleFont,
+                    20 + currentPage.texts.length,
+                    { truncateTitle: 40, textAlign: 'center' }
+                )
 
                 updateCurrentPage({
                     products: [...currentPage.products, newProduct],
@@ -1063,11 +873,11 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                                     className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400"
                                 >
                                     <ChevronLeft className="w-4 h-4 mr-1" />
-                                    Change Style
+                                    Cambiar Estilo
                                 </Button>
                             )}
                             <DialogTitle className="text-[12px] font-bold tracking-[0.3em] uppercase text-foreground">
-                                Catalog Creator
+                                Creador de Catálogo
                             </DialogTitle>
                         </div>
                         <div className="flex gap-2">
@@ -1077,19 +887,19 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                                         <DropdownMenuTrigger asChild>
                                             <Button variant="outline" className="h-8 border-slate-200 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-slate-50 rounded-sm">
                                                 <Download className="w-4 h-4 mr-2" />
-                                                Export...
+                                                Exportar...
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="w-48">
-                                            <DropdownMenuItem onClick={() => handleExport('pdf')} className="text-[10px] font-bold uppercase tracking-[0.1em]">Portable Document (PDF)</DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleExport('png')} className="text-[10px] font-bold uppercase tracking-[0.1em]">Image ZIP (PNG)</DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleExport('excel')} className="text-[10px] font-bold uppercase tracking-[0.1em]">Product Table (Excel)</DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleExport('indesign')} className="text-[10px] font-bold uppercase tracking-[0.1em]">Desktop Pub (InDesign)</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleExport('pdf')} className="text-[10px] font-bold uppercase tracking-[0.1em]">Documento PDF</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleExport('png')} className="text-[10px] font-bold uppercase tracking-[0.1em]">Imágenes ZIP (PNG)</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleExport('excel')} className="text-[10px] font-bold uppercase tracking-[0.1em]">Tabla de Productos (Excel)</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleExport('indesign')} className="text-[10px] font-bold uppercase tracking-[0.1em]">Maquetación (InDesign)</DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => handleExport('psd')} className="text-[10px] font-bold uppercase tracking-[0.1em]">Photoshop (PSD)</DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                     <Button onClick={onClose} variant="ghost" className="h-8 text-[10px] font-bold uppercase tracking-[0.2em] rounded-sm">
-                                        Close
+                                        Cerrar
                                     </Button>
                                 </>
                             )}
@@ -1101,8 +911,8 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                     {view === 'style' ? (
                         <div className="h-full overflow-y-auto bg-white px-8 py-12">
                             <div className="w-full space-y-2 mb-12 text-center">
-                                <h2 className="text-3xl font-medium tracking-[0.1em] uppercase text-foreground">Catalog Aesthetics</h2>
-                                <p className="text-sm text-slate-400 tracking-[0.05em]">Choose a style that aligns with your interior design studio branding.</p>
+                                <h2 className="text-3xl font-medium tracking-[0.1em] uppercase text-foreground">Estética del Catálogo</h2>
+                                <p className="text-sm text-slate-400 tracking-[0.05em]">Elige un estilo que se alinee con la imagen de tu estudio de diseño de interiores.</p>
                             </div>
                             <div className="w-full px-4">
                                 <CatalogStyleSelector onSelect={(style, typo) => {
@@ -1119,7 +929,7 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                             {/* Sidebar: Page Management */}
                             <div className="w-48 border-r bg-slate-50 p-4 flex flex-col gap-4 overflow-y-auto">
                                 <div className="flex flex-col gap-2">
-                                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Pages</h3>
+                                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Páginas</h3>
                                     {pages.map((page, idx) => (
                                         <div
                                             key={page.id}
@@ -1172,17 +982,17 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <Button variant="outline" className="w-full mt-2" size="sm">
-                                                <Plus className="w-4 h-4 mr-2" /> Add Page
+                                                <Plus className="w-4 h-4 mr-2" /> Añadir Página
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="start" className="w-56">
                                             <DropdownMenuItem onClick={() => addPage('product-grid')}>
-                                                <Layout className="w-4 h-4 mr-2" /> Product Grid Page
+                                                <Layout className="w-4 h-4 mr-2" /> Página de Cuadrícula
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => addPage('custom')}>
-                                                <FileText className="w-4 h-4 mr-2" /> Custom/Cover Page
+                                                <FileText className="w-4 h-4 mr-2" /> Página Personalizada/Portada
                                             </DropdownMenuItem>
-                                            <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">From Moodboards</div>
+                                            <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">Desde Moodboards</div>
                                             {moodboards.map(m => (
                                                 <DropdownMenuItem key={m.id} onClick={() => addPage('moodboard', m.id)}>
                                                     <ImageIcon className="w-4 h-4 mr-2" /> {m.name}
@@ -1199,8 +1009,8 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                                     <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center p-8">
                                         <div className="w-full max-w-md space-y-4 text-center">
                                             <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
-                                            <h3 className="text-xl font-semibold">{initStatus || 'Preparing your catalog...'}</h3>
-                                            <p className="text-slate-500">We're processing your products and creating the initial layout.</p>
+                                            <h3 className="text-xl font-semibold">{initStatus || 'Preparando tu catálogo...'}</h3>
+                                            <p className="text-slate-500">Estamos procesando tus productos y creando el diseño inicial.</p>
                                             <Progress value={initProgress} className="h-2" />
                                         </div>
                                     </div>
@@ -1209,16 +1019,16 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                                 {/* Editor Toolbar */}
                                 <div className="p-2 bg-white border-b flex items-center gap-2">
                                     <Button variant="outline" size="sm" onClick={addText}>
-                                        <Type className="w-4 h-4 mr-2" /> Add Text
+                                        <Type className="w-4 h-4 mr-2" /> Añadir Texto
                                     </Button>
 
                                     <Dialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen}>
                                         <Button variant="outline" size="sm" onClick={() => setIsAddProductOpen(true)}>
-                                            <ImageIcon className="w-4 h-4 mr-2" /> Add Product
+                                            <ImageIcon className="w-4 h-4 mr-2" /> Añadir Producto
                                         </Button>
                                         <DialogContent className="max-w-2xl">
                                             <DialogHeader>
-                                                <DialogTitle>Select Product</DialogTitle>
+                                                <DialogTitle>Seleccionar Producto</DialogTitle>
                                             </DialogHeader>
                                             <div className="grid grid-cols-4 gap-4 max-h-[60vh] overflow-y-auto p-1">
                                                 {products.map(p => (
@@ -1245,7 +1055,7 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                                                 onValueChange={(val) => updateActiveText({ fontFamily: val })}
                                             >
                                                 <SelectTrigger className="w-[120px] h-8">
-                                                    <SelectValue placeholder="Font" />
+                                                    <SelectValue placeholder="Fuente" />
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="Arial">Arial</SelectItem>
@@ -1301,7 +1111,7 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                                         </Button>
                                     </div>
 
-                                    <span className="text-sm text-slate-500">Page <span className="font-medium text-slate-900">{currentPageIndex + 1}</span> / {pages.length}</span>
+                                    <span className="text-sm text-slate-500">Página <span className="font-medium text-slate-900">{currentPageIndex + 1}</span> / {pages.length}</span>
                                 </div>
 
                                 {/* Canvas — All Pages Stacked Vertically */}
@@ -1321,15 +1131,15 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                                                     className={`text-xs font-medium px-3 py-1 rounded-full cursor-pointer transition-colors ${currentPageIndex === pageIdx ? 'bg-primary text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
                                                     onClick={() => setCurrentPageIndex(pageIdx)}
                                                 >
-                                                    Page {pageIdx + 1} — {page.title}
+                                                    Página {pageIdx + 1} — {page.title}
                                                 </div>
 
                                                 {/* Page Canvas */}
                                                 <div
                                                     className={`shadow-2xl relative overflow-hidden flex-shrink-0 select-none transition-shadow ${currentPageIndex === pageIdx ? 'ring-2 ring-primary/40' : ''}`}
                                                     style={{
-                                                        width: 210 * 3.78 * editorScale,
-                                                        height: 297 * 3.78 * editorScale,
+                                                        width: A4_WIDTH * editorScale,
+                                                        height: A4_HEIGHT * editorScale,
                                                         backgroundColor: selectedStyle.backgroundColor,
                                                     }}
                                                     onClick={() => setCurrentPageIndex(pageIdx)}
@@ -1337,9 +1147,9 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                                                     {/* === STRUCTURAL GRID LINES === */}
                                                     {page.type === 'product-grid' && (() => {
                                                         const s = editorScale
-                                                        const canvasW = 210 * 3.78
-                                                        const canvasH = 297 * 3.78
-                                                        const pad = 60
+                                                        const canvasW = A4_WIDTH
+                                                        const canvasH = A4_HEIGHT
+                                                        const pad = GRID_PADDING
                                                         const headerH = 45
                                                         const footerH = 10
                                                         const borderColor = selectedStyle.productStyle.border?.color || '#e2e2e2'
@@ -1392,7 +1202,7 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                                                                     letterSpacing: '0.25em', textTransform: 'uppercase' as const,
                                                                     fontWeight: 600,
                                                                 }}>
-                                                                    Product Specification
+                                                                    Especificación de Producto
                                                                 </div>
                                                             </>
                                                         )
@@ -1404,7 +1214,7 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
                                                             <img
                                                                 src={moodboards.find(m => m.id === page.moodboardId)?.image_url}
                                                                 className="max-w-full max-h-full object-contain shadow-lg"
-                                                                alt="Moodboard Preview"
+                                                                alt="Vista previa del Moodboard"
                                                             />
                                                         </div>
                                                     )}
@@ -1499,27 +1309,27 @@ export function CatalogCreatorModal({ isOpen, onClose, projectId, products, mood
 
                 {view === 'editor' && (
                     <DialogFooter className="p-4 border-t bg-white">
-                        <Button variant="ghost" onClick={onClose}>Cancel</Button>
+                        <Button variant="ghost" onClick={onClose}>Cancelar</Button>
                         <div className="flex-1" />
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="outline" disabled={generating}>
                                     {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                                    Export Catalog
+                                    Exportar Catálogo
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleExport('pdf')}>PDF Document</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleExport('excel')}>Excel Spreadsheet</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleExport('pdf')}>Documento PDF</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleExport('excel')}>Hoja de Cálculo (Excel)</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleExport('indesign')}>InDesign (IDML)</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleExport('psd')}>Photoshop (PSD)</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleExport('svg')}>Illustrator (SVG)</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleExport('png')}>PNG Images (ZIP)</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleExport('png')}>Imágenes PNG (ZIP)</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
-                        <Button onClick={() => setSaving(true)} disabled={saving || generating}>
+                        <Button onClick={handleSave} disabled={saving || generating}>
                             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                            Save Catalog
+                            Guardar Catálogo
                         </Button>
                     </DialogFooter>
                 )}

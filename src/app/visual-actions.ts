@@ -29,7 +29,7 @@ export async function processVisualCaptures(projectId: string, captures: VisualC
             // Extract image from snippet
             const snippetImage = doc.querySelector('img')?.src || null;
 
-            doc.querySelectorAll('script, style, link, noscript, iframe').forEach((el: any) => el.remove())
+            doc.querySelectorAll('script, style, link, noscript, iframe').forEach((el) => el.remove())
             const cleanHtml = doc.body.innerHTML.substring(0, 3000) // Reduced for speed
 
             // Single AI call - fast extraction only

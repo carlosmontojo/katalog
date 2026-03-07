@@ -114,7 +114,7 @@ export function SaveProductsModal({
                         )}
                     </div>
                     <span className="text-xs font-medium text-muted-foreground tracking-[0.05em]">
-                        {productCount} product{productCount !== 1 ? 's' : ''} selected
+                        {productCount} producto{productCount !== 1 ? 's' : ''} seleccionado{productCount !== 1 ? 's' : ''}
                     </span>
                 </div>
 

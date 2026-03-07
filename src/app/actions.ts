@@ -6,11 +6,11 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 
 const createProjectSchema = z.object({
-    name: z.string().min(3, { message: "Name must be at least 3 characters" }),
+    name: z.string().min(3, { message: "El nombre debe tener al menos 3 caracteres" }),
     description: z.string().optional(),
 })
 
-export async function createProject(prevState: any, formData: FormData) {
+export async function createProject(prevState: { errors?: Record<string, string[]>; message?: string } | null, formData: FormData) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -39,7 +39,7 @@ export async function createProject(prevState: any, formData: FormData) {
 
     if (error) {
         console.error('Error creating project:', error)
-        return { message: `Failed to create project: ${error.message}` }
+        return { message: `Error al crear el proyecto: ${error.message}` }
     }
 
     revalidatePath('/dashboard')

@@ -90,7 +90,7 @@ export async function POST(req: Request) {
 
         return Response.json({ url: publicUrl })
 
-    } catch (error: any) {
-        return new Response(JSON.stringify({ error: error.message }), { status: 500 })
+    } catch (error: unknown) {
+        return new Response(JSON.stringify({ error: (error as Error).message }), { status: 500 })
     }
 }

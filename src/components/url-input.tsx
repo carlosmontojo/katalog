@@ -202,7 +202,7 @@ export function UrlInput({ projectId }: UrlInputProps) {
                 <div className="flex flex-col gap-8">
                     <div className="flex items-center justify-between">
                         <div className="flex flex-col gap-1">
-                            <h2 className="text-lg font-medium tracking-[0.05em] text-foreground uppercase">Select Category</h2>
+                            <h2 className="text-lg font-medium tracking-[0.05em] text-foreground uppercase">Selecciona Categoría</h2>
                             <p className="text-xs text-muted-foreground tracking-[0.05em]">Elige una categoría para extraer productos.</p>
                         </div>
                         <Button variant="ghost" size="sm" onClick={() => setStep('input')} className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Cancelar</Button>
@@ -240,7 +240,7 @@ export function UrlInput({ projectId }: UrlInputProps) {
                                 {previewProducts.length} productos encontrados
                             </h2>
                             <p className="text-xs text-muted-foreground tracking-[0.05em]">
-                                {selectedCategoryName || 'Direct Import'}
+                                {selectedCategoryName || 'Importación Directa'}
                             </p>
                         </div>
                         <div className="flex gap-4">

@@ -89,13 +89,14 @@ export function DestinationModal({
             if (!project) throw new Error('Failed to create project')
 
             onSelectNew(project.id, project.name)
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error('Error creating katalog:', e)
-            if (e.message?.includes('authenticated') || e.message?.includes('JWT')) {
+            const message = (e as Error).message
+            if (message?.includes('authenticated') || message?.includes('JWT')) {
                 toast.error('Tu sesión ha expirado. Por favor, recarga la página e inicia sesión de nuevo.')
                 window.location.reload()
             } else {
-                toast.error('Error al crear el catálogo: ' + (e.message || 'Desconocido'))
+                toast.error('Error al crear el catálogo: ' + (message || 'Desconocido'))
             }
         } finally {
             setCreating(false)

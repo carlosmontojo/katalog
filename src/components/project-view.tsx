@@ -11,12 +11,13 @@ import { MoodboardCreatorModal } from '@/components/moodboard-creator-modal'
 import { BudgetCard } from '@/components/budget-card'
 import { BudgetCreatorModal } from '@/components/budget-creator-modal'
 import { GenerateCatalogButton } from '@/components/generate-catalog-button'
+import { Product, Project, Moodboard, Budget } from '@/lib/types'
 
 interface ProjectViewProps {
-    project: any
-    products: any[]
-    moodboards: any[]
-    budgets: any[]
+    project: Project
+    products: Product[]
+    moodboards: Moodboard[]
+    budgets: Budget[]
 }
 
 export function ProjectView({ project, products, moodboards, budgets }: ProjectViewProps) {

@@ -222,7 +222,7 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
 
         const newText: MoodboardText = {
             id,
-            text: 'Double click to edit',
+            text: 'Doble clic para editar',
             x: width / 2 - 100,
             y: height / 2,
             fontSize: 40,
@@ -573,10 +573,10 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
                     <DialogHeader className="p-8 border-b border-slate-200/50 bg-white">
                         <div className="flex items-center justify-between">
                             <DialogTitle className="text-lg font-medium tracking-[0.05em] text-foreground uppercase">
-                                {step === 'select-products' && 'Step 1: Select Products'}
-                                {step === 'fetching-images' && 'Analyzing Products...'}
-                                {step === 'select-images' && 'Step 2: Choose Best Images'}
-                                {step === 'preview' && 'Customize Layout'}
+                                {step === 'select-products' && 'Paso 1: Seleccionar Productos'}
+                                {step === 'fetching-images' && 'Analizando Productos...'}
+                                {step === 'select-images' && 'Paso 2: Elegir Mejores Imágenes'}
+                                {step === 'preview' && 'Personalizar Diseño'}
                             </DialogTitle>
                             <div className="flex items-center gap-4">
                                 <div className="flex gap-1">
@@ -622,12 +622,12 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
                         {step === 'fetching-images' && (
                             <div className="flex flex-col items-center justify-center h-full p-12 text-center">
                                 <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-                                <h3 className="text-lg font-medium mb-2">Finding High-Quality Images</h3>
+                                <h3 className="text-lg font-medium mb-2">Buscando Imágenes de Alta Calidad</h3>
                                 <p className="text-muted-foreground mb-6 max-w-md">
-                                    We're analyzing product pages to find the best images without backgrounds...
+                                    Estamos analizando las páginas de productos para encontrar las mejores imágenes sin fondo...
                                 </p>
                                 <Progress value={fetchProgress} className="w-full max-w-md h-2" />
-                                <p className="text-xs text-muted-foreground mt-2">{fetchProgress}% Complete</p>
+                                <p className="text-xs text-muted-foreground mt-2">{fetchProgress}% Completado</p>
                             </div>
                         )}
 
@@ -720,7 +720,7 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
                                     </Button>
                                     <Button variant="outline" size="sm" onClick={addText}>
                                         <Type className="w-4 h-4 mr-2" />
-                                        Add Text
+                                        Añadir Texto
                                     </Button>
 
                                     {activeTextId && (
@@ -731,7 +731,7 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
                                                 onValueChange={(val) => updateActiveText({ fontFamily: val })}
                                             >
                                                 <SelectTrigger className="w-[120px] h-8">
-                                                    <SelectValue placeholder="Font" />
+                                                    <SelectValue placeholder="Fuente" />
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="Arial">Arial</SelectItem>
@@ -844,9 +844,9 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
                     <DialogFooter className="p-4 border-t bg-white">
                         {step === 'select-products' && (
                             <>
-                                <Button variant="outline" onClick={onClose}>Cancel</Button>
+                                <Button variant="outline" onClick={onClose}>Cancelar</Button>
                                 <Button onClick={handleStartImageSelection} disabled={selectedProductIds.size === 0}>
-                                    Next: Select Images
+                                    Siguiente: Seleccionar Imágenes
                                     <ArrowRight className="ml-2 h-4 w-4" />
                                 </Button>
                             </>
@@ -854,24 +854,24 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
 
                         {step === 'fetching-images' && (
                             <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
-                                Please wait while we gather images...
+                                Por favor espera mientras recopilamos las imágenes...
                             </div>
                         )}
 
                         {step === 'select-images' && (
                             <>
-                                <Button variant="ghost" onClick={() => setStep('select-products')}>Back</Button>
+                                <Button variant="ghost" onClick={() => setStep('select-products')}>Atrás</Button>
                                 <div className="flex-1" />
                                 <Button onClick={handleGenerate} disabled={generating}>
                                     {generating ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Generating... {generationProgress}%
+                                            Generando... {generationProgress}%
                                         </>
                                     ) : (
                                         <>
                                             <Wand2 className="mr-2 h-4 w-4" />
-                                            Generate Moodboard
+                                            Generar Moodboard
                                         </>
                                     )}
                                 </Button>
@@ -880,22 +880,22 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
 
                         {step === 'preview' && (
                             <>
-                                <Button variant="ghost" onClick={() => setStep('select-images')}>Back to Images</Button>
+                                <Button variant="ghost" onClick={() => setStep('select-images')}>Volver a Imágenes</Button>
                                 <div className="flex-1" />
 
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="outline">
                                             <Download className="mr-2 h-4 w-4" />
-                                            Export As...
+                                            Exportar Como...
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem onClick={() => handleExport('png')}>
-                                            PNG Image (High-Res)
+                                            Imagen PNG (Alta Resolución)
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => handleExport('pdf')}>
-                                            PDF Document
+                                            Documento PDF
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => handleExport('psd')}>
                                             Photoshop (PSD)
@@ -908,7 +908,7 @@ export function MoodboardCreatorModal({ isOpen, onClose, projectId, products }: 
 
                                 <Button onClick={handleSave} disabled={saving}>
                                     {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                    Save to Project
+                                    Guardar en Proyecto
                                 </Button>
                             </>
                         )}

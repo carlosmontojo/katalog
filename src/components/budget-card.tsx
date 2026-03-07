@@ -15,7 +15,7 @@ export function BudgetCard({ budget, projectId }: BudgetCardProps) {
     const [deleting, setDeleting] = useState(false)
 
     const handleDelete = async () => {
-        if (!confirm('Are you sure you want to delete this budget?')) return
+        if (!confirm('¿Estás seguro de que quieres eliminar este presupuesto?')) return
         setDeleting(true)
         try {
             await deleteBudget(budget.id, projectId)
@@ -61,7 +61,7 @@ export function BudgetCard({ budget, projectId }: BudgetCardProps) {
                             {budget.name}
                         </h3>
                         <p className="text-[10px] text-muted-foreground mt-1">
-                            {budget.product_ids?.length || 0} products · {formattedDate}
+                            {budget.product_ids?.length || 0} productos · {formattedDate}
                         </p>
                     </div>
                 </div>

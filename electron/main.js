@@ -17,6 +17,7 @@ function createWindow() {
         titleBarStyle: 'hiddenInset',
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
+            partition: 'persist:katalog', // Persist cookies/session across app restarts
             webviewTag: true, // Enable <webview> tag
             contextIsolation: true,
             nodeIntegration: false,
@@ -61,8 +62,9 @@ function startNextServer() {
 }
 
 app.whenReady().then(async () => {
-    // Configure session to allow webview to work properly
-    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    // Configure the persistent session to allow webview to work properly
+    const appSession = session.fromPartition('persist:katalog');
+    appSession.webRequest.onHeadersReceived((details, callback) => {
         callback({
             responseHeaders: {
                 ...details.responseHeaders,

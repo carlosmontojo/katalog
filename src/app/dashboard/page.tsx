@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from "@/components/ui/checkbox"
 import { detectCategories, scrapeProducts, saveSelectedProducts } from '@/app/scraping-actions'
-import { Loader2, Search, Sparkles, ShoppingBag, Eye, Check, ArrowLeft, Globe, MousePointer2 } from 'lucide-react'
+import { Loader2, ShoppingBag, Eye, Check, ArrowLeft, Globe } from 'lucide-react'
 import { DestinationModal } from '@/components/destination-modal'
 import { SaveProductsModal } from '@/components/save-products-modal'
 import { ProductDetailModal } from '@/components/product-detail-modal'

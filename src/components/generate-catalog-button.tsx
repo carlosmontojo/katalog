@@ -13,11 +13,12 @@ import {
 } from '@/components/ui/dialog'
 import { CatalogCreatorModal } from '@/components/catalog-creator-modal'
 import { Download, Loader2, LayoutTemplate } from 'lucide-react'
+import { Product, Moodboard } from '@/lib/types'
 
 interface GenerateCatalogButtonProps {
     projectId: string
-    products: any[]
-    moodboards: any[]
+    products: Product[]
+    moodboards: Moodboard[]
 }
 
 export function GenerateCatalogButton({ projectId, products, moodboards }: GenerateCatalogButtonProps) {

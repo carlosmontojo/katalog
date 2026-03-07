@@ -116,7 +116,7 @@ async function handleProxy(req: NextRequest) {
         headers['user-agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
 
         // Determine body
-        let body: any = undefined;
+        let body: Blob | undefined = undefined;
         if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
             try { body = await req.blob(); } catch (e) { }
         }
@@ -373,8 +373,8 @@ async function handleProxy(req: NextRequest) {
             return new NextResponse(blob, { headers: responseHeaders });
         }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[Proxy Error]', error);
-        return new NextResponse(`Proxy error: ${error.message}`, { status: 500 });
+        return new NextResponse(`Proxy error: ${(error as Error).message}`, { status: 500 });
     }
 }

@@ -6,9 +6,10 @@ import { ProductEditDialog } from "./product-edit-dialog"
 import { ProductDetailModal } from "./product-detail-modal"
 import { Button } from "./ui/button"
 import { getStoreName } from "@/lib/utils/url"
+import { Product } from "@/lib/types"
 
 interface ProductCardProps {
-    product: any
+    product: Product
 }
 
 export function ProductCard({ product }: ProductCardProps) {
