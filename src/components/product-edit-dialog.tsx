@@ -16,9 +16,11 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { updateProduct } from '@/app/product-actions'
 import { Edit } from 'lucide-react'
+import { toast } from 'sonner'
+import { Product } from '@/lib/types'
 
 interface ProductEditDialogProps {
-    product: any
+    product: Product
 }
 
 export function ProductEditDialog({ product }: ProductEditDialogProps) {
@@ -33,15 +35,15 @@ export function ProductEditDialog({ product }: ProductEditDialogProps) {
     const handleSave = async () => {
         setLoading(true)
         try {
-            const result = await updateProduct(product.project_id, product.id, formData)
+            const result = await updateProduct(product.project_id!, product.id, formData)
             if (result.success) {
                 setOpen(false)
             } else {
-                alert("Failed to update product")
+                toast.error("Error al actualizar el producto")
             }
         } catch (e) {
             console.error(e)
-            alert("Error updating product")
+            toast.error("Error al actualizar el producto")
         } finally {
             setLoading(false)
         }
@@ -56,15 +58,15 @@ export function ProductEditDialog({ product }: ProductEditDialogProps) {
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Edit Product</DialogTitle>
+                    <DialogTitle>Editar Producto</DialogTitle>
                     <DialogDescription>
-                        Make changes to the product details here.
+                        Realiza cambios en los detalles del producto aquí.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="title" className="text-right">
-                            Title
+                            Título
                         </Label>
                         <Input
                             id="title"
@@ -75,7 +77,7 @@ export function ProductEditDialog({ product }: ProductEditDialogProps) {
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="price" className="text-right">
-                            Price
+                            Precio
                         </Label>
                         <Input
                             id="price"
@@ -87,7 +89,7 @@ export function ProductEditDialog({ product }: ProductEditDialogProps) {
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="description" className="text-right">
-                            Description
+                            Descripción
                         </Label>
                         <Textarea
                             id="description"
@@ -98,7 +100,7 @@ export function ProductEditDialog({ product }: ProductEditDialogProps) {
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button type="submit" onClick={handleSave} disabled={loading}>Save changes</Button>
+                    <Button type="submit" onClick={handleSave} disabled={loading}>Guardar cambios</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
 export async function GET(req: NextRequest) { return handleProxy(req); }
 export async function POST(req: NextRequest) { return handleProxy(req); }
@@ -18,11 +19,38 @@ export async function OPTIONS(req: NextRequest) {
 }
 
 async function handleProxy(req: NextRequest) {
+    // Auth check: only authenticated users can use the proxy
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        return new NextResponse('Unauthorized', { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const targetUrl = searchParams.get('url');
 
     if (!targetUrl) {
         return new NextResponse('Missing URL parameter', { status: 400 });
+    }
+
+    // Block access to internal/private network URLs (SSRF protection)
+    try {
+        const parsed = new URL(targetUrl);
+        const hostname = parsed.hostname.toLowerCase();
+        if (
+            hostname === 'localhost' ||
+            hostname === '127.0.0.1' ||
+            hostname === '0.0.0.0' ||
+            hostname.startsWith('10.') ||
+            hostname.startsWith('192.168.') ||
+            hostname.startsWith('172.') ||
+            hostname.endsWith('.local') ||
+            hostname.endsWith('.internal')
+        ) {
+            return new NextResponse('Blocked: internal URL', { status: 403 });
+        }
+    } catch {
+        return new NextResponse('Invalid URL', { status: 400 });
     }
 
     // 0. AGGRESSIVE TRACKING & ANALYTICS BLOCK
@@ -34,12 +62,12 @@ async function handleProxy(req: NextRequest) {
     ];
 
     if (trackingPatterns.some(p => targetUrl.toLowerCase().includes(p))) {
-        console.log(`[Proxy Blocked] Tracking domain: ${targetUrl}`);
+        // Tracking domain blocked
         return new NextResponse(null, { status: 204 });
     }
 
     try {
-        console.log(`[Proxy v11.0] ${req.method}: ${targetUrl}`);
+        // Proxy request: ${req.method} ${targetUrl}
 
         // 1. FORWARD HEADERS
         const headers: Record<string, string> = {};
@@ -88,7 +116,7 @@ async function handleProxy(req: NextRequest) {
         headers['user-agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
 
         // Determine body
-        let body: any = undefined;
+        let body: Blob | undefined = undefined;
         if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
             try { body = await req.blob(); } catch (e) { }
         }
@@ -345,8 +373,8 @@ async function handleProxy(req: NextRequest) {
             return new NextResponse(blob, { headers: responseHeaders });
         }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[Proxy Error]', error);
-        return new NextResponse(`Proxy error: ${error.message}`, { status: 500 });
+        return new NextResponse(`Proxy error: ${(error as Error).message}`, { status: 500 });
     }
 }

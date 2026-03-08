@@ -3,13 +3,8 @@
 import { useState } from 'react'
 import { Download, Eye } from 'lucide-react'
 import { deleteMoodboard } from '@/app/moodboard-actions'
-
-interface Moodboard {
-    id: string
-    name: string
-    image_url: string
-    created_at: string
-}
+import { toast } from 'sonner'
+import { Moodboard } from '@/lib/types'
 
 interface MoodboardCardProps {
     moodboard: Moodboard
@@ -20,14 +15,14 @@ export function MoodboardCard({ moodboard, projectId }: MoodboardCardProps) {
     const [deleting, setDeleting] = useState(false)
 
     const handleDelete = async () => {
-        if (!confirm('Are you sure you want to delete this moodboard?')) return
+        if (!confirm('¿Estás seguro de que quieres eliminar este moodboard?')) return
 
         setDeleting(true)
         try {
             await deleteMoodboard(moodboard.id, projectId)
         } catch (e) {
             console.error(e)
-            alert('Failed to delete moodboard')
+            toast.error('Error al eliminar el moodboard')
             setDeleting(false)
         }
     }
@@ -43,7 +38,7 @@ export function MoodboardCard({ moodboard, projectId }: MoodboardCardProps) {
 
     return (
         <div className="flex flex-col group cursor-pointer">
-            <div className="relative aspect-[4/3] w-full bg-muted rounded-sm overflow-hidden mb-4 shadow-sm">
+            <div className="relative aspect-[4/3] w-full bg-muted rounded-xl overflow-hidden mb-4 shadow-sm hover:shadow-md transition-shadow duration-300">
                 <img
                     src={moodboard.image_url}
                     alt={moodboard.name}
@@ -68,7 +63,7 @@ export function MoodboardCard({ moodboard, projectId }: MoodboardCardProps) {
             </div>
 
             <div className="flex flex-col items-center text-center">
-                <h3 className="text-[11px] font-bold tracking-[0.2em] uppercase text-foreground">
+                <h3 className="text-xs font-bold text-foreground">
                     {moodboard.name}
                 </h3>
             </div>

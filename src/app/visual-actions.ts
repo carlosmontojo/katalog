@@ -1,37 +1,39 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedClient } from '@/lib/supabase/helpers'
 import { revalidatePath } from 'next/cache'
 import OpenAI from 'openai'
 import { JSDOM } from 'jsdom'
 import { parsePrice } from '@/lib/utils/price'
+import { VisualCapture } from '@/lib/types'
+import { inferTypology, normalizeBrand } from '@/lib/typology'
 
-export async function processVisualCaptures(projectId: string, captures: any[], supabaseClient?: any) {
-    const supabase = supabaseClient || await createClient()
+export async function processVisualCaptures(projectId: string, captures: VisualCapture[], supabaseClient?: any) {
+    const { supabase, user } = supabaseClient
+        ? { supabase: supabaseClient, user: { id: null } }
+        : await getAuthenticatedClient()
 
     const openai = new OpenAI({
         apiKey: process.env.OPENAI_API_KEY,
     })
 
-    console.log(`[Visual Processor] 🚀 FAST MODE: Starting for project ${projectId} with ${captures.length} captures`)
     const startTime = Date.now()
 
     // OPTIMIZATION: Process ALL captures in parallel with timeout
     const TIMEOUT_MS = 8000; // 8 second max per product
-    const productsToSave: any[] = [];
+    const productsToSave: Record<string, unknown>[] = [];
 
-    const processCapture = async (capture: any, index: number) => {
+    const processCapture = async (capture: VisualCapture, index: number) => {
         const captureStart = Date.now()
         try {
-            console.log(`[Visual Processor] [${index + 1}/${captures.length}] Processing: ${capture.url?.substring(0, 50)}...`)
-
             const dom = new JSDOM(capture.html)
             const doc = dom.window.document
 
             // Extract image from snippet
             const snippetImage = doc.querySelector('img')?.src || null;
 
-            doc.querySelectorAll('script, style, link, noscript, iframe').forEach((el: any) => el.remove())
+            doc.querySelectorAll('script, style, link, noscript, iframe').forEach((el) => el.remove())
             const cleanHtml = doc.body.innerHTML.substring(0, 3000) // Reduced for speed
 
             // Single AI call - fast extraction only
@@ -73,10 +75,15 @@ export async function processVisualCaptures(projectId: string, captures: any[], 
             // Use preview image from visual selection (already validated client-side)
             const mainImage = capture.previewImage || snippetImage || null;
 
-            const product: any = {
+            const productTitle = basicInfo.name || 'Producto capturado'
+            const normalizedBrand = normalizeBrand(brand)
+
+            const product: Record<string, unknown> = {
                 project_id: projectId,
-                title: basicInfo.name || 'Producto capturado',
-                brand: brand,
+                user_id: user.id,
+                title: productTitle,
+                brand: normalizedBrand,
+                typology: inferTypology(productTitle),
                 price: parsedPrice,
                 currency: 'EUR',
                 original_url: capture.productUrl || capture.url,
@@ -90,12 +97,10 @@ export async function processVisualCaptures(projectId: string, captures: any[], 
                 ai_metadata: {
                     inferred_category: 'Visual Capture',
                     extraction_method: 'visual_selection_fast',
-                    needs_enrichment: true // Flag for background enrichment
+                    needs_enrichment: true
                 }
             }
 
-            const elapsed = Date.now() - captureStart
-            console.log(`[Visual Processor] ✅ [${index + 1}] ${product.title?.substring(0, 30)} - ${elapsed}ms`)
             return product
 
         } catch (error) {
@@ -105,7 +110,7 @@ export async function processVisualCaptures(projectId: string, captures: any[], 
     }
 
     // Wrap each capture with timeout
-    const withTimeout = async (capture: any, index: number) => {
+    const withTimeout = async (capture: VisualCapture, index: number) => {
         return Promise.race([
             processCapture(capture, index),
             new Promise<null>((resolve) => {
@@ -117,8 +122,7 @@ export async function processVisualCaptures(projectId: string, captures: any[], 
         ])
     }
 
-    // Process ALL in parallel (no batching)
-    console.log(`[Visual Processor] 🔄 Processing ${captures.length} products in parallel...`)
+    // Process ALL in parallel
     const results = await Promise.allSettled(captures.map((c, i) => withTimeout(c, i)))
 
     for (const result of results) {
@@ -127,13 +131,7 @@ export async function processVisualCaptures(projectId: string, captures: any[], 
         }
     }
 
-    const totalElapsed = Date.now() - startTime
-    console.log(`[Visual Processor] ⚡ Processed ${productsToSave.length}/${captures.length} in ${totalElapsed}ms`)
-
     if (productsToSave.length > 0) {
-        console.log(`[Visual Processor] Saving ${productsToSave.length} products to DB...`)
-
-        // Try inserting with brand/status. If it fails due to column mismatch, try without them.
         const { data, error } = await supabase
             .from('products')
             .insert(productsToSave)
@@ -144,10 +142,8 @@ export async function processVisualCaptures(projectId: string, captures: any[], 
 
             // Fallback: If column 'brand' or 'status' is missing, remove them and try again
             if (error.message?.includes('brand') || error.message?.includes('status') || error.code === 'PGRST204') {
-                console.log('[Visual Processor] retrying without brand/status columns...')
                 const fallbackProducts = productsToSave.map(p => {
                     const { brand, status, ...rest } = p;
-                    // Move brand to attributes so it's not lost
                     return { ...rest, attributes: { ...(rest.attributes || {}), brand } };
                 });
 
@@ -158,19 +154,34 @@ export async function processVisualCaptures(projectId: string, captures: any[], 
 
                 if (retryError) throw retryError;
 
-                console.log(`[Visual Processor] Successfully saved ${retryData.length} products (fallback mode).`)
+                // Insert into junction table
+                if (retryData && retryData.length > 0) {
+                    await supabase.from('project_products').upsert(
+                        retryData.map((p: { id: string }) => ({ project_id: projectId, product_id: p.id })),
+                        { onConflict: 'project_id,product_id' }
+                    )
+                }
+
                 revalidatePath(`/dashboard/projects/${projectId}`)
+                revalidatePath('/dashboard/library')
                 return retryData;
             }
 
             throw error
         }
 
-        console.log(`[Visual Processor] Successfully saved ${data.length} products.`)
+        // Insert into junction table
+        if (data && data.length > 0) {
+            await supabase.from('project_products').upsert(
+                data.map((p: { id: string }) => ({ project_id: projectId, product_id: p.id })),
+                { onConflict: 'project_id,product_id' }
+            )
+        }
+
         revalidatePath(`/dashboard/projects/${projectId}`)
+        revalidatePath('/dashboard/library')
         return data
     }
 
-    console.log('[Visual Processor] No products were successfully processed')
     return []
 }

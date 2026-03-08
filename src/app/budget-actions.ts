@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedClient, uploadAndGetUrl } from '@/lib/supabase/helpers'
 import { revalidatePath } from 'next/cache'
 
 interface BudgetLineItem {
@@ -26,10 +26,7 @@ interface GenerateBudgetInput {
 }
 
 export async function generateBudget(input: GenerateBudgetInput) {
-    const supabase = await createClient()
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('Not authenticated')
+    const { supabase, user } = await getAuthenticatedClient()
 
     // Verify project ownership
     const { data: project } = await supabase
@@ -98,31 +95,19 @@ export async function saveBudget(
     name: string,
     productIds: string[],
     total: number,
-    lineItems: any[],
+    lineItems: unknown[],
     fileBase64: string
 ) {
-    const supabase = await createClient()
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('Not authenticated')
+    const { supabase } = await getAuthenticatedClient()
 
     // Upload the Excel file to storage
     const fileName = `${projectId}/${Date.now()}-${name.replace(/\s+/g, '-')}.xlsx`
     const fileBuffer = Buffer.from(fileBase64, 'base64')
 
-    const { error: uploadError } = await supabase.storage
-        .from('budgets')
-        .upload(fileName, fileBuffer, {
-            contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            upsert: false
-        })
-
-    if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`)
-
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-        .from('budgets')
-        .getPublicUrl(fileName)
+    const publicUrl = await uploadAndGetUrl('budgets', fileName, fileBuffer, {
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        upsert: false
+    })
 
     // Save budget record
     const { error: dbError } = await supabase
@@ -143,10 +128,7 @@ export async function saveBudget(
 }
 
 export async function deleteBudget(budgetId: string, projectId: string) {
-    const supabase = await createClient()
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('Not authenticated')
+    const { supabase } = await getAuthenticatedClient()
 
     // Get the budget to find the file URL
     const { data: budget } = await supabase

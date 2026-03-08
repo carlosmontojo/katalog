@@ -22,27 +22,27 @@ export default function NewProjectPage() {
         <div className="flex justify-center items-start pt-10">
             <Card className="w-[600px]">
                 <CardHeader>
-                    <CardTitle>Create New Project</CardTitle>
-                    <CardDescription>Start a new catalog project.</CardDescription>
+                    <CardTitle>Crear Nuevo Proyecto</CardTitle>
+                    <CardDescription>Empieza un nuevo proyecto de catálogo.</CardDescription>
                 </CardHeader>
                 <form action={formAction}>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="name">Project Name</Label>
-                            <Input id="name" name="name" placeholder="Summer Collection 2025" required />
+                            <Label htmlFor="name">Nombre del Proyecto</Label>
+                            <Input id="name" name="name" placeholder="Colección de Verano 2025" required />
                             {state?.errors?.name && <p className="text-sm text-red-500">{state.errors.name}</p>}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="description">Description (Optional)</Label>
-                            <Textarea id="description" name="description" placeholder="A brief description of this catalog..." />
+                            <Label htmlFor="description">Descripción (Opcional)</Label>
+                            <Textarea id="description" name="description" placeholder="Una breve descripción de este catálogo..." />
                         </div>
                         {state?.message && <p className="text-sm text-red-500">{state.message}</p>}
                     </CardContent>
                     <CardFooter className="flex justify-between">
                         <Button variant="ghost" asChild>
-                            <Link href="/dashboard">Cancel</Link>
+                            <Link href="/dashboard">Cancelar</Link>
                         </Button>
-                        <Button type="submit">Create Project</Button>
+                        <Button type="submit">Crear Proyecto</Button>
                     </CardFooter>
                 </form>
             </Card>

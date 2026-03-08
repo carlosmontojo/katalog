@@ -85,8 +85,7 @@ La base de datos ya está configurada en Supabase con las siguientes tablas:
 
 Todas las tablas tienen **Row Level Security (RLS)** activado.
 
-Si necesitas recrear la base de datos desde cero, los scripts SQL están en:
-- `supabase_budgets_migration.sql` — Migración de presupuestos
+Si necesitas recrear la base de datos desde cero, consulta el esquema en el dashboard de Supabase.
 
 ---
 

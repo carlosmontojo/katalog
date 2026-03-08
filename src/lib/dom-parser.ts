@@ -1,20 +1,7 @@
 import * as cheerio from 'cheerio';
 
-export interface ProductCandidate {
-    title?: string;
-    price?: string;
-    image_url?: string;
-    product_url?: string;
-    description?: string;
-    dimensions?: string;
-    html_block?: string; // The raw HTML of the card for AI analysis
-}
-
-export interface Category {
-    name: string;
-    url?: string;
-    type?: 'card' | 'text';
-}
+import type { ProductCandidate, Category } from '@/lib/types';
+export type { ProductCandidate, Category };
 
 // Helper: Check if text is a valid category name
 export const isValidCategoryName = (text: string): boolean => {
@@ -241,7 +228,6 @@ export function parseProductPage(html: string, baseUrl: string): ProductCandidat
     // 1. Try JSON-LD first (most reliable for universal scraping)
     const jsonLdCandidates = parseJsonLd(html, baseUrl);
     if (jsonLdCandidates.length > 3) {
-        console.log(`[parseProductPage] Found ${jsonLdCandidates.length} candidates via JSON-LD`);
         return dedupeCandidates(jsonLdCandidates).slice(0, 200);
     }
 
@@ -348,7 +334,6 @@ export function parseProductPage(html: string, baseUrl: string): ProductCandidat
         });
     }
 
-    console.log(`[parseProductPage] Captured ${bestCandidates.length} products using method: ${bestMethod}`);
     candidates.push(...bestCandidates);
     return dedupeCandidates(candidates).slice(0, 200);
 }
@@ -492,7 +477,6 @@ export function extractNavHtml(html: string): string {
     }
 
     if (topContainers.length > 0) {
-        console.log(`[extractNavHtml] Selected ${topContainers.length} relevant containers.`);
         return topContainers.join('\n<hr>\n');
     }
 

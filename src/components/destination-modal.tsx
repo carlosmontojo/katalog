@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Loader2, Plus, FolderOpen, ArrowLeft } from "lucide-react"
 import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 import { createProjectAction } from '@/app/scraping-actions'
 
 interface DestinationModalProps {
@@ -35,7 +36,7 @@ export function DestinationModal({
     const [hasExistingProjects, setHasExistingProjects] = useState(false)
     const [loadingProjects, setLoadingProjects] = useState(true)
 
-    // New Katalog form
+    // New catálogo form
     const [newName, setNewName] = useState('')
     const [newDescription, setNewDescription] = useState('')
     const [creating, setCreating] = useState(false)
@@ -88,13 +89,14 @@ export function DestinationModal({
             if (!project) throw new Error('Failed to create project')
 
             onSelectNew(project.id, project.name)
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error('Error creating katalog:', e)
-            if (e.message?.includes('authenticated') || e.message?.includes('JWT')) {
-                alert('Tu sesión ha expirado. Por favor, recarga la página e inicia sesión de nuevo.')
+            const message = (e as Error).message
+            if (message?.includes('authenticated') || message?.includes('JWT')) {
+                toast.error('Tu sesión ha expirado. Por favor, recarga la página e inicia sesión de nuevo.')
                 window.location.reload()
             } else {
-                alert('Error al crear el catálogo: ' + (e.message || 'Desconocido'))
+                toast.error('Error al crear el catálogo: ' + (message || 'Desconocido'))
             }
         } finally {
             setCreating(false)
@@ -103,25 +105,25 @@ export function DestinationModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-md bg-background border-none p-8 rounded-sm">
+            <DialogContent className="max-w-md bg-background border-none p-8 rounded-lg">
                 {/* Choose destination */}
                 {step === 'choose' && (
                     <>
                         <DialogHeader className="mb-8">
-                            <DialogTitle className="text-lg font-medium tracking-[0.05em] text-foreground">
+                            <DialogTitle className="text-lg font-medium text-foreground">
                                 ¿Dónde quieres añadir los productos?
                             </DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4">
                             <button
                                 onClick={() => setStep('new-form')}
-                                className="w-full flex items-center gap-6 p-6 bg-card border border-border/50 rounded-sm hover:border-muted-foreground/30 transition-all text-left group"
+                                className="w-full flex items-center gap-6 p-6 bg-card border border-border/50 rounded-lg hover:border-muted-foreground/30 transition-all text-left group"
                             >
                                 <div className="w-12 h-12 rounded-full bg-muted/50 border border-border/50 flex items-center justify-center shrink-0 group-hover:bg-card transition-colors">
                                     <Plus className="w-5 h-5 text-muted-foreground" />
                                 </div>
                                 <div>
-                                    <h3 className="text-sm font-semibold text-foreground tracking-[0.05em]">Crear nuevo Katalog</h3>
+                                    <h3 className="text-sm font-semibold text-foreground">Crear nuevo catálogo</h3>
                                     <p className="text-xs text-muted-foreground mt-0.5">Empezar un catálogo nuevo</p>
                                 </div>
                             </button>
@@ -129,13 +131,13 @@ export function DestinationModal({
                             <button
                                 onClick={() => onSelectExisting()}
                                 disabled={loadingProjects || !hasExistingProjects}
-                                className="w-full flex items-center gap-6 p-6 bg-card border border-border/50 rounded-sm hover:border-muted-foreground/30 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full flex items-center gap-6 p-6 bg-card border border-border/50 rounded-lg hover:border-muted-foreground/30 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <div className="w-12 h-12 rounded-full bg-muted/50 border border-border/50 flex items-center justify-center shrink-0 group-hover:bg-card transition-colors">
                                     <FolderOpen className="w-5 h-5 text-muted-foreground" />
                                 </div>
                                 <div>
-                                    <h3 className="text-sm font-semibold text-foreground tracking-[0.05em]">Añadir a Katalog existente</h3>
+                                    <h3 className="text-sm font-semibold text-foreground">Añadir a catálogo existente</h3>
                                     <p className="text-xs text-muted-foreground mt-0.5">
                                         {loadingProjects
                                             ? 'Cargando...'
@@ -149,7 +151,7 @@ export function DestinationModal({
                     </>
                 )}
 
-                {/* New Katalog form */}
+                {/* New catálogo form */}
                 {step === 'new-form' && (
                     <>
                         <DialogHeader className="mb-8">
@@ -162,14 +164,14 @@ export function DestinationModal({
                                 >
                                     <ArrowLeft className="w-4 h-4 text-muted-foreground" />
                                 </Button>
-                                <DialogTitle className="text-lg font-medium tracking-[0.05em] text-foreground">
-                                    Crear nuevo Katalog
+                                <DialogTitle className="text-lg font-medium text-foreground">
+                                    Crear nuevo catálogo
                                 </DialogTitle>
                             </div>
                         </DialogHeader>
                         <div className="space-y-6">
                             <div>
-                                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.2em] mb-2 block">
+                                <label className="text-xs font-semibold text-muted-foreground mb-2 block">
                                     Nombre *
                                 </label>
                                 <Input
@@ -177,11 +179,11 @@ export function DestinationModal({
                                     value={newName}
                                     onChange={(e) => setNewName(e.target.value)}
                                     autoFocus
-                                    className="h-10 text-xs tracking-[0.05em] bg-card border-border/50 rounded-sm focus-visible:ring-1 focus-visible:ring-border focus-visible:ring-offset-0"
+                                    className="h-10 text-xs bg-card border-border/50 rounded-lg focus-visible:ring-1 focus-visible:ring-border focus-visible:ring-offset-0"
                                 />
                             </div>
                             <div>
-                                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.2em] mb-2 block">
+                                <label className="text-xs font-semibold text-muted-foreground mb-2 block">
                                     Descripción (opcional)
                                 </label>
                                 <Textarea
@@ -189,7 +191,7 @@ export function DestinationModal({
                                     value={newDescription}
                                     onChange={(e) => setNewDescription(e.target.value)}
                                     rows={3}
-                                    className="text-xs tracking-[0.05em] bg-card border-border/50 rounded-sm focus-visible:ring-1 focus-visible:ring-border focus-visible:ring-offset-0 resize-none"
+                                    className="text-xs bg-card border-border/50 rounded-lg focus-visible:ring-1 focus-visible:ring-border focus-visible:ring-offset-0 resize-none"
                                 />
                             </div>
                         </div>
@@ -197,7 +199,7 @@ export function DestinationModal({
                             <Button
                                 onClick={handleCreateNew}
                                 disabled={!newName.trim() || creating}
-                                className="w-full h-10 bg-foreground text-background hover:bg-foreground/90 rounded-sm text-xs font-semibold uppercase tracking-[0.1em]"
+                                className="w-full h-10 bg-foreground text-background hover:bg-foreground/90 rounded-lg text-xs font-semibold"
                             >
                                 {creating ? (
                                     <Loader2 className="w-4 h-4 animate-spin mr-2" />

@@ -2,33 +2,36 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from '@/components/ui/dialog'
 import { CatalogCreatorModal } from '@/components/catalog-creator-modal'
-import { Download, Loader2, LayoutTemplate } from 'lucide-react'
+import { LayoutTemplate } from 'lucide-react'
+import { ProductWithSection, ProjectSection, Moodboard } from '@/lib/types'
 
 interface GenerateCatalogButtonProps {
     projectId: string
-    products: any[]
-    moodboards: any[]
+    products: ProductWithSection[]
+    sections: ProjectSection[]
+    moodboards: Moodboard[]
 }
 
-export function GenerateCatalogButton({ projectId, products, moodboards }: GenerateCatalogButtonProps) {
+export function GenerateCatalogButton({ projectId, products, sections, moodboards }: GenerateCatalogButtonProps) {
     const [open, setOpen] = useState(false)
+
+    // Sort products by section order, then by position within section
+    const sortedProducts = [...products].sort((a, b) => {
+        const secA = sections.find(s => s.id === a.section_id)
+        const secB = sections.find(s => s.id === b.section_id)
+        const orderA = secA ? secA.sort_order : 9999
+        const orderB = secB ? secB.sort_order : 9999
+        if (orderA !== orderB) return orderA - orderB
+        return (a.position ?? 0) - (b.position ?? 0)
+    })
 
     return (
         <>
             <Button
                 onClick={() => setOpen(true)}
                 variant="outline"
-                className="h-10 px-6 border-border text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-muted/30 rounded-sm"
+                className="h-10 px-6 border-border text-xs font-bold tracking-wide hover:bg-muted/30 rounded-lg"
             >
                 <LayoutTemplate className="w-4 h-4 mr-2" />
                 Crear Catálogo
@@ -38,7 +41,7 @@ export function GenerateCatalogButton({ projectId, products, moodboards }: Gener
                 isOpen={open}
                 onClose={() => setOpen(false)}
                 projectId={projectId}
-                products={products}
+                products={sortedProducts}
                 moodboards={moodboards}
             />
         </>

@@ -1,322 +1,539 @@
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import {
-  Zap,
-  Layout,
-  FileDown,
-  MousePointerClick,
-  ArrowRight,
-  CheckCircle2,
-  Database,
-  Image as LucideImage,
-  Sparkles,
-  Search,
-  Edit3,
-  Globe,
-  Download,
-  Apple
-} from 'lucide-react'
+import { ArrowRight, Download, Play } from 'lucide-react'
 
 export const metadata = {
-  title: 'Kattlog | De Enlace a Catálogo Profesional en Segundos',
-  description: 'La herramienta definitiva para interioristas y marcas. Extrae productos de CUALQUIER web con IA, crea Moodboards artísticos y genera Catálogos PDF e InDesign al instante.',
+  title: 'Kattlog | Software para Interioristas y Arquitectos',
+  description: 'Captura productos de cualquier web, crea catálogos profesionales y diseña moodboards artísticos. La herramienta definitiva para estudios de interiorismo.',
 }
 
 export default function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
-      {/* Navigation */}
-      <header className="fixed top-0 w-full z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
-        <div className="container mx-auto px-4 h-20 flex items-center justify-between">
-          <Link href="/" className="flex-shrink-0 hover:opacity-80 transition-opacity">
-            <img src="/logo.png" alt="Kattlog" className="h-7 md:h-8 w-auto" />
+
+      {/* ─── Navigation ─── */}
+      <header className="fixed top-0 w-full z-50 bg-background/70 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <Link href="/" className="flex-shrink-0 hover:opacity-70 transition-opacity">
+            <img src="/logo.png" alt="Kattlog" className="h-6 w-auto" />
           </Link>
-          <div className="hidden md:flex items-center gap-8 mr-auto ml-12">
-            <Link href="#how-it-works" className="text-sm font-medium hover:text-primary transition-colors">Cómo funciona</Link>
-            <Link href="#catalogs" className="text-sm font-medium hover:text-primary transition-colors">Catálogos</Link>
-            <Link href="#moodboards" className="text-sm font-medium hover:text-primary transition-colors">Moodboards</Link>
-          </div>
-          <div className="flex items-center gap-4 md:gap-6">
-            <Link href="/login" className="text-xs md:text-sm font-medium hover:text-primary transition-colors whitespace-nowrap">
+          <nav className="hidden md:flex items-center gap-10">
+            <Link href="#proceso" className="text-[11px] uppercase tracking-[0.2em] text-foreground/60 hover:text-foreground transition-colors">
+              Proceso
+            </Link>
+            <Link href="#catalogos" className="text-[11px] uppercase tracking-[0.2em] text-foreground/60 hover:text-foreground transition-colors">
+              Catálogos
+            </Link>
+            <Link href="#moodboards" className="text-[11px] uppercase tracking-[0.2em] text-foreground/60 hover:text-foreground transition-colors">
+              Moodboards
+            </Link>
+            <Link href="#demo" className="text-[11px] uppercase tracking-[0.2em] text-foreground/60 hover:text-foreground transition-colors">
+              Demo
+            </Link>
+          </nav>
+          <div className="flex items-center gap-6">
+            <Link
+              href="/login"
+              className="text-[11px] uppercase tracking-[0.15em] text-foreground/60 hover:text-foreground transition-colors hidden sm:block"
+            >
               Iniciar sesión
             </Link>
-            <Button asChild size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-4 md:px-6 md:h-10">
-              <Link href="/login" className="text-xs md:text-sm">Empezar gratis</Link>
-            </Button>
+            <Link
+              href="/login"
+              className="text-[11px] uppercase tracking-[0.2em] px-6 py-2.5 border border-foreground/25 hover:border-foreground/60 hover:bg-foreground hover:text-background transition-all duration-300"
+            >
+              Empezar gratis
+            </Link>
           </div>
         </div>
       </header>
 
       <main>
-        {/* Hero Section */}
-        <section className="pt-40 pb-24 overflow-hidden bg-[radial-gradient(circle_at_top_right,var(--color-primary)_0%,transparent_40%)] opacity-95">
-          <div className="container mx-auto px-4 text-center">
-            <h1 className="text-6xl md:text-8xl font-bold tracking-tighter mb-8 max-w-5xl mx-auto leading-[0.95]">
-              De cualquier <span className="text-primary italic">web</span> a un <span className="text-primary italic">catálogo</span> profesional.
-            </h1>
-            <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto mb-14 leading-relaxed font-light">
-              Diseña catálogos impecables capturando productos desde cualquier enlace del mundo. Sin perder horas, con resultados profesionales.
+
+        {/* ─── Hero — Fullscreen cinématico ─── */}
+        <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: "url('/dashboard-bg.png')" }}
+          />
+          <div className="absolute inset-0 bg-black/50" />
+
+          <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
+            <p className="text-[10px] uppercase tracking-[0.4em] text-white/40 mb-8">
+              Software para interioristas y arquitectos
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-12">
-              <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-12 py-8 text-xl shadow-2xl shadow-primary/30 transition-all hover:scale-105 active:scale-95 group">
-                <Link href="/login" className="flex items-center">
-                  Crea tu primer catálogo ahora <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-1 transition-transform" />
-                </Link>
-              </Button>
-              <div className="flex flex-col items-start gap-1">
-                <div className="flex -space-x-2">
-                  {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="w-8 h-8 rounded-full border-2 border-background bg-slate-200 flex items-center justify-center text-[10px] font-bold">
-                      {String.fromCharCode(64 + i)}
-                    </div>
-                  ))}
-                  <div className="w-8 h-8 rounded-full border-2 border-background bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">+500</div>
-                </div>
-                <p className="text-xs text-muted-foreground font-medium">Interioristas ya lo usan a diario</p>
-              </div>
-            </div>
+            <h1
+              className="text-4xl sm:text-5xl md:text-7xl font-light tracking-tight text-white leading-[1.1] mb-8"
+              style={{ fontFamily: "'Cormorant Garamond', serif" }}
+            >
+              De cualquier enlace<br className="hidden md:block" /> a un catálogo profesional
+            </h1>
+            <div className="w-12 h-px bg-white/30 mx-auto mb-8" />
+            <p className="text-base md:text-lg font-light text-white/60 max-w-xl mx-auto mb-12 leading-relaxed">
+              Captura productos de cualquier tienda online, organiza tu selección
+              por estancias y genera documentos impecables en segundos.
+            </p>
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-3 text-[11px] uppercase tracking-[0.25em] text-white/80 border border-white/25 px-8 py-3.5 hover:bg-white hover:text-black transition-all duration-500"
+            >
+              Comenzar ahora
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
 
-            {/* Download App Section */}
-            <div className="flex flex-col items-center gap-4 mb-24">
-              <p className="text-sm text-muted-foreground font-medium">O descarga la app de escritorio</p>
-              <div className="flex flex-col sm:flex-row gap-3 flex-wrap justify-center">
-                <a
-                  href="https://github.com/carlosmontojo/katalog/releases/download/v1.0.0/Katalog-1.0.0-arm64.dmg"
-                  className="flex items-center gap-3 px-6 py-3 bg-foreground text-background rounded-full hover:bg-foreground/90 transition-all hover:scale-105 group"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-                  </svg>
-                  <span className="font-medium">Mac (Apple Silicon)</span>
-                  <Download className="w-4 h-4 opacity-60 group-hover:opacity-100" />
-                </a>
-                <a
-                  href="https://github.com/carlosmontojo/katalog/releases/download/v1.0.0/Katalog-1.0.0.dmg"
-                  className="flex items-center gap-3 px-6 py-3 bg-foreground/10 text-foreground border border-border rounded-full hover:bg-foreground/20 transition-all hover:scale-105 group"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-                  </svg>
-                  <span className="font-medium">Mac (Intel)</span>
-                  <Download className="w-4 h-4 opacity-60 group-hover:opacity-100" />
-                </a>
-                <a
-                  href="https://github.com/carlosmontojo/katalog/releases/download/v1.0.0/Katalog.Setup.1.0.0.exe"
-                  className="flex items-center gap-3 px-6 py-3 bg-foreground/10 text-foreground border border-border rounded-full hover:bg-foreground/20 transition-all hover:scale-105 group"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" />
-                  </svg>
-                  <span className="font-medium">Windows</span>
-                  <Download className="w-4 h-4 opacity-60 group-hover:opacity-100" />
-                </a>
-              </div>
-              <p className="text-xs text-muted-foreground">Versión 1.0.0 • macOS 10.12+ / Windows 10+</p>
-            </div>
+          <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
+        </section>
 
-            {/* Main Mockup */}
-            <div className="relative w-full mt-20">
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent blur-3xl opacity-20"></div>
-              <img
-                src="/hero_final.png"
-                alt="Kattlog Moodboard"
-                className="w-full h-auto max-h-[70vh] object-cover shadow-2xl"
-              />
-            </div>
+
+        {/* ─── Manifiesto ─── */}
+        <section className="py-32 md:py-40">
+          <div className="max-w-2xl mx-auto px-6 text-center">
+            <span className="text-[10px] uppercase tracking-[0.3em] text-primary">
+              El software
+            </span>
+            <div className="w-8 h-px bg-primary/30 mx-auto mt-4 mb-10" />
+            <p
+              className="text-2xl md:text-3xl font-light leading-relaxed text-foreground/80"
+              style={{ fontFamily: "'Cormorant Garamond', serif" }}
+            >
+              Kattlog nace de una necesidad real de los estudios de interiorismo:
+              dejar de perder horas copiando productos a mano. Pega un enlace de
+              cualquier tienda del mundo y nuestra inteligencia artificial extrae
+              imágenes, precios, medidas y materiales al instante. Después, crea
+              catálogos técnicos o moodboards artísticos con un solo click.
+            </p>
           </div>
         </section>
 
-        {/* Universal Scraping Section */}
-        <section id="how-it-works" className="py-32 bg-foreground text-background">
-          <div className="container mx-auto px-4">
-            <div className="flex flex-col lg:flex-row items-center gap-24">
-              <div className="lg:w-1/2">
-                <div className="text-primary text-sm font-bold tracking-widest uppercase mb-4 italic">Tecnología de Extracción</div>
-                <h2 className="text-4xl md:text-6xl font-bold mb-8 italic tracking-tighter leading-none">Compatible con <span className="text-primary underline">cualquier</span> tienda online.</h2>
-                <p className="text-lg opacity-70 mb-10 leading-relaxed">
-                  No importa si es una gran multinacional o una tienda de nicho. Nuestra IA analiza el contenido de la web, identifica los productos y extrae todos los detalles por ti de forma automática.
-                </p>
-                <div className="grid grid-cols-2 gap-8">
-                  <div className="space-y-4">
-                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary italic">01</div>
-                    <h4 className="font-bold">Pega el Enlace</h4>
-                    <p className="text-sm opacity-60">Funciona con cualquier URL de producto.</p>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary italic">02</div>
-                    <h4 className="font-bold">IA en Acción</h4>
-                    <p className="text-sm opacity-60">Detectamos fotos, precios y medidas al instante.</p>
-                  </div>
+
+        {/* ─── Full-bleed image break ─── */}
+        <section className="relative h-[50vh] md:h-[65vh] overflow-hidden">
+          <img
+            src="/landing-interior-5.jpg"
+            alt="Espacio de interiorismo"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background opacity-30" />
+        </section>
+
+
+        {/* ─── Proceso — 3 pasos ─── */}
+        <section id="proceso" className="py-32 md:py-40 bg-foreground text-background">
+          <div className="max-w-5xl mx-auto px-6">
+            <div className="mb-20 text-center">
+              <span className="text-[10px] uppercase tracking-[0.3em] text-background/40">
+                Cómo funciona
+              </span>
+              <div className="w-8 h-px bg-background/20 mx-auto mt-4" />
+            </div>
+
+            <div className="space-y-0">
+              {/* Step 01 */}
+              <div className="border-t border-background/10 py-12 md:py-16 grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-12 items-start">
+                <div className="md:col-span-2">
+                  <span
+                    className="text-5xl md:text-6xl font-light text-background/10"
+                    style={{ fontFamily: "'Cormorant Garamond', serif" }}
+                  >
+                    01
+                  </span>
                 </div>
-              </div>
-              <div className="lg:w-1/2 grid grid-cols-2 gap-4">
-                <div className="p-8 rounded-3xl bg-white/5 border border-white/10 flex flex-col items-center justify-center text-center group hover:bg-white/10 transition-colors">
-                  <Globe className="w-12 h-12 text-primary mb-4" />
-                  <div className="text-2xl font-bold italic tracking-tighter uppercase">Automático</div>
-                  <div className="text-xs opacity-50 uppercase tracking-widest">Extracción por IA</div>
+                <div className="md:col-span-4">
+                  <h3 className="text-lg font-normal tracking-tight">Pega cualquier enlace</h3>
                 </div>
-                <div className="p-8 rounded-3xl bg-white/5 border border-white/10 flex flex-col items-center justify-center text-center group hover:bg-white/10 transition-colors">
-                  <LucideImage className="w-12 h-12 text-primary mb-4" />
-                  <div className="text-2xl font-bold italic tracking-tighter uppercase">Instantáneo</div>
-                  <div className="text-xs opacity-50 uppercase tracking-widest">Soporte Universal</div>
-                </div>
-                <div className="col-span-2 p-8 rounded-3xl bg-primary text-primary-foreground">
-                  <p className="text-xl font-medium leading-relaxed italic">
-                    "Antes tardaba 5h de trabajo en hacer un catálogo, con Kattlog los hago en minutos. Es una herramienta indispensable para mi estudio."
+                <div className="md:col-span-6">
+                  <p className="text-sm text-background/50 leading-relaxed">
+                    Copia la URL de un producto de cualquier tienda online — IKEA, Zara Home,
+                    Westwing, Sklum, Amazon o la pequeña tienda artesanal que acabas de
+                    descubrir. Kattlog funciona con todas.
                   </p>
-                  <p className="mt-4 text-sm font-bold uppercase tracking-widest opacity-80">— Marta R., Interiorista Senior</p>
                 </div>
               </div>
+
+              {/* Step 02 */}
+              <div className="border-t border-background/10 py-12 md:py-16 grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-12 items-start">
+                <div className="md:col-span-2">
+                  <span
+                    className="text-5xl md:text-6xl font-light text-background/10"
+                    style={{ fontFamily: "'Cormorant Garamond', serif" }}
+                  >
+                    02
+                  </span>
+                </div>
+                <div className="md:col-span-4">
+                  <h3 className="text-lg font-normal tracking-tight">La IA extrae todo</h3>
+                </div>
+                <div className="md:col-span-6">
+                  <p className="text-sm text-background/50 leading-relaxed">
+                    Nuestro motor de inteligencia artificial analiza la página, identifica
+                    los productos y extrae automáticamente fotografías, precios, dimensiones,
+                    materiales y colores. Sin copiar y pegar nada manualmente.
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 03 */}
+              <div className="border-t border-background/10 py-12 md:py-16 grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-12 items-start">
+                <div className="md:col-span-2">
+                  <span
+                    className="text-5xl md:text-6xl font-light text-background/10"
+                    style={{ fontFamily: "'Cormorant Garamond', serif" }}
+                  >
+                    03
+                  </span>
+                </div>
+                <div className="md:col-span-4">
+                  <h3 className="text-lg font-normal tracking-tight">Genera tu documento</h3>
+                </div>
+                <div className="md:col-span-6">
+                  <p className="text-sm text-background/50 leading-relaxed">
+                    Elige entre un catálogo técnico PDF con fichas de producto o un moodboard
+                    artístico de libre composición. Organiza por estancias, edita precios,
+                    añade textos y exporta en el formato que necesites.
+                  </p>
+                </div>
+              </div>
+
+              <div className="border-t border-background/10" />
             </div>
           </div>
         </section>
 
-        {/* THE CATALOGS SECTION */}
-        <section id="catalogs" className="py-40 relative">
-          <div className="container mx-auto px-4">
-            <div className="flex flex-col lg:flex-row items-center gap-20">
-              <div className="lg:w-1/2 order-2 lg:order-1 relative">
-                <div className="absolute -inset-10 bg-primary/5 blur-3xl -z-10 rounded-full"></div>
-                <img
-                  src="/catalog-example.png"
-                  className="w-full h-auto rounded-2xl shadow-2xl border border-border"
-                  alt="Ejemplo de catálogo PDF"
-                />
-                <div className="absolute -bottom-6 -right-6 bg-white p-6 rounded-2xl shadow-xl border border-border max-w-[200px] animate-in fade-in zoom-in slide-in-from-right-10 duration-1000">
-                  <FileDown className="w-8 h-8 text-primary mb-3" />
-                  <p className="text-sm font-bold tracking-tight">Exporta a PDF de alta resolución listo para imprimir.</p>
-                </div>
-              </div>
-              <div className="lg:w-1/2 order-1 lg:order-2">
-                <h2 className="text-5xl font-bold mb-8 italic tracking-tighter leading-tight">Crea <span className="text-primary">Catálogos</span> Estructurados.</h2>
-                <p className="text-lg text-muted-foreground mb-12 leading-relaxed">
-                  Perfecto para presupuestos, listas de compra y presentaciones técnicas. Elige un estilo, organiza tus productos y genera un documento impecable con un solo click.
+
+        {/* ─── Catálogos — con imagen ─── */}
+        <section id="catalogos" className="py-32 md:py-40">
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-20 items-center">
+              {/* Text */}
+              <div>
+                <span className="text-[10px] uppercase tracking-[0.3em] text-primary">
+                  Catálogos
+                </span>
+                <div className="w-8 h-px bg-primary/30 mt-4 mb-8" />
+                <h2
+                  className="text-3xl md:text-4xl font-light tracking-tight leading-tight mb-8"
+                  style={{ fontFamily: "'Cormorant Garamond', serif" }}
+                >
+                  Documentos técnicos<br />
+                  con la elegancia<br />
+                  que tus proyectos merecen
+                </h2>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-10 max-w-sm">
+                  Genera catálogos estructurados con fichas de producto completas.
+                  Perfectos para presupuestos, listas de compras y presentaciones
+                  a cliente.
                 </p>
-                <ul className="space-y-6">
+                <ul className="space-y-0">
                   {[
                     'Layouts de cuadrícula automáticos',
-                    'Actualización de precios masiva',
-                    'Hojas de Excel con imágenes integradas',
-                    'Exportación IDML nativa para Adobe InDesign'
+                    'PDF de alta resolución',
+                    'Excel con imágenes integradas',
+                    'InDesign IDML nativo',
+                    'Precios y textos editables',
+                    'Organización por estancias',
                   ].map((item, i) => (
-                    <li key={i} className="flex items-center gap-4 text-lg">
-                      <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs italic">✓</div>
-                      {item}
+                    <li key={i} className="border-t border-border/30 py-3.5">
+                      <p className="text-sm font-light text-foreground/70">— {item}</p>
                     </li>
                   ))}
+                  <li className="border-t border-border/30" />
+                </ul>
+              </div>
+
+              {/* Image */}
+              <div className="relative">
+                <img
+                  src="/landing-interior-3.jpg"
+                  alt="Interior minimalista"
+                  className="w-full h-[500px] lg:h-[600px] object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/10 to-transparent" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+        {/* ─── Full-bleed image break ─── */}
+        <section className="relative h-[40vh] md:h-[55vh] overflow-hidden">
+          <img
+            src="/landing-interior-1.jpg"
+            alt="Diseño de interiores"
+            className="w-full h-full object-cover"
+          />
+        </section>
+
+
+        {/* ─── Moodboards — con imagen ─── */}
+        <section id="moodboards" className="py-32 md:py-40">
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-20 items-center">
+              {/* Image */}
+              <div className="relative order-2 lg:order-1">
+                <img
+                  src="/landing-interior-6.jpg"
+                  alt="Espacio con carácter"
+                  className="w-full h-[500px] lg:h-[600px] object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/10 to-transparent" />
+              </div>
+
+              {/* Text */}
+              <div className="order-1 lg:order-2">
+                <span className="text-[10px] uppercase tracking-[0.3em] text-primary">
+                  Moodboards
+                </span>
+                <div className="w-8 h-px bg-primary/30 mt-4 mb-8" />
+                <h2
+                  className="text-3xl md:text-4xl font-light tracking-tight leading-tight mb-8"
+                  style={{ fontFamily: "'Cormorant Garamond', serif" }}
+                >
+                  Composiciones visuales<br />
+                  que enamoran<br />
+                  a tus clientes
+                </h2>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-10 max-w-sm">
+                  Combina productos, texturas y colores en un lienzo libre. Diseña
+                  moodboards artísticos que transmitan la esencia de cada espacio.
+                </p>
+                <ul className="space-y-0">
+                  {[
+                    'Editor de composición libre',
+                    'Capas ilimitadas y z-index',
+                    'Textos y anotaciones con tipografías premium',
+                    'Recorte de fondo con IA',
+                    'Múltiples moodboards por proyecto',
+                    'Exportación PNG, PDF y más',
+                  ].map((item, i) => (
+                    <li key={i} className="border-t border-border/30 py-3.5">
+                      <p className="text-sm font-light text-foreground/70">— {item}</p>
+                    </li>
+                  ))}
+                  <li className="border-t border-border/30" />
                 </ul>
               </div>
             </div>
           </div>
         </section>
 
-        {/* THE MOODBOARDS SECTION */}
-        <section id="moodboards" className="py-40 bg-secondary/20 relative overflow-hidden">
-          <div className="container mx-auto px-4">
-            <div className="flex flex-col lg:flex-row items-center gap-20">
-              <div className="lg:w-1/2">
-                <h2 className="text-5xl font-bold mb-8 italic tracking-tighter leading-tight">Diseña <span className="text-primary">Moodboards</span> Artísticos.</h2>
-                <p className="text-lg text-muted-foreground mb-12 leading-relaxed">
-                  Visualiza espacios, combina texturas y crea moodboards inspiradores. Arrastra, escala y rota productos con total libertad para convencer a tus clientes finales.
-                </p>
-                <ul className="space-y-6">
-                  {[
-                    'Editor de moodboards profesional libre',
-                    'Capas ilimitadas y orden de z-index',
-                    'Añade textos y anotaciones personalizadas',
-                    'Recorte automático de fondo para cada pieza'
-                  ].map((item, i) => (
-                    <li key={i} className="flex items-center gap-4 text-lg">
-                      <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs italic">✓</div>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-                <Button asChild size="lg" className="mt-12 bg-foreground text-background hover:bg-foreground/90 rounded-full px-8 font-bold">
-                  <Link href="/login">Empezar mi primer moodboard</Link>
-                </Button>
-              </div>
-              <div className="lg:w-1/2 relative space-y-4">
-                <div className="absolute -inset-10 bg-primary/10 blur-3xl -z-10 rounded-full"></div>
+
+        {/* ─── Video Demo ─── */}
+        <section id="demo" className="py-32 md:py-40 bg-foreground text-background">
+          <div className="max-w-4xl mx-auto px-6">
+            <div className="text-center mb-16">
+              <span className="text-[10px] uppercase tracking-[0.3em] text-background/40">
+                Demostración
+              </span>
+              <div className="w-8 h-px bg-background/20 mx-auto mt-4 mb-10" />
+              <h2
+                className="text-3xl md:text-4xl font-light tracking-tight leading-tight"
+                style={{ fontFamily: "'Cormorant Garamond', serif" }}
+              >
+                Ve Kattlog en acción
+              </h2>
+            </div>
+
+            <div className="relative aspect-video bg-black/20 overflow-hidden">
+              <video
+                controls
+                preload="none"
+                playsInline
+                poster="/dashboard-bg.png"
+                className="w-full h-full object-contain"
+              >
+                <source src="/kattlog-demo.mp4" type="video/mp4" />
+                Tu navegador no soporta la reproducción de video.
+              </video>
+            </div>
+
+            <p className="text-center text-xs text-background/30 mt-6 tracking-wide">
+              Del enlace al catálogo en menos de dos minutos
+            </p>
+          </div>
+        </section>
+
+
+        {/* ─── Doble imagen editorial ─── */}
+        <section className="py-6 md:py-8">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              <div className="relative h-[300px] md:h-[450px] overflow-hidden">
                 <img
-                  src="/moodboard-example.png"
-                  className="w-full h-auto rounded-2xl shadow-2xl border border-white/50 rotate-3 hover:rotate-0 transition-transform duration-1000"
-                  alt="Ejemplo de Moodboard artístico"
+                  src="/landing-interior-2.jpg"
+                  alt="Arquitectura interior"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="relative h-[300px] md:h-[450px] overflow-hidden">
+                <img
+                  src="/landing-interior-4.jpg"
+                  alt="Espacio de diseño"
+                  className="w-full h-full object-cover"
                 />
               </div>
             </div>
           </div>
         </section>
 
-        {/* Features Recap */}
-        <section className="py-32">
-          <div className="container mx-auto px-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-12 text-center">
-              {[
-                { icon: Database, title: "Universal", text: "Funciona en cualquier web del mundo con IA." },
-                { icon: Edit3, title: "Editable", text: "Cambia precios y nombres con un click." },
-                { icon: Layout, title: "Dual", text: "Modo Catálogo PDF o Modo Moodboard Libre." },
-                { icon: FileDown, title: "Formatos", text: "PDF, Excel (con fotos) e InDesign." }
-              ].map((feature, i) => (
-                <div key={i} className="flex flex-col items-center group">
-                  <div className="w-16 h-16 rounded-3xl bg-secondary flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-500 mb-6 group-hover:scale-110">
-                    <feature.icon className="w-8 h-8" />
-                  </div>
-                  <h3 className="text-xl font-bold mb-2 italic tracking-tight">{feature.title}</h3>
-                  <p className="text-sm text-muted-foreground">{feature.text}</p>
-                </div>
-              ))}
+
+        {/* ─── Biblioteca y organización ─── */}
+        <section className="py-32 md:py-40">
+          <div className="max-w-2xl mx-auto px-6 text-center">
+            <span className="text-[10px] uppercase tracking-[0.3em] text-primary">
+              Tu biblioteca
+            </span>
+            <div className="w-8 h-px bg-primary/30 mx-auto mt-4 mb-10" />
+            <h2
+              className="text-3xl md:text-4xl font-light tracking-tight leading-tight mb-8"
+              style={{ fontFamily: "'Cormorant Garamond', serif" }}
+            >
+              Todos tus productos,<br /> siempre organizados
+            </h2>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-lg mx-auto">
+              Cada producto que capturas se guarda en tu biblioteca personal.
+              Filtra por marca o tipología, reutiliza productos en diferentes
+              proyectos y organízalos por estancias — Salón, Dormitorio, Cocina
+              o cualquier categoría que necesites. Tu catálogo crece contigo.
+            </p>
+          </div>
+        </section>
+
+
+        {/* ─── Compatibilidad ─── */}
+        <section className="border-y border-border/30 py-16">
+          <div className="max-w-5xl mx-auto px-6 text-center">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground/40 mb-6">
+              Compatible con cualquier tienda online
+            </p>
+            <p className="text-sm text-muted-foreground/50 leading-loose tracking-wide">
+              Zara Home&ensp;·&ensp;IKEA&ensp;·&ensp;Westwing&ensp;·&ensp;Sklum&ensp;·&ensp;Maisons du Monde&ensp;·&ensp;Amazon&ensp;·&ensp;El Corte Inglés&ensp;·&ensp;H&M Home&ensp;·&ensp;Leroy Merlin&ensp;·&ensp;y cualquier otra
+            </p>
+          </div>
+        </section>
+
+
+        {/* ─── Descarga ─── */}
+        <section id="descargar" className="py-32 md:py-40">
+          <div className="max-w-3xl mx-auto px-6 text-center">
+            <span className="text-[10px] uppercase tracking-[0.3em] text-primary">
+              App de escritorio
+            </span>
+            <div className="w-8 h-px bg-primary/30 mx-auto mt-4 mb-10" />
+            <h2
+              className="text-3xl md:text-4xl font-light tracking-tight leading-tight mb-6"
+              style={{ fontFamily: "'Cormorant Garamond', serif" }}
+            >
+              Descarga Kattlog
+            </h2>
+            <p className="text-sm text-muted-foreground mb-12 max-w-md mx-auto">
+              Disponible como aplicación de escritorio para macOS y Windows.
+              Versión 1.0.0.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <a
+                href="https://github.com/carlosmontojo/katalog/releases/download/v1.0.0/Katalog-1.0.0-arm64.dmg"
+                className="inline-flex items-center justify-center gap-3 text-[11px] uppercase tracking-[0.15em] px-8 py-3.5 border border-foreground/20 hover:border-foreground/60 hover:bg-foreground hover:text-background transition-all duration-300"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+                </svg>
+                Mac — Apple Silicon
+                <Download className="w-3 h-3 opacity-40" />
+              </a>
+              <a
+                href="https://github.com/carlosmontojo/katalog/releases/download/v1.0.0/Katalog-1.0.0.dmg"
+                className="inline-flex items-center justify-center gap-3 text-[11px] uppercase tracking-[0.15em] px-8 py-3.5 border border-foreground/20 hover:border-foreground/60 hover:bg-foreground hover:text-background transition-all duration-300"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+                </svg>
+                Mac — Intel
+                <Download className="w-3 h-3 opacity-40" />
+              </a>
+              <a
+                href="https://github.com/carlosmontojo/katalog/releases/download/v1.0.0/Katalog.Setup.1.0.0.exe"
+                className="inline-flex items-center justify-center gap-3 text-[11px] uppercase tracking-[0.15em] px-8 py-3.5 border border-foreground/20 hover:border-foreground/60 hover:bg-foreground hover:text-background transition-all duration-300"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" />
+                </svg>
+                Windows
+                <Download className="w-3 h-3 opacity-40" />
+              </a>
             </div>
           </div>
         </section>
 
-        {/* Final CTA */}
-        <section className="py-40 bg-primary text-primary-foreground relative overflow-hidden text-center">
-          <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-          <div className="container mx-auto px-4 relative z-10">
-            <h2 className="text-5xl md:text-7xl font-bold mb-10 max-w-4xl mx-auto italic tracking-tighter leading-none">Deja de perder horas en procesos <span className="underline decoration-white/30 italic">manuales</span>.</h2>
-            <p className="text-xl opacity-90 max-w-2xl mx-auto mb-14 leading-relaxed line-clamp-2">Pasa del enlace al diseño final en lo que tardas en hacer un café. Pruébalo hoy mismo gratis.</p>
-            <Button asChild size="lg" className="bg-foreground text-background hover:bg-foreground/90 rounded-full px-16 py-10 text-2xl font-bold shadow-2xl transition-transform hover:scale-110 active:scale-95">
-              <Link href="/login">Crear mi cuenta gratuita <Zap className="ml-3 w-6 h-6 fill-current" /></Link>
-            </Button>
-            <p className="mt-8 text-sm opacity-80 font-medium">Únete a cientos de profesionales que ya están en el futuro.</p>
+
+        {/* ─── CTA Final ─── */}
+        <section className="relative py-32 md:py-40 overflow-hidden">
+          {/* Background image with overlay */}
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: "url('/landing-interior-5.jpg')" }}
+          />
+          <div className="absolute inset-0 bg-black/60" />
+
+          <div className="relative z-10 max-w-3xl mx-auto px-6 text-center">
+            <div className="w-8 h-px bg-white/30 mx-auto mb-12" />
+            <h2
+              className="text-3xl md:text-4xl font-light tracking-tight leading-tight mb-8 text-white"
+              style={{ fontFamily: "'Cormorant Garamond', serif" }}
+            >
+              Deja de perder horas<br />
+              en procesos manuales
+            </h2>
+            <p className="text-sm text-white/50 leading-relaxed max-w-md mx-auto mb-12">
+              Desde el enlace hasta el catálogo final, en lo que tardas en tomar un café.
+              Empieza hoy mismo de forma gratuita.
+            </p>
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-3 text-[11px] uppercase tracking-[0.25em] text-white/80 border border-white/25 px-10 py-4 hover:bg-white hover:text-black transition-all duration-500"
+            >
+              Crear mi cuenta gratuita
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
         </section>
+
       </main>
 
-      {/* Footer */}
-      <footer className="py-16 border-t border-border/50 bg-background">
-        <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-12">
-          <div className="flex flex-col items-center md:items-start gap-4">
-            <img src="/logo.png" alt="Kattlog" className="h-8 w-auto mb-2" />
-            <p className="text-xs text-muted-foreground text-center md:text-left">La plataforma definitiva para el diseño de catálogos y moodboards impulsada por datos reales e IA.</p>
+
+      {/* ─── Footer ─── */}
+      <footer className="border-t border-border/30 py-12">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="flex items-center gap-6">
+              <img src="/logo.png" alt="Kattlog" className="h-5 w-auto opacity-60" />
+              <span className="text-xs text-muted-foreground/50">
+                Software para interioristas y arquitectos
+              </span>
+            </div>
+            <div className="flex items-center gap-8">
+              <Link href="/login" className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 hover:text-foreground transition-colors">
+                Producto
+              </Link>
+              <Link href="mailto:info@kattlog.com" className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 hover:text-foreground transition-colors">
+                Contacto
+              </Link>
+              <Link href="/login" className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 hover:text-foreground transition-colors">
+                Privacidad
+              </Link>
+              <Link href="/login" className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 hover:text-foreground transition-colors">
+                Términos
+              </Link>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center justify-center gap-12">
-            <div className="flex flex-col gap-3">
-              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary italic mb-2">Producto</span>
-              <Link href="/login" className="text-sm hover:text-primary transition-colors">Cómo funciona</Link>
-              <Link href="/login" className="text-sm hover:text-primary transition-colors">Precios</Link>
-            </div>
-            <div className="flex flex-col gap-3">
-              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary italic mb-2">Soporte</span>
-              <Link href="mailto:info@kattlog.com" className="text-sm hover:text-primary transition-colors">Contacto</Link>
-              <Link href="/login" className="text-sm hover:text-primary transition-colors">Ayuda</Link>
-            </div>
-            <div className="flex flex-col gap-3">
-              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary italic mb-2">Legal</span>
-              <Link href="/login" className="text-sm hover:text-primary transition-colors">Privacidad</Link>
-              <Link href="/login" className="text-sm hover:text-primary transition-colors">Términos</Link>
-            </div>
-          </div>
-        </div>
-        <div className="container mx-auto px-4 mt-16 pt-8 border-t border-border/20 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-slate-400">© 2026 Kattlog Universal. Hecho con amor para interioristas.</p>
-          <div className="flex items-center gap-4">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-            <span className="text-[10px] font-bold uppercase tracking-widest opacity-50">Sistemas Online</span>
+          <div className="mt-8 pt-6 border-t border-border/20 text-center">
+            <p className="text-[10px] text-muted-foreground/30 tracking-wider">
+              © 2026 Kattlog. Hecho con dedicación para el mundo del interiorismo.
+            </p>
           </div>
         </div>
       </footer>
+
     </div>
   )
 }

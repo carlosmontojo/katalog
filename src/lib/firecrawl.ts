@@ -32,10 +32,6 @@ export async function scrapeUrl(url: string, options: any = {}): Promise<ScrapeR
             throw new Error(`Failed to scrape: ${scrapeResult.error}`)
         }
 
-        console.log('[Firecrawl DEBUG] scrapeResult keys:', Object.keys(scrapeResult));
-        console.log('[Firecrawl DEBUG] html length:', scrapeResult.html?.length || 0);
-        console.log('[Firecrawl DEBUG] markdown length:', scrapeResult.markdown?.length || 0);
-
         return {
             success: true,
             data: {

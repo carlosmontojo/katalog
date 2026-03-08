@@ -9,6 +9,7 @@ import { Loader2, Globe, ArrowLeft, ArrowRight, RotateCcw, X, ShoppingBag, Plus,
 import { saveSelectedProducts } from '@/app/scraping-actions'
 import { processVisualCaptures } from '@/app/visual-actions'
 import { normalizeUrl } from '@/lib/utils/url'
+import { toast } from 'sonner'
 
 interface VisualBrowserProps {
     projectId?: string // Optional for dashboard home
@@ -86,7 +87,6 @@ export function VisualBrowser({ projectId, initialUrl = '', onClose, onSuccess }
     useEffect(() => {
         const sendMode = () => {
             if (iframeRef.current?.contentWindow) {
-                console.log(`[VisualBrowser] Sending mode: ${selectionMode} to iframe`);
                 iframeRef.current.contentWindow.postMessage({ type: 'SET_MODE', mode: selectionMode }, '*')
             }
         };
@@ -125,7 +125,7 @@ export function VisualBrowser({ projectId, initialUrl = '', onClose, onSuccess }
                             z-index: 9998 !important;
                         }
                         .kattlog-hover::after {
-                            content: '+ Añadir a Katalog';
+                            content: '+ Añadir a catálogo';
                             position: absolute;
                             top: -36px;
                             left: 50%;
@@ -346,14 +346,12 @@ export function VisualBrowser({ projectId, initialUrl = '', onClose, onSuccess }
                         }
                     }, true);
 
-                    console.log('[Kattlog] Premium capture script injected');
                 })();
             `;
             webview.executeJavaScript(script).catch(console.error)
         }
 
         const handleDomReady = () => {
-            console.log('[VisualBrowser] Webview DOM ready, injecting script...')
             setWebviewReady(true)
             injectCaptureScript()
         }
@@ -397,7 +395,6 @@ export function VisualBrowser({ projectId, initialUrl = '', onClose, onSuccess }
                 setCapturedItems(prev => [...prev, item])
             }
             if (event.data?.type === 'READY') {
-                console.log('[VisualBrowser] Iframe ready, syncing mode...');
                 iframeRef.current?.contentWindow?.postMessage({ type: 'SET_MODE', mode: selectionMode }, '*')
             }
         }
@@ -420,7 +417,7 @@ export function VisualBrowser({ projectId, initialUrl = '', onClose, onSuccess }
             onSuccess()
         } catch (error) {
             console.error(error)
-            alert("Error al procesar las capturas.")
+            toast.error("Error al procesar las capturas.")
         } finally {
             setSaving(false)
         }
@@ -448,23 +445,23 @@ export function VisualBrowser({ projectId, initialUrl = '', onClose, onSuccess }
                     <Button variant="ghost" size="icon" onClick={handleReload} className="h-10 w-10 hover:bg-slate-50 transition-colors"><RotateCcw className="w-5 h-5 text-slate-400" /></Button>
                 </div>
 
-                <div className="flex bg-slate-50 p-1.5 rounded-sm gap-1.5 border border-slate-100 shadow-inner">
+                <div className="flex bg-slate-50 p-1.5 rounded-lg gap-1.5 border border-slate-100 shadow-inner">
                     <button
                         onClick={() => setSelectionMode('navigate')}
-                        className={`px-5 py-2 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all ${selectionMode === 'navigate' ? 'bg-white shadow-sm text-foreground' : 'text-slate-400 hover:text-slate-600'}`}
+                        className={`px-5 py-2 rounded-lg text-xs font-semibold uppercase tracking-wide transition-all ${selectionMode === 'navigate' ? 'bg-white shadow-sm text-foreground' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                         Navegar
                     </button>
                     <button
                         onClick={() => setSelectionMode('capture')}
-                        className={`px-6 py-2 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2.5 ${selectionMode === 'capture' ? 'bg-amber-500 text-white shadow-lg scale-105' : 'text-slate-400 hover:text-slate-600'}`}
+                        className={`px-6 py-2 rounded-lg text-xs font-semibold uppercase tracking-wide transition-all flex items-center gap-2.5 ${selectionMode === 'capture' ? 'bg-amber-500 text-white shadow-lg scale-105' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                         {selectionMode === 'capture' && <div className="w-2 h-2 bg-white rounded-full animate-pulse" />}
                         Capturar
                     </button>
                 </div>
 
-                <form onSubmit={handleNavigate} className="flex-1 flex items-center bg-slate-50 rounded-sm px-4 h-12 border border-slate-100 group transition-all focus-within:bg-white focus-within:shadow-sm focus-within:border-slate-200">
+                <form onSubmit={handleNavigate} className="flex-1 flex items-center bg-slate-50 rounded-lg px-4 h-12 border border-slate-100 group transition-all focus-within:bg-white focus-within:shadow-sm focus-within:border-slate-200">
                     <Globe className="w-4 h-4 text-slate-300 mr-3 group-focus-within:text-blue-400 transition-colors" />
                     <input
                         type="text"
@@ -479,7 +476,7 @@ export function VisualBrowser({ projectId, initialUrl = '', onClose, onSuccess }
                     <div className="h-10 w-[1px] bg-slate-100" />
                     <button
                         onClick={onClose}
-                        className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 hover:text-red-500 transition-colors py-2"
+                        className="text-xs font-medium text-slate-400 hover:text-red-500 transition-colors py-2"
                     >
                         Cerrar Navegador
                     </button>
@@ -513,7 +510,7 @@ export function VisualBrowser({ projectId, initialUrl = '', onClose, onSuccess }
 
                     {/* Capturing Status Overlay */}
                     {selectionMode === 'capture' && (
-                        <div className="absolute top-6 left-6 bg-amber-500 text-white px-5 py-2 rounded-sm text-[10px] font-black uppercase tracking-[0.2em] animate-pulse z-10 shadow-2xl flex items-center gap-3">
+                        <div className="absolute top-6 left-6 bg-amber-500 text-white px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-wide animate-pulse z-10 shadow-2xl flex items-center gap-3">
                             <div className="w-2.5 h-2.5 bg-white rounded-full ring-4 ring-white/30" />
                             Modo Selección Activo
                         </div>
@@ -523,7 +520,7 @@ export function VisualBrowser({ projectId, initialUrl = '', onClose, onSuccess }
                 {/* Sidebar: Captured Items Basket */}
                 <div className="w-96 border-l border-slate-100 bg-white flex flex-col shadow-[-10px_0_30px_rgba(0,0,0,0.02)]">
                     <div className="p-8 border-b border-slate-50 bg-slate-50/30">
-                        <h3 className="text-xs font-black uppercase tracking-[0.2em] flex items-center gap-3 text-slate-800">
+                        <h3 className="text-sm font-bold flex items-center gap-3 text-slate-800">
                             <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-white scale-90">
                                 <ShoppingBag className="w-4 h-4" />
                             </div>
@@ -537,34 +534,34 @@ export function VisualBrowser({ projectId, initialUrl = '', onClose, onSuccess }
                                 <div className="w-20 h-20 rounded-full border-2 border-dashed border-slate-100 flex items-center justify-center">
                                     <Plus className="w-8 h-8" />
                                 </div>
-                                <p className="text-[10px] uppercase font-bold tracking-[0.3em] text-center px-8 leading-loose text-slate-300">
+                                <p className="text-xs font-medium text-center px-8 leading-relaxed text-slate-300">
                                     Selecciona productos de la tienda para añadirlos aquí
                                 </p>
                             </div>
                         ) : (
                             capturedItems.map((item, i) => (
-                                <div key={i} className="group relative bg-white border border-slate-100 rounded-sm p-4 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 animate-in slide-in-from-right-4">
+                                <div key={i} className="group relative bg-white border border-slate-100 rounded-lg p-4 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 animate-in slide-in-from-right-4">
                                     <div className="flex gap-4">
                                         {item.previewImage && (
-                                            <div className="w-20 h-20 bg-slate-50 rounded-sm border border-slate-100 overflow-hidden shrink-0 flex items-center justify-center group-hover:bg-white transition-colors">
+                                            <div className="w-20 h-20 bg-slate-50 rounded-lg border border-slate-100 overflow-hidden shrink-0 flex items-center justify-center group-hover:bg-white transition-colors">
                                                 <img src={item.previewImage} alt="" className="max-w-full max-h-full object-contain mix-blend-multiply" />
                                             </div>
                                         )}
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between mb-2">
-                                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-300">Item {String(i + 1).padStart(2, '0')}</span>
+                                                <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">Item {String(i + 1).padStart(2, '0')}</span>
                                                 <button onClick={() => removeCaptured(i)} className="text-slate-300 hover:text-red-500 transition-colors p-1">
                                                     <X className="w-4 h-4" />
                                                 </button>
                                             </div>
-                                            <p className="text-[11px] font-bold text-slate-600 line-clamp-3 leading-relaxed tracking-wide uppercase">
+                                            <p className="text-xs font-medium text-slate-600 line-clamp-3 leading-relaxed">
                                                 {item.textSnippet || 'Producto sin descripción'}
                                             </p>
                                         </div>
                                     </div>
                                     <div className="mt-4 pt-4 border-t border-slate-50 flex items-center gap-2 text-emerald-500">
                                         <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                                        <span className="text-[9px] font-black uppercase tracking-[0.2em]">En espera</span>
+                                        <span className="text-xs font-semibold uppercase tracking-wide">En espera</span>
                                     </div>
                                 </div>
                             ))
@@ -575,7 +572,7 @@ export function VisualBrowser({ projectId, initialUrl = '', onClose, onSuccess }
                         <Button
                             onClick={handleFinalize}
                             disabled={capturedItems.length === 0 || saving}
-                            className={`w-full h-16 rounded-sm text-[11px] font-black uppercase tracking-[0.3em] shadow-2xl transition-all duration-300 ${capturedItems.length > 0 ? 'bg-slate-900 text-white hover:bg-black hover:scale-[1.02] active:scale-100' : 'bg-slate-100 text-slate-300'}`}
+                            className={`w-full h-16 rounded-lg text-sm font-semibold shadow-2xl transition-all duration-300 ${capturedItems.length > 0 ? 'bg-slate-900 text-white hover:bg-black hover:scale-[1.02] active:scale-100' : 'bg-slate-100 text-slate-300'}`}
                         >
                             {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                                 <div className="flex items-center gap-3">

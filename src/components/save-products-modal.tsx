@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useDesignQuip } from '@/components/ui/loading-progress'
 import {
     Dialog,
     DialogContent,
@@ -39,6 +40,7 @@ export function SaveProductsModal({
     const [projects, setProjects] = useState<Project[]>([])
     const [loadingProjects, setLoadingProjects] = useState(true)
     const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set())
+    const quip = useDesignQuip(loadingProjects)
 
     useEffect(() => {
         if (isOpen) {
@@ -83,10 +85,10 @@ export function SaveProductsModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && !saving && onClose()}>
-            <DialogContent className="max-w-md bg-background border-none p-8 rounded-sm">
+            <DialogContent className="max-w-md bg-background border-none p-8 rounded-lg">
                 <DialogHeader className="mb-8">
-                    <DialogTitle className="text-lg font-medium tracking-[0.05em] text-foreground">
-                        Añadir a Katalog(s)
+                    <DialogTitle className="text-lg font-medium text-foreground">
+                        Añadir a catálogo(s)
                     </DialogTitle>
                 </DialogHeader>
 
@@ -96,7 +98,7 @@ export function SaveProductsModal({
                         {productImages.slice(0, 4).map((img, i) => (
                             <div
                                 key={i}
-                                className="w-12 h-12 rounded-sm border-2 border-card shadow-sm overflow-hidden bg-muted"
+                                className="w-12 h-12 rounded-lg border-2 border-card shadow-sm overflow-hidden bg-muted"
                             >
                                 {img ? (
                                     <img src={img} alt="" className="w-full h-full object-cover" />
@@ -108,32 +110,36 @@ export function SaveProductsModal({
                             </div>
                         ))}
                         {productCount > 4 && (
-                            <div className="w-12 h-12 rounded-sm border-2 border-card shadow-sm bg-muted/50 flex items-center justify-center">
-                                <span className="text-[10px] font-bold text-muted-foreground">+{productCount - 4}</span>
+                            <div className="w-12 h-12 rounded-lg border-2 border-card shadow-sm bg-muted/50 flex items-center justify-center">
+                                <span className="text-xs font-bold text-muted-foreground">+{productCount - 4}</span>
                             </div>
                         )}
                     </div>
-                    <span className="text-xs font-medium text-muted-foreground tracking-[0.05em]">
-                        {productCount} product{productCount !== 1 ? 's' : ''} selected
+                    <span className="text-xs font-medium text-muted-foreground">
+                        {productCount} producto{productCount !== 1 ? 's' : ''} seleccionado{productCount !== 1 ? 's' : ''}
                     </span>
                 </div>
 
                 {/* Project selection */}
                 <div className="space-y-4">
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.2em] mb-2">
-                        Selecciona uno o varios Katalogs:
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                        Selecciona uno o varios catálogos:
                     </p>
 
                     {loadingProjects ? (
-                        <div className="flex items-center justify-center py-12">
-                            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                        <div className="flex flex-col items-center justify-center py-12 gap-3">
+                            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground/40" />
+                            {quip && (
+                                <p className="text-base text-foreground font-medium italic text-center max-w-sm animate-in fade-in duration-500">{quip}</p>
+                            )}
+                            <p className="text-xs text-muted-foreground/50">Cargando proyectos...</p>
                         </div>
                     ) : (
                         <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 scrollbar-hide">
                             {projects.map((project) => (
                                 <label
                                     key={project.id}
-                                    className={`flex items-center gap-4 p-4 bg-card border rounded-sm cursor-pointer transition-all ${selectedProjectIds.has(project.id)
+                                    className={`flex items-center gap-4 p-4 bg-card border rounded-lg cursor-pointer transition-all ${selectedProjectIds.has(project.id)
                                         ? 'border-foreground shadow-sm'
                                         : 'border-border/50 hover:border-muted-foreground/30'
                                         }`}
@@ -143,7 +149,7 @@ export function SaveProductsModal({
                                         onCheckedChange={() => toggleProject(project.id)}
                                         className="rounded-none border-slate-300 data-[state=checked]:bg-foreground data-[state=checked]:border-foreground"
                                     />
-                                    <span className="text-sm font-medium text-foreground tracking-[0.05em]">{project.name}</span>
+                                    <span className="text-sm font-medium text-foreground">{project.name}</span>
                                 </label>
                             ))}
                         </div>
@@ -155,14 +161,14 @@ export function SaveProductsModal({
                     <Button
                         onClick={handleSave}
                         disabled={selectedProjectIds.size === 0 || saving}
-                        className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 rounded-sm text-xs font-semibold uppercase tracking-[0.1em]"
+                        className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 rounded-lg text-xs font-semibold"
                     >
                         {saving ? (
                             <Loader2 className="w-4 h-4 animate-spin mr-2" />
                         ) : (
                             <Check className="w-4 h-4 mr-2" />
                         )}
-                        Añadir a {selectedProjectIds.size || '...'} Katalog{selectedProjectIds.size !== 1 ? 's' : ''}
+                        Añadir a {selectedProjectIds.size || '...'} catálogo{selectedProjectIds.size !== 1 ? 's' : ''}
                     </Button>
                 </div>
             </DialogContent>

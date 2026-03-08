@@ -4,6 +4,7 @@ const { spawn } = require('child_process');
 
 let mainWindow;
 let nextServer;
+let appSession;
 
 const isDev = process.env.NODE_ENV !== 'production';
 const PORT = 3000;
@@ -17,6 +18,7 @@ function createWindow() {
         titleBarStyle: 'hiddenInset',
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
+            partition: 'persist:katalog', // Persist cookies/localStorage across app restarts
             webviewTag: true, // Enable <webview> tag
             contextIsolation: true,
             nodeIntegration: false,
@@ -25,9 +27,9 @@ function createWindow() {
 
     // Load the Next.js app
     const startUrl = `http://localhost:${PORT}`;
-    
+
     mainWindow.loadURL(startUrl);
-    
+
     // Open DevTools in development
     if (isDev) {
         mainWindow.webContents.openDevTools();
@@ -47,39 +49,53 @@ function startNextServer() {
             resolve();
             return;
         }
-        
+
         // Production: Start the Next.js server
         nextServer = spawn('npm', ['run', 'start'], {
             cwd: path.join(__dirname, '..'),
             shell: true,
             stdio: 'inherit'
         });
-        
+
         // Wait a bit for server to start
         setTimeout(resolve, 3000);
     });
 }
 
 app.whenReady().then(async () => {
-    // Configure session to allow webview to work properly
-    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-        callback({
-            responseHeaders: {
-                ...details.responseHeaders,
-                // Remove X-Frame-Options to allow embedding in webview if needed
-                'X-Frame-Options': undefined,
-            }
-        });
+    // Get the persistent session (matches the partition in webPreferences)
+    appSession = session.fromPartition('persist:katalog');
+
+    // Only remove X-Frame-Options for webview URLs, not for our own app
+    // This prevents interfering with Set-Cookie headers from our Next.js server
+    appSession.webRequest.onHeadersReceived((details, callback) => {
+        // Only strip X-Frame-Options for external URLs loaded in webviews
+        if (details.resourceType === 'subFrame' || details.url.indexOf('localhost') === -1) {
+            const headers = { ...details.responseHeaders };
+            delete headers['x-frame-options'];
+            delete headers['X-Frame-Options'];
+            callback({ responseHeaders: headers });
+        } else {
+            // For our own app, pass through all headers unchanged
+            callback({ cancel: false });
+        }
     });
-    
+
     await startNextServer();
     createWindow();
-    
+
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
             createWindow();
         }
     });
+});
+
+// Flush session data to disk before quitting
+app.on('before-quit', () => {
+    if (appSession) {
+        appSession.flushStorageData();
+    }
 });
 
 app.on('window-all-closed', () => {
