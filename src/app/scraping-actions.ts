@@ -7,16 +7,15 @@ import { parseProductPage, extractGlobalNavigation, extractContentCategories, ex
 import { inferCategoriesFromOpenAI, inferCategoryKeywords, analyzePageForCatalog, searchProductDimensions } from '@/lib/openai';
 import { scrapeUrlHybrid } from '@/lib/hybrid-scraper';
 import { createClient } from '@/lib/supabase/server';
+import { getAuthenticatedClient } from '@/lib/supabase/helpers';
 import { revalidatePath } from 'next/cache';
 import { getStoreName } from '@/lib/utils/url';
 import { parsePrice } from '@/lib/utils/price';
+import { inferTypology, normalizeBrand } from '@/lib/typology';
 
 // --- NEW PROJECTS ACTIONS ---
 export async function createProjectAction(name: string, description?: string) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) throw new Error('Not authenticated')
+    const { supabase, user } = await getAuthenticatedClient()
 
     const { data, error } = await supabase
         .from('projects')
@@ -129,14 +128,14 @@ export async function detectCategories(url: string, countryCode?: string) {
         const globalNav = extractGlobalNavigation(html, url);
         return { success: true, categories: deduplicate(globalNav) };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Category Detection Error:", error);
-        return { success: false, error: error.message };
+        return { success: false, error: (error as Error).message };
     }
 }
 
 export async function scrapeProducts(projectId: string, url: string, category: string, preview: boolean = false, skipKeywordFilter: boolean = false, countryCode?: string) {
-    const supabase = await createClient();
+    const { supabase, user } = await getAuthenticatedClient();
 
     try {
         // 1. Fetch Full HTML using Hybrid Scraper (Puppeteer → Firecrawl fallback)
@@ -171,19 +170,31 @@ export async function scrapeProducts(projectId: string, url: string, category: s
         if (candidates.length === 1 && !preview) {
             // If only 1 product and NOT preview, save it directly
             const product = candidates[0];
-            const { error } = await supabase.from('products').insert({
+            const title = product.title || 'Untitled Product'
+            const { data: inserted, error } = await supabase.from('products').insert({
                 project_id: projectId,
-                title: product.title || 'Untitled Product',
+                user_id: user.id,
+                title,
                 description: product.description,
                 price: parsePrice(product.price),
-                currency: 'EUR', // Default
+                currency: 'EUR',
                 image_url: product.image_url,
                 original_url: product.product_url || url,
+                brand: normalizeBrand(getStoreName(product.product_url || url)),
                 is_visible: true,
+                typology: inferTypology(title, product.description),
                 ai_metadata: { inferred_category: 'Single Import' }
-            });
+            }).select('id').single();
             if (error) throw error;
+            // Also insert into junction table
+            if (inserted) {
+                await supabase.from('project_products').upsert(
+                    { project_id: projectId, product_id: inserted.id },
+                    { onConflict: 'project_id,product_id' }
+                ).then(() => {})
+            }
             revalidatePath(`/dashboard/projects/${projectId}`);
+            revalidatePath('/dashboard/library');
             return { success: true, count: 1 };
         }
 
@@ -242,15 +253,20 @@ export async function scrapeProducts(projectId: string, url: string, category: s
         // 8. Map Products
         const { cleanText } = await import('@/lib/dom-parser');
         const validProducts = filteredCandidates.map(c => {
+            const title = cleanText(c.title || 'Untitled Product')
+            const description = cleanText(c.description || '')
+            const brand = normalizeBrand(inferredBrand || getStoreName(c.product_url || url))
             const product = {
                 project_id: projectId,
-                title: cleanText(c.title || 'Untitled Product'),
-                description: cleanText(c.description || ''),
+                user_id: user.id,
+                title,
+                description,
                 price: parsePrice(c.price),
                 currency: pageContext.currency || 'EUR',
                 image_url: c.image_url,
                 original_url: c.product_url || url,
-                brand: inferredBrand || getStoreName(c.product_url || url),
+                brand,
+                typology: inferTypology(title, description),
                 category_id: null,
                 attributes: {},
                 ai_metadata: {
@@ -269,38 +285,71 @@ export async function scrapeProducts(projectId: string, url: string, category: s
         }
 
         // ELSE: Save to DB
-        const { error } = await supabase.from('products').insert(validProducts);
+        const { data: insertedProducts, error } = await supabase
+            .from('products')
+            .insert(validProducts)
+            .select('id');
 
         if (error) {
             console.error("DB Insert Error:", error);
             throw error;
         }
 
+        // Also insert into junction table
+        if (insertedProducts && insertedProducts.length > 0) {
+            await supabase.from('project_products').upsert(
+                insertedProducts.map(p => ({ project_id: projectId, product_id: p.id })),
+                { onConflict: 'project_id,product_id' }
+            )
+        }
+
         revalidatePath(`/dashboard/projects/${projectId}`);
+        revalidatePath('/dashboard/library');
         return { success: true, count: validProducts.length };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Product Scraping Error:", error);
-        return { success: false, error: error.message || "Failed to scrape products" };
+        return { success: false, error: (error as Error).message || "Failed to scrape products" };
     }
 }
 
-export async function saveSelectedProducts(projectId: string, products: any[]) {
-    const supabase = await createClient();
+export async function saveSelectedProducts(projectId: string, products: Record<string, unknown>[]) {
+    const { supabase, user } = await getAuthenticatedClient();
 
     try {
-        const { error } = await supabase.from('products').insert(products.map(p => ({
-            ...p,
-            project_id: projectId // Ensure project ID is set
-        })));
+        const productsWithLibrary = products.map(p => {
+            const title = (p.title as string) || ''
+            const description = (p.description as string) || ''
+            return {
+                ...p,
+                project_id: projectId,
+                user_id: user.id,
+                brand: normalizeBrand((p.brand as string) || ''),
+                typology: (p.typology as string) || inferTypology(title, description),
+            }
+        })
+
+        const { data: insertedProducts, error } = await supabase
+            .from('products')
+            .insert(productsWithLibrary)
+            .select('id');
 
         if (error) throw error;
 
+        // Also insert into junction table
+        if (insertedProducts && insertedProducts.length > 0) {
+            await supabase.from('project_products').upsert(
+                insertedProducts.map(p => ({ project_id: projectId, product_id: p.id })),
+                { onConflict: 'project_id,product_id' }
+            )
+        }
+
         revalidatePath(`/dashboard/projects/${projectId}`);
+        revalidatePath('/dashboard/library');
         return { success: true, count: products.length };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Save Selected Error:", error);
-        return { success: false, error: error.message };
+        return { success: false, error: (error as Error).message };
     }
 }
 
@@ -327,9 +376,9 @@ export async function enrichProductDimensions(productId: string, productTitle: s
         } else {
             return { success: false, error: 'No dimensions found' };
         }
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[Enrich] Error:", error);
-        return { success: false, error: error.message };
+        return { success: false, error: (error as Error).message };
     }
 }
 
@@ -1115,9 +1164,9 @@ RULES:
             }
         };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[FetchDetails] Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: (error as Error).message };
     }
 }
 
@@ -1134,7 +1183,7 @@ export async function updateProductWithMoreImages(productId: string, productUrl:
         const { images, dimensions, description, materials, colors, weight, price } = result.details;
 
         // Build update object with all available data
-        const updateData: Record<string, any> = {};
+        const updateData: Record<string, unknown> = {};
 
         if (images.length > 0) {
             updateData.images = images;
@@ -1171,9 +1220,9 @@ export async function updateProductWithMoreImages(productId: string, productUrl:
 
         return { success: true, images: [], message: 'No additional data found' };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[UpdateImages] Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: (error as Error).message };
     }
 }
 
@@ -1194,7 +1243,7 @@ export async function saveProductDetails(productId: string, details: {
 
     try {
 
-        const updateData: Record<string, any> = {};
+        const updateData: Record<string, unknown> = {};
 
         if (details.description) {
             updateData.description = details.description;
@@ -1236,9 +1285,9 @@ export async function saveProductDetails(productId: string, details: {
         revalidatePath('/dashboard/projects/[id]');
         return { success: true };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[SaveDetails] Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: (error as Error).message };
     }
 }
 

@@ -18,7 +18,7 @@ export async function POST(req: Request) {
             return new Response('Unauthorized', { status: 401 })
         }
 
-        const { projectId, template, options } = await req.json()
+        const { projectId, template, options, orientation, productsPerPage } = await req.json()
 
         // Verify ownership via user's session (respects RLS)
         const { data: project } = await supabase
@@ -37,7 +37,11 @@ export async function POST(req: Request) {
             .order('sort_order', { ascending: true })
 
         // 2. Generate HTML
-        const html = generateHtml(project, products || [], template, options)
+        const html = generateHtml(project, products || [], template, {
+            ...options,
+            orientation: orientation || 'portrait',
+            productsPerPage: productsPerPage || 0,
+        })
 
         // 3. Launch Puppeteer
         const browser = await puppeteer.launch({
@@ -52,9 +56,11 @@ export async function POST(req: Request) {
         const page = await browser.newPage();
         await page.setContent(html, { waitUntil: 'networkidle0' });
 
-        // A4 PDF
+        // A4 PDF with orientation support
+        const isLandscape = orientation === 'landscape';
         const pdfBuffer = await page.pdf({
             format: 'A4',
+            landscape: isLandscape,
             printBackground: true,
             margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' }
         });
@@ -90,7 +96,7 @@ export async function POST(req: Request) {
 
         return Response.json({ url: publicUrl })
 
-    } catch (error: any) {
-        return new Response(JSON.stringify({ error: error.message }), { status: 500 })
+    } catch (error: unknown) {
+        return new Response(JSON.stringify({ error: (error as Error).message }), { status: 500 })
     }
 }

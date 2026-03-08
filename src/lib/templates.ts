@@ -9,9 +9,25 @@ function chunk<T>(array: T[], size: number): T[][] {
 
 export function generateHtml(project: any, products: any[], template: string, options: any) {
     const { showPrices, showDescriptions, showSpecs } = options;
+    const orientation = options.orientation || 'portrait';
+    const productsPerPage = options.productsPerPage || 0;
 
-    // Products per page based on template
-    const itemsPerPage = template === 'basic' ? 6 : template === 'minimal' ? 2 : 9;
+    // Products per page: use explicit value if provided, otherwise infer from template
+    const itemsPerPage = productsPerPage > 0 ? productsPerPage : (template === 'basic' ? 6 : template === 'minimal' ? 2 : 9);
+
+    // Grid layout from productsPerPage
+    const gridLayouts: Record<number, { cols: number, rows: number }> = {
+        1: { cols: 1, rows: 1 },
+        2: { cols: 1, rows: 2 },
+        4: { cols: 2, rows: 2 },
+        6: { cols: 2, rows: 3 },
+        9: { cols: 3, rows: 3 },
+    }
+    const grid = gridLayouts[itemsPerPage] || { cols: 2, rows: 2 };
+
+    // Page dimensions
+    const pageWidth = orientation === 'landscape' ? '297mm' : '210mm';
+    const pageHeight = orientation === 'landscape' ? '210mm' : '297mm';
 
     // Base CSS for A4 print layout
     const baseCss = `
@@ -41,8 +57,8 @@ export function generateHtml(project: any, products: any[], template: string, op
         }
 
         .page {
-            width: 210mm;
-            height: 297mm;
+            width: ${pageWidth};
+            height: ${pageHeight};
             position: relative;
             overflow: hidden;
             page-break-after: always;
@@ -150,12 +166,20 @@ export function generateHtml(project: any, products: any[], template: string, op
     // Template Specific CSS
     let templateCss = '';
 
+    // Dynamic grid override when productsPerPage is explicitly set
+    const gridOverrideCss = productsPerPage > 0 ? `
+        .grid {
+            grid-template-columns: repeat(${grid.cols}, 1fr);
+            grid-template-rows: repeat(${grid.rows}, 1fr);
+        }
+    ` : '';
+
     if (template === 'basic') {
-        // 2 columns × 3 rows = 6 products per page
+        // 2 columns × 3 rows = 6 products per page (default)
         templateCss = `
-            .grid { 
-                grid-template-columns: 1fr 1fr; 
-                grid-template-rows: repeat(3, 1fr);
+            .grid {
+                grid-template-columns: ${productsPerPage > 0 ? `repeat(${grid.cols}, 1fr)` : '1fr 1fr'};
+                grid-template-rows: ${productsPerPage > 0 ? `repeat(${grid.rows}, 1fr)` : 'repeat(3, 1fr)'};
             }
             .product-img { 
                 height: 200px; 
@@ -172,11 +196,11 @@ export function generateHtml(project: any, products: any[], template: string, op
             .content-page { background: white; }
         `;
     } else if (template === 'minimal') {
-        // 1 column, side-by-side layout, 2 products per page
+        // 1 column, side-by-side layout, 2 products per page (default)
         templateCss = `
-            .grid { 
-                grid-template-columns: 1fr; 
-                grid-template-rows: repeat(2, 1fr);
+            .grid {
+                grid-template-columns: ${productsPerPage > 0 ? `repeat(${grid.cols}, 1fr)` : '1fr'};
+                grid-template-rows: ${productsPerPage > 0 ? `repeat(${grid.rows}, 1fr)` : 'repeat(2, 1fr)'};
                 gap: 40px; 
             }
             .product-card { 
@@ -219,11 +243,11 @@ export function generateHtml(project: any, products: any[], template: string, op
             }
         `;
     } else if (template === 'modern') {
-        // 3 columns × 3 rows = 9 products per page
+        // 3 columns × 3 rows = 9 products per page (default)
         templateCss = `
-            .grid { 
-                grid-template-columns: repeat(3, 1fr); 
-                grid-template-rows: repeat(3, 1fr);
+            .grid {
+                grid-template-columns: ${productsPerPage > 0 ? `repeat(${grid.cols}, 1fr)` : 'repeat(3, 1fr)'};
+                grid-template-rows: ${productsPerPage > 0 ? `repeat(${grid.rows}, 1fr)` : 'repeat(3, 1fr)'};
                 gap: 15px; 
             }
             .product-img { 

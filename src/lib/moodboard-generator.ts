@@ -5,6 +5,8 @@ export interface MoodboardProduct {
     id: string
     imageUrl: string
     title?: string
+    brand?: string
+    description?: string
     x?: number
     y?: number
     width?: number
@@ -323,7 +325,51 @@ export class MoodboardGenerator {
             })
         }
 
-        // 4. Return Blob
+        // 4. Draw Product Number Labels & Legend
+        const labelFontSize = Math.max(7, Math.round(this.settings.width * 0.006))
+        const legendFontSize = Math.max(8, Math.round(this.settings.width * 0.007))
+
+        // Number labels near each product
+        products.forEach((p, index) => {
+            this.ctx.save()
+            this.ctx.fillStyle = '#000000'
+            this.ctx.font = `400 ${labelFontSize}px Inter, sans-serif`
+            this.ctx.textBaseline = 'top'
+            this.ctx.textAlign = 'left'
+            const label = `(${String(index + 1).padStart(2, '0')})`
+            const labelY = (p.y || 0) + (p.height || 0) - labelFontSize * 1.2
+            this.ctx.fillText(label, (p.x || 0) + 2, labelY)
+            this.ctx.restore()
+        })
+
+        // Legend block at bottom-left
+        const legendMargin = Math.round(this.settings.width * 0.015)
+        const legendLineHeight = legendFontSize * 1.5
+        const legendStartY = this.settings.height - legendMargin - (products.length * legendLineHeight)
+
+        products.forEach((p, index) => {
+            this.ctx.save()
+            const y = legendStartY + index * legendLineHeight
+
+            // Bold: number + title
+            this.ctx.fillStyle = '#000000'
+            this.ctx.font = `700 ${legendFontSize}px Inter, sans-serif`
+            this.ctx.textBaseline = 'top'
+            this.ctx.textAlign = 'left'
+            const prefix = `(${String(index + 1).padStart(2, '0')}) ${p.title || 'Producto'}`
+            this.ctx.fillText(prefix, legendMargin, y)
+
+            // Italic: brand
+            if (p.brand) {
+                const prefixWidth = this.ctx.measureText(prefix).width
+                this.ctx.font = `italic 400 ${legendFontSize}px Inter, sans-serif`
+                this.ctx.fillText(` / ${p.brand}`, legendMargin + prefixWidth, y)
+            }
+
+            this.ctx.restore()
+        })
+
+        // 5. Return Blob
         return new Promise<Blob>((resolve, reject) => {
             this.canvas.toBlob((blob) => {
                 if (blob) {

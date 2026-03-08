@@ -15,7 +15,7 @@ export function BudgetCard({ budget, projectId }: BudgetCardProps) {
     const [deleting, setDeleting] = useState(false)
 
     const handleDelete = async () => {
-        if (!confirm('Are you sure you want to delete this budget?')) return
+        if (!confirm('¿Estás seguro de que quieres eliminar este presupuesto?')) return
         setDeleting(true)
         try {
             await deleteBudget(budget.id, projectId)
@@ -50,25 +50,25 @@ export function BudgetCard({ budget, projectId }: BudgetCardProps) {
     return (
         <div className="flex flex-col group">
             {/* Card */}
-            <div className="relative bg-card border border-border/50 rounded-sm p-6 shadow-sm hover:shadow-md transition-all">
+            <div className="relative bg-card border border-border/30 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-300">
                 {/* Icon and info */}
                 <div className="flex items-start gap-4 mb-4">
-                    <div className="w-12 h-12 rounded-sm bg-muted/50 flex items-center justify-center shrink-0">
+                    <div className="w-12 h-12 rounded-lg bg-muted/50 flex items-center justify-center shrink-0">
                         <FileSpreadsheet className="w-6 h-6 text-muted-foreground" />
                     </div>
                     <div className="flex-1 min-w-0">
-                        <h3 className="text-[11px] font-bold tracking-[0.15em] uppercase text-foreground truncate">
+                        <h3 className="text-xs font-bold text-foreground truncate">
                             {budget.name}
                         </h3>
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                            {budget.product_ids?.length || 0} products · {formattedDate}
+                        <p className="text-xs text-muted-foreground mt-1">
+                            {budget.product_ids?.length || 0} productos · {formattedDate}
                         </p>
                     </div>
                 </div>
 
                 {/* Total */}
-                <div className="bg-muted/50 rounded-sm px-4 py-3 mb-4">
-                    <div className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1">Total</div>
+                <div className="bg-muted/50 rounded-lg px-4 py-3 mb-4">
+                    <div className="text-xs font-bold tracking-wide uppercase text-muted-foreground mb-1">Total</div>
                     <div className="text-lg font-bold text-foreground">{formattedTotal}</div>
                 </div>
 
@@ -76,7 +76,7 @@ export function BudgetCard({ budget, projectId }: BudgetCardProps) {
                 <div className="flex gap-2">
                     <button
                         onClick={handleDownload}
-                        className="flex-1 flex items-center justify-center gap-2 h-9 border border-border rounded-sm text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground hover:bg-muted/30 transition-colors"
+                        className="flex-1 flex items-center justify-center gap-2 h-9 border border-border rounded-lg text-xs font-bold text-muted-foreground hover:bg-muted/30 transition-colors"
                     >
                         <Download className="w-3.5 h-3.5" />
                         Descargar
@@ -84,7 +84,7 @@ export function BudgetCard({ budget, projectId }: BudgetCardProps) {
                     <button
                         onClick={handleDelete}
                         disabled={deleting}
-                        className="h-9 w-9 flex items-center justify-center border border-border rounded-sm text-muted-foreground hover:text-red-500 hover:border-red-200 transition-colors disabled:opacity-50"
+                        className="h-9 w-9 flex items-center justify-center border border-border rounded-lg text-muted-foreground hover:text-red-500 hover:border-red-200 transition-colors disabled:opacity-50"
                     >
                         <Trash2 className="w-3.5 h-3.5" />
                     </button>

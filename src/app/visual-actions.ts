@@ -1,14 +1,18 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedClient } from '@/lib/supabase/helpers'
 import { revalidatePath } from 'next/cache'
 import OpenAI from 'openai'
 import { JSDOM } from 'jsdom'
 import { parsePrice } from '@/lib/utils/price'
 import { VisualCapture } from '@/lib/types'
+import { inferTypology, normalizeBrand } from '@/lib/typology'
 
 export async function processVisualCaptures(projectId: string, captures: VisualCapture[], supabaseClient?: any) {
-    const supabase = supabaseClient || await createClient()
+    const { supabase, user } = supabaseClient
+        ? { supabase: supabaseClient, user: { id: null } }
+        : await getAuthenticatedClient()
 
     const openai = new OpenAI({
         apiKey: process.env.OPENAI_API_KEY,
@@ -29,7 +33,7 @@ export async function processVisualCaptures(projectId: string, captures: VisualC
             // Extract image from snippet
             const snippetImage = doc.querySelector('img')?.src || null;
 
-            doc.querySelectorAll('script, style, link, noscript, iframe').forEach((el: any) => el.remove())
+            doc.querySelectorAll('script, style, link, noscript, iframe').forEach((el) => el.remove())
             const cleanHtml = doc.body.innerHTML.substring(0, 3000) // Reduced for speed
 
             // Single AI call - fast extraction only
@@ -71,10 +75,15 @@ export async function processVisualCaptures(projectId: string, captures: VisualC
             // Use preview image from visual selection (already validated client-side)
             const mainImage = capture.previewImage || snippetImage || null;
 
+            const productTitle = basicInfo.name || 'Producto capturado'
+            const normalizedBrand = normalizeBrand(brand)
+
             const product: Record<string, unknown> = {
                 project_id: projectId,
-                title: basicInfo.name || 'Producto capturado',
-                brand: brand,
+                user_id: user.id,
+                title: productTitle,
+                brand: normalizedBrand,
+                typology: inferTypology(productTitle),
                 price: parsedPrice,
                 currency: 'EUR',
                 original_url: capture.productUrl || capture.url,
@@ -88,7 +97,7 @@ export async function processVisualCaptures(projectId: string, captures: VisualC
                 ai_metadata: {
                     inferred_category: 'Visual Capture',
                     extraction_method: 'visual_selection_fast',
-                    needs_enrichment: true // Flag for background enrichment
+                    needs_enrichment: true
                 }
             }
 
@@ -123,8 +132,6 @@ export async function processVisualCaptures(projectId: string, captures: VisualC
     }
 
     if (productsToSave.length > 0) {
-
-        // Try inserting with brand/status. If it fails due to column mismatch, try without them.
         const { data, error } = await supabase
             .from('products')
             .insert(productsToSave)
@@ -137,7 +144,6 @@ export async function processVisualCaptures(projectId: string, captures: VisualC
             if (error.message?.includes('brand') || error.message?.includes('status') || error.code === 'PGRST204') {
                 const fallbackProducts = productsToSave.map(p => {
                     const { brand, status, ...rest } = p;
-                    // Move brand to attributes so it's not lost
                     return { ...rest, attributes: { ...(rest.attributes || {}), brand } };
                 });
 
@@ -148,14 +154,32 @@ export async function processVisualCaptures(projectId: string, captures: VisualC
 
                 if (retryError) throw retryError;
 
+                // Insert into junction table
+                if (retryData && retryData.length > 0) {
+                    await supabase.from('project_products').upsert(
+                        retryData.map((p: { id: string }) => ({ project_id: projectId, product_id: p.id })),
+                        { onConflict: 'project_id,product_id' }
+                    )
+                }
+
                 revalidatePath(`/dashboard/projects/${projectId}`)
+                revalidatePath('/dashboard/library')
                 return retryData;
             }
 
             throw error
         }
 
+        // Insert into junction table
+        if (data && data.length > 0) {
+            await supabase.from('project_products').upsert(
+                data.map((p: { id: string }) => ({ project_id: projectId, product_id: p.id })),
+                { onConflict: 'project_id,product_id' }
+            )
+        }
+
         revalidatePath(`/dashboard/projects/${projectId}`)
+        revalidatePath('/dashboard/library')
         return data
     }
 

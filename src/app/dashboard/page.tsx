@@ -6,12 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from "@/components/ui/checkbox"
 import { detectCategories, scrapeProducts, saveSelectedProducts } from '@/app/scraping-actions'
-import { Loader2, Search, Sparkles, ShoppingBag, Eye, Check, ArrowLeft, Globe, MousePointer2 } from 'lucide-react'
+import { Loader2, ShoppingBag, Eye, Check, ArrowLeft, Globe } from 'lucide-react'
 import { DestinationModal } from '@/components/destination-modal'
 import { SaveProductsModal } from '@/components/save-products-modal'
 import { ProductDetailModal } from '@/components/product-detail-modal'
 import { VisualBrowser } from '@/components/visual-browser'
-import { LoadingProgress } from '@/components/ui/loading-progress'
+import { LoadingProgress, useDesignQuip } from '@/components/ui/loading-progress'
 import { processVisualCaptures } from '@/app/visual-actions'
 import { getUserCountryCode } from '@/lib/utils/geo'
 import { toast } from 'sonner'
@@ -62,6 +62,8 @@ export default function Dashboard() {
     const [selectedProducts, setSelectedProducts] = useState<Set<number>>(new Set())
     const [loadingProducts, setLoadingProducts] = useState(false)
     const [selectedCategoryName, setSelectedCategoryName] = useState('')
+
+    const quip = useDesignQuip(loadingProducts)
 
     // Product detail modal
     const [detailModalOpen, setDetailModalOpen] = useState(false)
@@ -365,37 +367,35 @@ export default function Dashboard() {
 
                 {/* Centered Content */}
                 <div className="relative z-10 flex flex-col items-center justify-center h-full px-8">
-                    <div className="w-full max-w-5xl bg-white/40 backdrop-blur-md rounded-sm p-16 md:p-24 flex flex-col items-center text-center">
-                        <h1 className="text-2xl md:text-3xl font-medium tracking-[0.1em] text-foreground uppercase mb-2">
+                    <div className="w-full max-w-5xl bg-white/40 backdrop-blur-md rounded-lg p-16 md:p-24 flex flex-col items-center text-center">
+                        <h1 className="text-2xl md:text-3xl font-medium tracking-tight text-foreground mb-2">
                             Empieza a crear tu proyecto
                         </h1>
-                        <p className="text-sm tracking-[0.05em] text-muted-foreground mb-12">
-                            o añade productos a un Katalog existente
+                        <p className="text-sm text-muted-foreground mb-12">
+                            o añade productos a un catálogo existente
                         </p>
 
-                        <div className="w-full max-w-3xl flex flex-col gap-8">
-                            <div className="w-full max-w-2xl flex flex-col gap-6">
-                                <div className="relative w-full">
-                                    <div className="absolute left-6 top-1/2 -translate-y-1/2">
-                                        <Globe className="w-5 h-5 text-muted-foreground/50" />
-                                    </div>
-                                    <Input
-                                        placeholder="Pega la URL de cualquier tienda online..."
-                                        value={url}
-                                        onChange={(e) => setUrl(e.target.value)}
-                                        className="h-16 pl-14 pr-6 text-lg tracking-[0.05em] bg-card border-border/50 rounded-sm focus-visible:ring-1 focus-visible:ring-border focus-visible:ring-offset-0 shadow-sm transition-all"
-                                        onKeyDown={(e) => e.key === 'Enter' && setIsBrowserOpen(true)}
-                                    />
+                        <div className="w-full max-w-2xl flex flex-col gap-6">
+                            <div className="relative w-full">
+                                <div className="absolute left-6 top-1/2 -translate-y-1/2">
+                                    <Globe className="w-5 h-5 text-muted-foreground/50" />
                                 </div>
-
-                                <Button
-                                    onClick={() => setIsBrowserOpen(true)}
-                                    disabled={!url.trim()}
-                                    className="h-16 px-16 bg-foreground text-background hover:bg-foreground/90 rounded-sm text-[12px] font-bold uppercase tracking-[0.25em] shadow-xl hover:scale-[1.02] active:scale-100 transition-all font-serif"
-                                >
-                                    Buscar
-                                </Button>
+                                <Input
+                                    placeholder="Pega la URL de cualquier tienda online..."
+                                    value={url}
+                                    onChange={(e) => setUrl(e.target.value)}
+                                    className="h-16 pl-14 pr-6 text-lg bg-card border-border/50 rounded-lg focus-visible:ring-1 focus-visible:ring-border focus-visible:ring-offset-0 shadow-sm transition-all"
+                                    onKeyDown={(e) => e.key === 'Enter' && setIsBrowserOpen(true)}
+                                />
                             </div>
+
+                            <Button
+                                onClick={() => setIsBrowserOpen(true)}
+                                disabled={!url.trim()}
+                                className="w-full h-16 bg-foreground text-background hover:bg-foreground/90 rounded-lg text-sm font-bold tracking-wide shadow-xl hover:scale-[1.02] active:scale-100 transition-all font-serif"
+                            >
+                                Buscar
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -449,7 +449,7 @@ export default function Dashboard() {
                             )}
                             {destination?.type === 'existing' && (
                                 <p className="text-sm text-muted-foreground">
-                                    Elegirás el Katalog al añadir productos
+                                    Elegirás el catálogo al añadir productos
                                 </p>
                             )}
                         </div>
@@ -461,7 +461,7 @@ export default function Dashboard() {
                                 key={cat.name}
                                 onClick={() => handleCategorySelect(cat.name, cat.url)}
                                 disabled={analyzing}
-                                className="p-4 border rounded-sm text-left hover:border-muted-foreground/30 hover:bg-muted/30 transition-all disabled:opacity-50 disabled:cursor-wait relative"
+                                className="p-4 border rounded-lg text-left hover:border-muted-foreground/30 hover:bg-muted/30 transition-all disabled:opacity-50 disabled:cursor-wait relative"
                             >
                                 <span className="font-medium text-foreground">{cat.name}</span>
                                 {analyzing && selectedCategoryName === cat.name && ( // Only show spinner on clicked item if we tracked it, but for now global is fine or we can improve UX
@@ -499,7 +499,7 @@ export default function Dashboard() {
                         animationDelay: `${i * 100}ms`,
                     }}
                 >
-                    <div className="w-12 h-12 rounded-sm overflow-hidden shadow-lg bg-card border-2 border-foreground">
+                    <div className="w-12 h-12 rounded-lg overflow-hidden shadow-lg bg-card border-2 border-foreground">
                         {fp.imageUrl ? (
                             <img src={fp.imageUrl} alt="" className="w-full h-full object-cover" />
                         ) : (
@@ -532,7 +532,7 @@ export default function Dashboard() {
                         <p className="text-sm text-muted-foreground">
                             {destination?.type === 'new' && destination.projectName
                                 ? `Añadiendo a: ${destination.projectName}`
-                                : 'Selecciona productos y elige el Katalog al añadir'
+                                : 'Selecciona productos y elige el catálogo al añadir'
                             }
                         </p>
                     </div>
@@ -559,9 +559,12 @@ export default function Dashboard() {
             {/* Product Grid */}
             {loadingProducts ? (
                 <div className="flex-1 flex items-center justify-center">
-                    <div className="text-center">
-                        <Loader2 className="w-10 h-10 animate-spin text-muted-foreground mx-auto mb-4" />
-                        <p className="text-muted-foreground">Cargando productos...</p>
+                    <div className="text-center flex flex-col items-center gap-4">
+                        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" />
+                        {quip && (
+                            <p className="text-base text-foreground font-medium italic max-w-sm animate-in fade-in duration-500">{quip}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground/50">Cargando productos...</p>
                     </div>
                 </div>
             ) : (
@@ -583,7 +586,7 @@ export default function Dashboard() {
                                 <div
                                     key={idx}
                                     data-product-card
-                                    className={`relative border rounded-sm p-2 cursor-pointer transition-all group bg-card ${selectedProducts.has(idx)
+                                    className={`relative border rounded-lg p-2 cursor-pointer transition-all group bg-card ${selectedProducts.has(idx)
                                         ? 'ring-2 ring-foreground border-foreground'
                                         : 'hover:border-muted-foreground/30 hover:shadow-sm'
                                         }`}
@@ -599,13 +602,13 @@ export default function Dashboard() {
                                         <Checkbox checked={selectedProducts.has(idx)} />
                                     </div>
 
-                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-sm flex items-center justify-center">
+                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
                                         <span className="text-white text-xs flex items-center gap-1">
                                             <Eye className="w-3 h-3" /> Ver detalles
                                         </span>
                                     </div>
 
-                                    <div className="aspect-square bg-muted rounded-sm overflow-hidden mb-2">
+                                    <div className="aspect-square bg-muted rounded-lg overflow-hidden mb-2">
                                         {product.image_url ? (
                                             <img
                                                 src={product.image_url}

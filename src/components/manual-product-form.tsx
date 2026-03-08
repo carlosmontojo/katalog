@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { useDesignQuip } from '@/components/ui/loading-progress'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,6 +20,7 @@ interface ManualProductFormProps {
 export function ManualProductForm({ projectId, onSuccess, onCancel }: ManualProductFormProps) {
     const [loading, setLoading] = useState(false)
     const [uploading, setUploading] = useState(false)
+    const quip = useDesignQuip(uploading)
     const [imagePreview, setImagePreview] = useState<string | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -131,9 +133,11 @@ export function ManualProductForm({ projectId, onSuccess, onCancel }: ManualProd
                             <>
                                 <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                                 {uploading && (
-                                    <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white gap-2">
-                                        <Loader2 className="w-8 h-8 animate-spin" />
-                                        <span className="text-[10px] uppercase font-bold tracking-widest">Subiendo...</span>
+                                    <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white gap-2 p-3">
+                                        <Loader2 className="w-6 h-6 animate-spin text-white/60" />
+                                        {quip && (
+                                            <span className="text-xs text-white font-medium italic text-center leading-tight animate-in fade-in duration-500">{quip}</span>
+                                        )}
                                     </div>
                                 )}
                                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">

@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { uploadAndGetUrl } from '@/lib/supabase/helpers'
 import { revalidatePath } from 'next/cache'
 
 interface SaveMoodboardParams {
@@ -27,7 +28,7 @@ interface SaveMoodboardParams {
         maxWidth?: number
     }[]
     name?: string
-    settings?: any
+    settings?: Record<string, unknown>
 }
 
 export async function saveMoodboard({ projectId, imageData, products, texts, name = 'Moodboard', settings }: SaveMoodboardParams) {
@@ -39,19 +40,10 @@ export async function saveMoodboard({ projectId, imageData, products, texts, nam
         const buffer = Buffer.from(imageData.replace(/^data:image\/\w+;base64,/, ""), 'base64')
         const fileName = `${projectId}/${Date.now()}-moodboard.png`
 
-        const { error: uploadError } = await supabase.storage
-            .from('moodboards')
-            .upload(fileName, buffer, {
-                contentType: 'image/png',
-                upsert: true
-            })
-
-        if (uploadError) throw uploadError
-
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-            .from('moodboards')
-            .getPublicUrl(fileName)
+        const publicUrl = await uploadAndGetUrl('moodboards', fileName, buffer, {
+            contentType: 'image/png',
+            upsert: true
+        })
 
         // 2. Insert into database
         const { data, error: dbError } = await supabase
@@ -75,9 +67,9 @@ export async function saveMoodboard({ projectId, imageData, products, texts, nam
         revalidatePath(`/dashboard/projects/${projectId}`)
         return { success: true, moodboard: data }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error saving moodboard:', error)
-        return { success: false, error: error.message }
+        return { success: false, error: (error as Error).message }
     }
 }
 
@@ -94,9 +86,9 @@ export async function getMoodboards(projectId: string) {
         if (error) throw error
 
         return { success: true, moodboards: data }
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error fetching moodboards:', error)
-        return { success: false, error: error.message }
+        return { success: false, error: (error as Error).message }
     }
 }
 
@@ -113,8 +105,8 @@ export async function deleteMoodboard(id: string, projectId: string) {
 
         revalidatePath(`/dashboard/projects/${projectId}`)
         return { success: true }
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error deleting moodboard:', error)
-        return { success: false, error: error.message }
+        return { success: false, error: (error as Error).message }
     }
 }

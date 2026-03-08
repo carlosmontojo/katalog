@@ -1,10 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { ProjectView } from '@/components/project-view'
-import { GenerateCatalogButton } from '@/components/generate-catalog-button'
-import { Button } from '@/components/ui/button'
-import Link from 'next/link'
-import { ArrowLeft, Settings } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import { ProductWithSection } from '@/lib/types'
 
 export default async function ProjectDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const supabase = await createClient()
@@ -27,11 +23,56 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
         return <div>Proyecto no encontrado</div>
     }
 
-    const { data: products } = await supabase
+    // Get products both from direct project_id and junction table
+    const { data: directProducts } = await supabase
         .from('products')
         .select('*')
         .eq('project_id', id)
         .order('created_at', { ascending: false })
+
+    // Get junction links WITH section_id and position
+    const { data: junctionLinks } = await supabase
+        .from('project_products')
+        .select('product_id, section_id, position')
+        .eq('project_id', id)
+
+    // Build assignment map from junction links
+    const assignmentMap = new Map<string, { section_id: string | null; position: number }>(
+        (junctionLinks || []).map((l: { product_id: string; section_id: string | null; position: number }) => [
+            l.product_id,
+            { section_id: l.section_id, position: l.position }
+        ])
+    )
+
+    // Get products only in junction table (not already fetched via direct project_id)
+    const junctionProductIds = (junctionLinks || [])
+        .map((link: { product_id: string }) => link.product_id)
+        .filter((pid: string) => !(directProducts || []).some(p => p.id === pid))
+
+    let junctionProducts: typeof directProducts = []
+    if (junctionProductIds.length > 0) {
+        const { data } = await supabase
+            .from('products')
+            .select('*')
+            .in('id', junctionProductIds)
+            .order('created_at', { ascending: false })
+        junctionProducts = data || []
+    }
+
+    // Merge, deduplicate, and enrich with section data
+    const allProducts = [...(directProducts || []), ...(junctionProducts || [])]
+    const productsWithSections: ProductWithSection[] = allProducts.map(p => ({
+        ...p,
+        section_id: assignmentMap.get(p.id)?.section_id ?? null,
+        position: assignmentMap.get(p.id)?.position ?? 0
+    }))
+
+    // Fetch project sections
+    const { data: sections } = await supabase
+        .from('project_sections')
+        .select('*')
+        .eq('project_id', id)
+        .order('sort_order', { ascending: true })
 
     const { data: moodboards } = await supabase
         .from('moodboards')
@@ -49,7 +90,7 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
         <div className="flex flex-col w-full bg-background">
             {/* Project Header Section */}
             <div className="px-8 py-8 max-w-7xl mx-auto w-full">
-                <h1 className="text-3xl font-medium tracking-[0.1em] text-foreground uppercase mb-3">
+                <h1 className="text-3xl font-medium tracking-tight text-foreground mb-3">
                     {project.name}
                 </h1>
                 {project.description && (
@@ -62,7 +103,8 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
             <div className="px-8 max-w-7xl mx-auto w-full">
                 <ProjectView
                     project={project}
-                    products={products || []}
+                    products={productsWithSections}
+                    sections={sections || []}
                     moodboards={moodboards || []}
                     budgets={budgets || []}
                 />

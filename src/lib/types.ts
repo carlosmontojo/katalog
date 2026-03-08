@@ -6,9 +6,11 @@
 
 export interface Product {
     id: string
+    user_id?: string
     project_id?: string
     title: string
     brand?: string
+    typology?: string
     price: number
     currency: string
     image_url?: string
@@ -58,6 +60,19 @@ export interface Project {
     template_id?: string
     settings?: Record<string, unknown>
     created_at: string
+}
+
+export interface ProjectSection {
+    id: string
+    project_id: string
+    name: string
+    sort_order: number
+    created_at: string
+}
+
+export interface ProductWithSection extends Product {
+    section_id?: string | null
+    position: number
 }
 
 export interface Category {

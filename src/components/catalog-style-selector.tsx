@@ -7,6 +7,28 @@ import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 
+export type CatalogOrientation = 'portrait' | 'landscape'
+export type ProductsPerPage = 1 | 2 | 4 | 6 | 9
+
+export function getGridLayout(ppp: number) {
+    switch (ppp) {
+        case 1: return { cols: 1, rows: 1 }
+        case 2: return { cols: 1, rows: 2 }
+        case 4: return { cols: 2, rows: 2 }
+        case 6: return { cols: 2, rows: 3 }
+        case 9: return { cols: 3, rows: 3 }
+        default: return { cols: 2, rows: 2 }
+    }
+}
+
+export function getCanvasDimensions(orientation: CatalogOrientation) {
+    const A4_SHORT = 210 * 3.78
+    const A4_LONG = 297 * 3.78
+    return orientation === 'landscape'
+        ? { width: A4_LONG, height: A4_SHORT }
+        : { width: A4_SHORT, height: A4_LONG }
+}
+
 export interface CatalogStyle {
     id: string
     name: string
@@ -24,8 +46,8 @@ export interface CatalogStyle {
 export const CATALOG_STYLES: CatalogStyle[] = [
     {
         id: 'gallery',
-        name: 'The Gallery',
-        description: 'Pure white, crisp black lines, high-end editorial feel.',
+        name: 'La Galería',
+        description: 'Blanco puro, líneas negras nítidas, toque editorial de alta gama.',
         backgroundColor: '#FFFFFF',
         fontFamily: 'Inter, sans-serif',
         titleFont: 'Playfair Display, serif',
@@ -36,8 +58,8 @@ export const CATALOG_STYLES: CatalogStyle[] = [
     },
     {
         id: 'linen',
-        name: 'Natural Linen',
-        description: 'Warm stone tones, soft organic shapes, tactile feel.',
+        name: 'Lino Natural',
+        description: 'Tonos cálidos de piedra, formas orgánicas suaves, tacto natural.',
         backgroundColor: '#F5F2ED',
         fontFamily: 'Outfit, sans-serif',
         titleFont: 'Outfit, sans-serif',
@@ -49,8 +71,8 @@ export const CATALOG_STYLES: CatalogStyle[] = [
     },
     {
         id: 'slate',
-        name: 'Studio Slate',
-        description: 'Cool architectural greys with depth and character.',
+        name: 'Pizarra Studio',
+        description: 'Grises arquitectónicos con profundidad y carácter.',
         backgroundColor: '#ECEFF1',
         fontFamily: 'Inter, sans-serif',
         titleFont: 'Inter, sans-serif',
@@ -62,8 +84,8 @@ export const CATALOG_STYLES: CatalogStyle[] = [
     },
     {
         id: 'warm',
-        name: 'Warm Minimal',
-        description: 'Sophisticated bone and cream with fine sepia lines.',
+        name: 'Minimal Cálido',
+        description: 'Sofisticado hueso y crema con finas líneas sepia.',
         backgroundColor: '#FAF9F6',
         fontFamily: 'Cormorant Garamond, serif',
         titleFont: 'Cormorant Garamond, serif',
@@ -75,8 +97,8 @@ export const CATALOG_STYLES: CatalogStyle[] = [
     },
     {
         id: 'editorial',
-        name: 'Modern Editorial',
-        description: 'High contrast, bold borders, and structured grids.',
+        name: 'Editorial Moderno',
+        description: 'Alto contraste, bordes marcados y cuadrículas estructuradas.',
         backgroundColor: '#F8F9FA',
         fontFamily: 'Inter, sans-serif',
         titleFont: 'Libre Baskerville, serif',
@@ -89,19 +111,21 @@ export const CATALOG_STYLES: CatalogStyle[] = [
 
 
 interface CatalogStyleSelectorProps {
-    onSelect: (style: CatalogStyle, typography: 'serif' | 'sans') => void
+    onSelect: (style: CatalogStyle, typography: 'serif' | 'sans', orientation: CatalogOrientation, productsPerPage: ProductsPerPage) => void
 }
 
 export function CatalogStyleSelector({ onSelect }: CatalogStyleSelectorProps) {
     const [selectedStyleId, setSelectedStyleId] = useState(CATALOG_STYLES[0].id)
     const [typography, setTypography] = useState<'serif' | 'sans'>('serif')
+    const [orientation, setOrientation] = useState<CatalogOrientation>('portrait')
+    const [productsPerPage, setProductsPerPage] = useState<ProductsPerPage>(4)
 
     const selectedStyle = CATALOG_STYLES.find(s => s.id === selectedStyleId)!
 
     return (
         <div className="flex flex-col gap-10 py-4">
             <div className="space-y-4">
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">1. Choose Aesthetics</h3>
+                <h3 className="text-xs font-bold tracking-wide text-slate-400">1. Elige Estética</h3>
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                     {CATALOG_STYLES.map((style) => (
                         <Card
@@ -169,7 +193,7 @@ export function CatalogStyleSelector({ onSelect }: CatalogStyleSelectorProps) {
                                     }}>01</span>
                                 </div>
 
-                                <span className={`mt-1 text-[10px] font-bold uppercase tracking-[0.1em] ${style.id === 'gallery' || style.id === 'editorial' ? 'text-slate-900' : 'text-slate-500'}`}>
+                                <span className={`mt-1 text-xs font-bold ${style.id === 'gallery' || style.id === 'editorial' ? 'text-slate-900' : 'text-slate-500'}`}>
                                     {style.name}
                                 </span>
                             </div>
@@ -185,7 +209,7 @@ export function CatalogStyleSelector({ onSelect }: CatalogStyleSelectorProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                 <div className="space-y-4">
-                    <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">2. Typography Theme</h3>
+                    <h3 className="text-xs font-bold tracking-wide text-slate-400">2. Tema de Tipografía</h3>
                     <RadioGroup
                         value={typography}
                         onValueChange={(val: 'serif' | 'sans') => setTypography(val)}
@@ -195,23 +219,23 @@ export function CatalogStyleSelector({ onSelect }: CatalogStyleSelectorProps) {
                             <RadioGroupItem value="serif" id="serif" />
                             <Label htmlFor="serif" className="text-sm font-medium cursor-pointer">
                                 <span className="text-xl font-serif">Aa</span>
-                                <span className="ml-2">Serif Editorial</span>
+                                <span className="ml-2">Editorial Serif</span>
                             </Label>
                         </div>
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="sans" id="sans" />
                             <Label htmlFor="sans" className="text-sm font-medium cursor-pointer">
                                 <span className="text-xl font-sans">Aa</span>
-                                <span className="ml-2">Modern Sans</span>
+                                <span className="ml-2">Sans Moderno</span>
                             </Label>
                         </div>
                     </RadioGroup>
                 </div>
 
-                <div className="bg-slate-50 p-6 rounded-sm border border-slate-100 space-y-2">
-                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">
+                <div className="bg-slate-50 p-6 rounded-lg border border-slate-100 space-y-2">
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
                         <Info className="w-3 h-3" />
-                        Style Details
+                        Detalles del Estilo
                     </div>
                     <p className="text-xs text-slate-500 leading-relaxed italic">
                         "{selectedStyle.description}"
@@ -219,12 +243,60 @@ export function CatalogStyleSelector({ onSelect }: CatalogStyleSelectorProps) {
                 </div>
             </div>
 
+            {/* Step 3: Orientation */}
+            <div className="space-y-4">
+                <h3 className="text-xs font-bold tracking-wide text-slate-400">3. Orientación</h3>
+                <div className="flex gap-4">
+                    {([['portrait', 'Vertical (A4)'], ['landscape', 'Horizontal (A4)']] as const).map(([val, label]) => (
+                        <button
+                            key={val}
+                            onClick={() => setOrientation(val)}
+                            className={`flex items-center gap-3 px-5 py-3 rounded-lg border-2 transition-all ${
+                                orientation === val ? 'border-foreground bg-foreground/5' : 'border-slate-200 hover:border-slate-300'
+                            }`}
+                        >
+                            <div className={`bg-slate-300 ${val === 'portrait' ? 'w-5 h-7' : 'w-7 h-5'} rounded-sm`} />
+                            <span className="text-sm font-medium">{label}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Step 4: Products per page */}
+            <div className="space-y-4">
+                <h3 className="text-xs font-bold tracking-wide text-slate-400">4. Productos por Página</h3>
+                <div className="flex gap-3">
+                    {([1, 2, 4, 6, 9] as ProductsPerPage[]).map((n) => {
+                        const grid = getGridLayout(n)
+                        return (
+                            <button
+                                key={n}
+                                onClick={() => setProductsPerPage(n)}
+                                className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all min-w-[72px] ${
+                                    productsPerPage === n ? 'border-foreground bg-foreground/5' : 'border-slate-200 hover:border-slate-300'
+                                }`}
+                            >
+                                <div className="grid gap-0.5 w-8 h-10" style={{
+                                    gridTemplateColumns: `repeat(${grid.cols}, 1fr)`,
+                                    gridTemplateRows: `repeat(${grid.rows}, 1fr)`
+                                }}>
+                                    {Array.from({ length: n }).map((_, i) => (
+                                        <div key={i} className="bg-slate-400 rounded-[1px]" />
+                                    ))}
+                                </div>
+                                <span className="text-xs font-medium text-slate-600">{n}</span>
+                            </button>
+                        )
+                    })}
+                </div>
+            </div>
+
             <div className="flex justify-end pt-4">
                 <Button
-                    onClick={() => onSelect(selectedStyle, typography)}
-                    className="h-12 px-12 bg-foreground text-background hover:bg-foreground/90 rounded-sm text-[10px] font-bold uppercase tracking-[0.2em]"
+                    onClick={() => onSelect(selectedStyle, typography, orientation, productsPerPage)}
+                    className="h-12 px-12 bg-foreground text-background hover:bg-foreground/90 rounded-lg text-xs font-bold tracking-wide"
                 >
-                    Continue to Layout Editor
+                    Continuar al Editor de Diseño
                 </Button>
             </div>
         </div>

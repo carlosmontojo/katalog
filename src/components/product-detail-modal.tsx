@@ -7,21 +7,21 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
 import { LoadingProgress } from "@/components/ui/loading-progress"
-import { Loader2, Plus, X, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react"
+import { Loader2, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react"
 import { fetchProductDetails, saveProductDetails } from "@/app/scraping-actions"
 import { ProductDetails } from '@/lib/types'
+import { cn } from '@/lib/utils'
 
 interface ProductDetailModalProps {
     product: {
-        id?: string  // Add product ID for saving details
+        id?: string
         title: string
         price: number
         currency: string
         image_url?: string
         brand?: string
-        images?: string[]  // Database-stored images from previous scrapes
+        images?: string[]
         original_url?: string
     }
     isOpen: boolean
@@ -34,8 +34,6 @@ export function ProductDetailModal({
     product,
     isOpen,
     onClose,
-    onAddToCatalog,
-    isSelected
 }: ProductDetailModalProps) {
     const [loading, setLoading] = useState(false)
     const [details, setDetails] = useState<ProductDetails | null>(null)
@@ -49,7 +47,6 @@ export function ProductDetailModal({
         }
     }, [isOpen, product.original_url])
 
-    // Only reset when switching to a DIFFERENT product
     useEffect(() => {
         if (lastLoadedUrl.current && lastLoadedUrl.current !== product.original_url) {
             setDetails(null)
@@ -60,7 +57,6 @@ export function ProductDetailModal({
 
     const loadDetails = async () => {
         if (!product.original_url) return
-
         setLoading(true)
         setError(null)
 
@@ -70,7 +66,6 @@ export function ProductDetailModal({
                 setDetails(result.details)
                 lastLoadedUrl.current = product.original_url
 
-                // SAVE DETAILS TO DATABASE (fire-and-forget to avoid revalidation race)
                 if (product.id) {
                     saveProductDetails(product.id, {
                         description: result.details.description,
@@ -85,14 +80,14 @@ export function ProductDetailModal({
             } else {
                 setError(result.error || 'No se pudo cargar la información')
             }
-        } catch (e: any) {
-            setError(e.message || 'Error al cargar detalles')
+        } catch (e: unknown) {
+            setError((e as Error).message || 'Error al cargar detalles')
         } finally {
             setLoading(false)
         }
     }
 
-    // Priority: Live Scrape > Database Images > Main Image (NO FILTERING)
+    // Image sources: Live scrape > Database images > Main image
     const allImages = details?.images?.length
         ? details.images
         : (product.images && product.images.length > 0)
@@ -110,7 +105,6 @@ export function ProductDetailModal({
             next.add(url)
             return next
         })
-        // If current image failed, move to next valid one
         if (validImages[selectedImage] === url && validImages.length > 1) {
             setSelectedImage(0)
         }
@@ -119,70 +113,86 @@ export function ProductDetailModal({
     const nextImage = () => setSelectedImage((prev) => (prev + 1) % validImages.length)
     const prevImage = () => setSelectedImage((prev) => (prev - 1 + validImages.length) % validImages.length)
 
+    const formattedPrice = product.price > 0
+        ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: product.currency || 'EUR', minimumFractionDigits: 0 }).format(product.price)
+        : details?.price || null
+
+    // Collect detail sections that have data
+    const infoSections: { label: string; content: string }[] = []
+    if (details?.dimensions) infoSections.push({ label: 'Medidas', content: details.dimensions })
+    if (details?.materials) infoSections.push({ label: 'Materiales', content: details.materials })
+    if (details?.colors) infoSections.push({ label: 'Colores', content: details.colors })
+    if (details?.weight) infoSections.push({ label: 'Peso', content: details.weight })
+    if (details?.capacity) infoSections.push({ label: 'Capacidad', content: details.capacity })
+    if (details?.style) infoSections.push({ label: 'Estilo', content: details.style })
+
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="!max-w-[95vw] !w-[95vw] h-[95vh] flex flex-col p-0 gap-0 bg-card border-none rounded-sm overflow-hidden">
+            <DialogContent className="!max-w-5xl !w-[90vw] h-[85vh] flex flex-col p-0 gap-0 bg-background border border-border/50 rounded-2xl overflow-hidden shadow-2xl">
                 <DialogHeader>
                     <DialogTitle className="sr-only">Detalles del Producto</DialogTitle>
                 </DialogHeader>
+
                 <div className="flex-1 flex overflow-hidden">
                     {/* Left: Image Gallery */}
-                    <div className="w-1/2 flex flex-col p-8 bg-card border-r border-border/50">
-                        {/* Loading Progress */}
-                        {loading && (
-                            <LoadingProgress
-                                isLoading={loading}
-                                message="Cargando detalles del producto..."
-                                variant="bar"
-                                showPercentage
-                            />
-                        )}
+                    <div className="w-[55%] flex flex-col bg-muted/20">
+                        {/* Main Image */}
+                        <div className="relative flex-1 flex items-center justify-center p-10">
+                            {loading && (
+                                <div className="absolute top-0 left-0 right-0 z-10">
+                                    <LoadingProgress
+                                        isLoading={loading}
+                                        message=""
+                                        variant="bar"
+                                    />
+                                </div>
+                            )}
 
-                        {/* Main Image - using aspect-ratio for consistent sizing */}
-                        <div className="relative w-full aspect-square bg-muted/50 rounded-sm overflow-hidden mb-6 flex items-center justify-center">
                             {validImages.length > 0 ? (
                                 <>
                                     <img
                                         src={validImages[selectedImage]}
                                         alt={product.title}
-                                        className="w-full h-full object-contain"
+                                        className="max-w-full max-h-full object-contain rounded-lg"
                                         onError={() => handleImageError(validImages[selectedImage])}
                                     />
                                     {validImages.length > 1 && (
                                         <>
                                             <button
                                                 onClick={prevImage}
-                                                className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-card/80 hover:bg-card rounded-full shadow-sm flex items-center justify-center transition-all"
+                                                className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-background/60 backdrop-blur-sm hover:bg-background/90 rounded-full flex items-center justify-center transition-all"
                                             >
-                                                <ChevronLeft className="w-6 h-6 text-muted-foreground" />
+                                                <ChevronLeft className="w-5 h-5 text-foreground" />
                                             </button>
                                             <button
                                                 onClick={nextImage}
-                                                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-card/80 hover:bg-card rounded-full shadow-sm flex items-center justify-center transition-all"
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-background/60 backdrop-blur-sm hover:bg-background/90 rounded-full flex items-center justify-center transition-all"
                                             >
-                                                <ChevronRight className="w-6 h-6 text-muted-foreground" />
+                                                <ChevronRight className="w-5 h-5 text-foreground" />
                                             </button>
                                         </>
                                     )}
                                 </>
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                                    {loading ? <Loader2 className="w-8 h-8 animate-spin" /> : "Sin imagen"}
+                                <div className="flex items-center justify-center text-muted-foreground/30">
+                                    {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : "Sin imagen"}
                                 </div>
                             )}
                         </div>
 
                         {/* Thumbnails */}
                         {validImages.length > 1 && (
-                            <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-                                {validImages.map((img, idx) => (
+                            <div className="flex gap-3 px-10 pb-6 pt-2 overflow-x-auto scrollbar-hide">
+                                {validImages.slice(0, 8).map((img, idx) => (
                                     <button
                                         key={idx}
                                         onClick={() => setSelectedImage(idx)}
-                                        className={`shrink-0 w-24 h-24 rounded-sm overflow-hidden border transition-all ${selectedImage === idx
-                                            ? 'border-foreground'
-                                            : 'border-transparent hover:border-border'
-                                            }`}
+                                        className={cn(
+                                            'shrink-0 w-16 h-16 rounded-lg overflow-hidden transition-all border-2',
+                                            selectedImage === idx
+                                                ? 'border-foreground opacity-100'
+                                                : 'border-transparent opacity-40 hover:opacity-70'
+                                        )}
                                     >
                                         <img
                                             src={img}
@@ -197,85 +207,66 @@ export function ProductDetailModal({
                     </div>
 
                     {/* Right: Product Info */}
-                    <div className="w-1/2 flex flex-col p-8 overflow-y-auto">
-                        <div className="flex justify-between items-start mb-8">
-                            <div>
-                                <h1 className="text-3xl md:text-4xl font-bold tracking-[0.1em] text-foreground uppercase mb-2">
-                                    {product.title}
-                                </h1>
-                                <p className="text-sm text-muted-foreground tracking-[0.05em] uppercase font-medium">
-                                    {product.brand || details?.brand || details?.materials?.split(',')[0] || "Detalles"}
-                                </p>
-                            </div>
-                            {product.original_url && (
-                                <a
-                                    href={product.original_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xs font-bold tracking-[0.1em] text-muted-foreground uppercase border border-border px-4 py-2 rounded-sm hover:bg-muted/30 transition-colors"
-                                >
-                                    Ver en la web
-                                </a>
-                            )}
-                        </div>
-
-                        <div className="space-y-8 flex-1">
-                            <p className="text-base leading-relaxed text-muted-foreground">
-                                {details?.description || "Sin descripción disponible para este producto."}
+                    <div className="w-[45%] flex flex-col overflow-y-auto">
+                        <div className="flex-1 px-10 py-10">
+                            {/* Brand */}
+                            <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-muted-foreground mb-3">
+                                {product.brand || details?.brand || '—'}
                             </p>
 
-                            {/* Medidas */}
-                            {details?.dimensions && (
-                                <div>
-                                    <h3 className="text-xs font-bold tracking-[0.2em] text-foreground uppercase mb-4">Medidas</h3>
-                                    <div className="text-sm leading-relaxed text-muted-foreground space-y-1">
-                                        {details.dimensions.split('\n').map((line, i) => (
-                                            <p key={i}>{line}</p>
-                                        ))}
-                                    </div>
-                                </div>
+                            {/* Title */}
+                            <h1 className="text-2xl font-normal tracking-tight text-foreground leading-snug mb-6">
+                                {product.title}
+                            </h1>
+
+                            {/* Price */}
+                            {formattedPrice && (
+                                <p className="text-lg font-medium text-foreground mb-8">
+                                    {formattedPrice}
+                                </p>
                             )}
 
-                            {/* Materiales */}
-                            {details?.materials && (
-                                <div>
-                                    <h3 className="text-xs font-bold tracking-[0.2em] text-foreground uppercase mb-4">Materiales</h3>
-                                    <div className="text-sm leading-relaxed text-muted-foreground space-y-1">
-                                        {details.materials.split('\n').map((line, i) => (
-                                            <p key={i}>{line}</p>
-                                        ))}
-                                    </div>
-                                </div>
+                            {/* Divider */}
+                            <div className="w-8 h-px bg-border mb-8" />
+
+                            {/* Description */}
+                            {(details?.description || !loading) && (
+                                <p className="text-[13px] leading-relaxed text-muted-foreground mb-10">
+                                    {details?.description || 'Sin descripción disponible.'}
+                                </p>
                             )}
 
-                            {/* Colores */}
-                            {details?.colors && (
-                                <div>
-                                    <h3 className="text-xs font-bold tracking-[0.2em] text-foreground uppercase mb-4">Colores</h3>
-                                    <p className="text-sm leading-relaxed text-muted-foreground">{details.colors}</p>
-                                </div>
-                            )}
-
-                            {/* Características adicionales */}
-                            {(details?.weight || details?.capacity || details?.style) && (
-                                <div>
-                                    <h3 className="text-xs font-bold tracking-[0.2em] text-foreground uppercase mb-4">Especificaciones</h3>
-                                    <div className="text-sm leading-relaxed text-muted-foreground space-y-1">
-                                        {details.weight && <p><span className="font-medium">Peso:</span> {details.weight}</p>}
-                                        {details.capacity && <p><span className="font-medium">Capacidad:</span> {details.capacity}</p>}
-                                        {details.style && <p><span className="font-medium">Estilo:</span> {details.style}</p>}
-                                    </div>
+                            {/* Info grid */}
+                            {infoSections.length > 0 && (
+                                <div className="space-y-0 border-t border-border/40">
+                                    {infoSections.map((section, i) => (
+                                        <div
+                                            key={i}
+                                            className="flex border-b border-border/40 py-4"
+                                        >
+                                            <span className="text-[11px] font-semibold tracking-wide uppercase text-muted-foreground/70 w-28 shrink-0 pt-0.5">
+                                                {section.label}
+                                            </span>
+                                            <div className="text-[13px] leading-relaxed text-foreground/80 flex-1">
+                                                {section.content.split('\n').map((line, j) => (
+                                                    <p key={j}>{line}</p>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
 
                             {/* Features */}
                             {details?.features && details.features.length > 0 && (
-                                <div>
-                                    <h3 className="text-xs font-bold tracking-[0.2em] text-foreground uppercase mb-4">Características</h3>
-                                    <ul className="text-sm leading-relaxed text-muted-foreground space-y-2">
+                                <div className="mt-8">
+                                    <h3 className="text-[11px] font-semibold tracking-wide uppercase text-muted-foreground/70 mb-4">
+                                        Características
+                                    </h3>
+                                    <ul className="space-y-2">
                                         {details.features.map((feature, i) => (
-                                            <li key={i} className="flex items-start gap-2">
-                                                <span className="text-amber-500 mt-1">•</span>
+                                            <li key={i} className="flex items-start gap-3 text-[13px] text-foreground/80">
+                                                <span className="w-1 h-1 rounded-full bg-foreground/30 mt-2 shrink-0" />
                                                 <span>{feature}</span>
                                             </li>
                                         ))}
@@ -285,39 +276,31 @@ export function ProductDetailModal({
 
                             {/* Care Instructions */}
                             {details?.careInstructions && (
-                                <div>
-                                    <h3 className="text-xs font-bold tracking-[0.2em] text-foreground uppercase mb-4">Cuidados</h3>
-                                    <p className="text-sm leading-relaxed text-muted-foreground">{details.careInstructions}</p>
+                                <div className="mt-8">
+                                    <h3 className="text-[11px] font-semibold tracking-wide uppercase text-muted-foreground/70 mb-3">
+                                        Cuidados
+                                    </h3>
+                                    <p className="text-[13px] leading-relaxed text-foreground/80">
+                                        {details.careInstructions}
+                                    </p>
                                 </div>
                             )}
                         </div>
 
-                        {/* Footer Info */}
-                        <div className="mt-12 pt-8 border-t border-border/50 flex justify-between items-center">
-                            <div className="text-3xl font-bold tracking-[0.05em] text-foreground">
-                                {product.price > 0
-                                    ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: product.currency || 'EUR' }).format(product.price)
-                                    : details?.price
-                                        ? details.price
-                                        : '—'}
+                        {/* Footer */}
+                        {product.original_url && (
+                            <div className="px-10 py-6 border-t border-border/30">
+                                <a
+                                    href={product.original_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 text-[11px] font-medium tracking-wide text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                    Ver en tienda original
+                                    <ExternalLink className="w-3 h-3" />
+                                </a>
                             </div>
-                            <div className="flex gap-4">
-                                <button className="p-2 text-muted-foreground hover:text-foreground transition-colors">
-                                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                    </svg>
-                                </button>
-                                <button className="p-2 text-muted-foreground hover:text-red-500 transition-colors">
-                                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                        <path d="M3 6h18" />
-                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-
-
+                        )}
                     </div>
                 </div>
             </DialogContent>

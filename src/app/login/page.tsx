@@ -77,7 +77,7 @@ export default function LoginPage() {
                     <p className="text-muted-foreground text-center mt-2 px-10">Crea catálogos y moodboards profesionales en minutos.</p>
                 </div>
 
-                <Card className="border-border/50 shadow-2xl bg-card/50 backdrop-blur-sm overflow-hidden rounded-sm">
+                <Card className="border-border/30 shadow-2xl bg-card/50 backdrop-blur-sm overflow-hidden rounded-2xl">
                     <CardHeader className="space-y-1 pb-8">
                         <CardTitle className="text-xl font-bold italic tracking-tight">Iniciar Sesión</CardTitle>
                         <CardDescription>
@@ -88,7 +88,7 @@ export default function LoginPage() {
                         <form onSubmit={handleLogin} className="space-y-6">
                             <div className="grid w-full items-center gap-5">
                                 <div className="flex flex-col space-y-2">
-                                    <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest opacity-70">Email profesional</Label>
+                                    <Label htmlFor="email" className="text-xs font-bold tracking-wide opacity-70">Email profesional</Label>
                                     <div className="relative">
                                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                         <Input
@@ -98,14 +98,14 @@ export default function LoginPage() {
                                             value={email}
                                             onChange={(e) => setEmail(e.target.value)}
                                             required
-                                            className="pl-10 h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary rounded-sm"
+                                            className="pl-10 h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary rounded-lg"
                                         />
                                     </div>
                                 </div>
                                 <div className="flex flex-col space-y-2">
                                     <div className="flex items-center justify-between">
-                                        <Label htmlFor="password" className="text-xs font-bold uppercase tracking-widest opacity-70">Contraseña</Label>
-                                        <Link href="#" className="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline">¿Olvidaste tu contraseña?</Link>
+                                        <Label htmlFor="password" className="text-xs font-bold tracking-wide opacity-70">Contraseña</Label>
+                                        <Link href="#" className="text-xs font-bold text-primary hover:underline">¿Olvidaste tu contraseña?</Link>
                                     </div>
                                     <div className="relative">
                                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -116,20 +116,20 @@ export default function LoginPage() {
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
                                             required
-                                            className="pl-10 h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary rounded-sm"
+                                            className="pl-10 h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary rounded-lg"
                                         />
                                     </div>
                                 </div>
                             </div>
 
                             {error && (
-                                <div className="p-3 rounded-sm bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium animate-in fade-in slide-in-from-top-1">
+                                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium animate-in fade-in slide-in-from-top-1">
                                     {error}
                                 </div>
                             )}
 
                             {message && (
-                                <div className="p-3 rounded-sm bg-primary/10 border border-primary/20 text-primary text-sm font-medium animate-in fade-in slide-in-from-top-1 text-center italic">
+                                <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-primary text-sm font-medium animate-in fade-in slide-in-from-top-1 text-center italic">
                                     {message}
                                 </div>
                             )}
@@ -138,7 +138,7 @@ export default function LoginPage() {
                                 <Button
                                     type="submit"
                                     disabled={loading}
-                                    className="h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg rounded-sm shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                    className="h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg rounded-xl shadow-lg shadow-primary/20 transition-all duration-200 hover:shadow-xl hover:shadow-primary/25 active:scale-[0.98]"
                                 >
                                     {loading ? (
                                         <>
@@ -154,7 +154,7 @@ export default function LoginPage() {
                                     <div className="absolute inset-0 flex items-center">
                                         <span className="w-full border-t border-border/50"></span>
                                     </div>
-                                    <div className="relative flex justify-center text-xs uppercase tracking-widest">
+                                    <div className="relative flex justify-center text-xs tracking-wide">
                                         <span className="bg-card px-2 text-muted-foreground font-bold">o también</span>
                                     </div>
                                 </div>
@@ -164,7 +164,7 @@ export default function LoginPage() {
                                     type="button"
                                     onClick={handleSignUp}
                                     disabled={loading}
-                                    className="h-12 border-border/50 hover:bg-secondary/50 rounded-sm transition-all"
+                                    className="h-12 border-border/30 hover:bg-secondary/50 rounded-xl transition-all duration-200"
                                 >
                                     Crea una cuenta gratuita
                                 </Button>

@@ -12,6 +12,7 @@ import { getUserCountryCode } from '@/lib/utils/geo'
 import { ManualProductForm } from './manual-product-form'
 import { toast } from 'sonner'
 import { VisualBrowser } from './visual-browser'
+import { useDesignQuip } from '@/components/ui/loading-progress'
 
 interface UrlInputProps {
     projectId: string
@@ -36,6 +37,7 @@ export function UrlInput({ projectId }: UrlInputProps) {
     // Modal state
     const [modalOpen, setModalOpen] = useState(false)
     const [selectedProductIndex, setSelectedProductIndex] = useState<number | null>(null)
+    const quip = useDesignQuip(loading)
 
     const handleNavigate = () => {
         if (!url) return;
@@ -124,7 +126,7 @@ export function UrlInput({ projectId }: UrlInputProps) {
     // Show manual form
     if (showManualForm) {
         return (
-            <div className="flex flex-col gap-8 p-8 bg-background border-none rounded-sm">
+            <div className="flex flex-col gap-8 p-8 bg-background border-none rounded-lg">
                 <ManualProductForm
                     projectId={projectId}
                     onSuccess={() => {
@@ -138,19 +140,19 @@ export function UrlInput({ projectId }: UrlInputProps) {
     }
 
     return (
-        <div className="flex flex-col gap-8 p-8 bg-background border-none rounded-sm">
+        <div className="flex flex-col gap-8 p-8 bg-background border-none rounded-lg">
             {step === 'input' && (
                 <div className="flex flex-col gap-6">
                     {/* Header with manual add button */}
                     <div className="flex items-center justify-between border-b border-border/50 pb-4">
                         <div className="flex flex-col gap-1">
-                            <h2 className="text-lg font-medium tracking-[0.05em] text-foreground uppercase">Añadir Productos</h2>
-                            <p className="text-xs text-muted-foreground tracking-[0.05em]">Navega por la web o añade productos manualmente.</p>
+                            <h2 className="text-lg font-medium text-foreground">Añadir Productos</h2>
+                            <p className="text-xs text-muted-foreground">Navega por la web o añade productos manualmente.</p>
                         </div>
                         <Button
                             onClick={() => setShowManualForm(true)}
                             variant="outline"
-                            className="h-10 px-6 border-border text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-muted/30 rounded-sm"
+                            className="h-10 px-6 border-border text-xs font-bold hover:bg-muted/30 rounded-lg"
                         >
                             <Plus className="w-4 h-4 mr-2" />
                             Añadir Manual
@@ -168,14 +170,14 @@ export function UrlInput({ projectId }: UrlInputProps) {
                                 value={url}
                                 onChange={(e) => setUrl(e.target.value)}
                                 disabled={loading}
-                                className="h-12 pl-12 bg-card border-border/50 rounded-sm focus-visible:ring-border text-sm tracking-[0.05em]"
+                                className="h-12 pl-12 bg-card border-border/50 rounded-lg focus-visible:ring-border text-sm"
                                 onKeyDown={(e) => e.key === 'Enter' && handleNavigate()}
                             />
                         </div>
                         <Button
                             onClick={handleNavigate}
                             disabled={loading || !url}
-                            className="h-12 px-8 bg-foreground text-background hover:bg-foreground/90 rounded-sm text-[10px] font-bold uppercase tracking-[0.2em]"
+                            className="h-12 px-8 bg-foreground text-background hover:bg-foreground/90 rounded-lg text-xs font-bold"
                         >
                             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MousePointer2 className="mr-2 h-4 w-4" />}
                             Navegar
@@ -202,17 +204,17 @@ export function UrlInput({ projectId }: UrlInputProps) {
                 <div className="flex flex-col gap-8">
                     <div className="flex items-center justify-between">
                         <div className="flex flex-col gap-1">
-                            <h2 className="text-lg font-medium tracking-[0.05em] text-foreground uppercase">Select Category</h2>
-                            <p className="text-xs text-muted-foreground tracking-[0.05em]">Elige una categoría para extraer productos.</p>
+                            <h2 className="text-lg font-medium text-foreground">Selecciona Categoría</h2>
+                            <p className="text-xs text-muted-foreground">Elige una categoría para extraer productos.</p>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => setStep('input')} className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Cancelar</Button>
+                        <Button variant="ghost" size="sm" onClick={() => setStep('input')} className="text-xs font-bold text-muted-foreground">Cancelar</Button>
                     </div>
 
                     <div className="flex flex-wrap gap-3">
                         {categories.map(cat => (
                             <button
                                 key={cat.name}
-                                className={`px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] rounded-sm transition-all ${selectedCategoryName === cat.name
+                                className={`px-4 py-2 text-xs font-bold uppercase tracking-wide rounded-lg transition-all ${selectedCategoryName === cat.name
                                     ? "bg-foreground text-background"
                                     : "bg-card border border-border/50 text-muted-foreground hover:border-muted-foreground/30"
                                     } ${loading ? 'opacity-50 pointer-events-none' : ''}`}
@@ -224,9 +226,12 @@ export function UrlInput({ projectId }: UrlInputProps) {
                     </div>
 
                     {loading && (
-                        <div className="flex items-center justify-center gap-3 py-12 text-muted-foreground">
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                            <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Cargando productos...</span>
+                        <div className="flex flex-col items-center justify-center gap-3 py-12">
+                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/40" />
+                            {quip && (
+                                <span className="text-base text-foreground font-medium italic text-center max-w-sm animate-in fade-in duration-500">{quip}</span>
+                            )}
+                            <span className="text-xs text-muted-foreground/50">Cargando productos...</span>
                         </div>
                     )}
                 </div>
@@ -236,16 +241,16 @@ export function UrlInput({ projectId }: UrlInputProps) {
                 <div className="flex flex-col gap-8">
                     <div className="flex items-center justify-between">
                         <div className="flex flex-col gap-1">
-                            <h2 className="text-lg font-medium tracking-[0.05em] text-foreground uppercase">
+                            <h2 className="text-lg font-medium text-foreground">
                                 {previewProducts.length} productos encontrados
                             </h2>
-                            <p className="text-xs text-muted-foreground tracking-[0.05em]">
-                                {selectedCategoryName || 'Direct Import'}
+                            <p className="text-xs text-muted-foreground">
+                                {selectedCategoryName || 'Importación Directa'}
                             </p>
                         </div>
                         <div className="flex gap-4">
-                            <Button variant="ghost" size="sm" onClick={() => setStep('category')} className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Volver</Button>
-                            <Button variant="ghost" size="sm" onClick={() => setStep('input')} className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Cancelar</Button>
+                            <Button variant="ghost" size="sm" onClick={() => setStep('category')} className="text-xs font-bold text-muted-foreground">Volver</Button>
+                            <Button variant="ghost" size="sm" onClick={() => setStep('input')} className="text-xs font-bold text-muted-foreground">Cancelar</Button>
                         </div>
                     </div>
 
@@ -257,11 +262,11 @@ export function UrlInput({ projectId }: UrlInputProps) {
                                 onCheckedChange={toggleAll}
                                 className="rounded-none border-border data-[state=checked]:bg-foreground data-[state=checked]:border-foreground"
                             />
-                            <label htmlFor="select-all" className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground cursor-pointer select-none">
+                            <label htmlFor="select-all" className="text-xs font-bold text-muted-foreground cursor-pointer select-none">
                                 Seleccionar todo
                             </label>
                         </div>
-                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                        <span className="text-xs font-bold text-muted-foreground">
                             {selectedProducts.size} seleccionados
                         </span>
                     </div>
@@ -273,7 +278,7 @@ export function UrlInput({ projectId }: UrlInputProps) {
                                 className="flex flex-col group cursor-pointer relative"
                                 onClick={(e) => openProductModal(idx, e)}
                             >
-                                <div className="relative aspect-square w-full bg-muted rounded-sm overflow-hidden mb-4 shadow-sm">
+                                <div className="relative aspect-square w-full bg-muted rounded-lg overflow-hidden mb-4 shadow-sm">
                                     {product.image_url ? (
                                         <img src={product.image_url} alt={product.title} className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105" />
                                     ) : (
@@ -293,21 +298,21 @@ export function UrlInput({ projectId }: UrlInputProps) {
 
                                     {/* Hover overlay */}
                                     <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white bg-black/20 px-3 py-1 rounded-sm backdrop-blur-sm">
+                                        <span className="text-xs font-bold text-white bg-black/20 px-3 py-1 rounded-lg backdrop-blur-sm">
                                             Detalles
                                         </span>
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-start gap-4">
                                     <div className="flex-1 min-w-0">
-                                        <h3 className="text-[11px] font-medium text-foreground tracking-[0.05em] truncate uppercase" title={product.title}>
+                                        <h3 className="text-xs font-medium text-foreground truncate" title={product.title}>
                                             {product.title}
                                         </h3>
-                                        <p className="text-[10px] text-muted-foreground mt-0.5 italic tracking-[0.05em]">
+                                        <p className="text-xs text-muted-foreground mt-0.5 italic">
                                             {product.brand || getStoreName(product.original_url)}
                                         </p>
                                     </div>
-                                    <div className="text-[11px] font-bold text-foreground tracking-[0.05em]">
+                                    <div className="text-xs font-bold text-foreground">
                                         {product.price > 0
                                             ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: product.currency || 'EUR' }).format(product.price)
                                             : '—'}
@@ -320,7 +325,7 @@ export function UrlInput({ projectId }: UrlInputProps) {
                     <Button
                         onClick={handleSave}
                         disabled={loading || selectedProducts.size === 0}
-                        className="h-14 bg-foreground text-background hover:bg-foreground/90 rounded-sm text-xs font-bold uppercase tracking-[0.2em]"
+                        className="h-14 bg-foreground text-background hover:bg-foreground/90 rounded-lg text-xs font-bold"
                     >
                         {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
                         Añadir {selectedProducts.size} productos al catálogo

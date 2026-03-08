@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useDesignQuip } from '@/components/ui/loading-progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,12 +12,13 @@ import { generateBudget, saveBudget } from '@/app/budget-actions'
 import { fetchProductDetails, saveProductDetails } from '@/app/scraping-actions'
 import { exportBudgetToExcel, type BudgetLineItem } from '@/lib/moodboard-exporter'
 import { toast } from 'sonner'
+import { Product } from '@/lib/types'
 
 interface BudgetCreatorModalProps {
     isOpen: boolean
     onClose: () => void
     projectId: string
-    products: any[]
+    products: Product[]
 }
 
 interface EditableLineItem {
@@ -40,23 +42,24 @@ interface EditableLineItem {
 }
 
 const STATUS_OPTIONS = [
-    '', 'Internal Review', 'Client Review', 'Client Approved', 'Ordered', 'Installed', 'In Stock'
+    '', 'Revisión Interna', 'Revisión del Cliente', 'Aprobado por Cliente', 'Pedido', 'Instalado', 'En Stock'
 ]
 
 const LEAD_TIME_OPTIONS = [
-    '', '1-2 weeks', '2-4 weeks', '4-6 weeks', '6-8 weeks', '8-10 weeks', '10-12 weeks', '12+ weeks'
+    '', '1-2 semanas', '2-4 semanas', '4-6 semanas', '6-8 semanas', '8-10 semanas', '10-12 semanas', '12+ semanas'
 ]
 
 export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: BudgetCreatorModalProps) {
     const [budgetName, setBudgetName] = useState('Presupuesto')
-    const [studioName, setStudioName] = useState('STUDIO NAME')
-    const [sectionTitle, setSectionTitle] = useState('FURNITURE')
+    const [studioName, setStudioName] = useState('NOMBRE ESTUDIO')
+    const [sectionTitle, setSectionTitle] = useState('MOBILIARIO')
     const [lineItems, setLineItems] = useState<EditableLineItem[]>([])
     const [generating, setGenerating] = useState(false)
     const [generationProgress, setGenerationProgress] = useState(0)
 
     const [enriching, setEnriching] = useState(false)
     const [enrichProgress, setEnrichProgress] = useState(0)
+    const quip = useDesignQuip(enriching || generating)
 
     // Helper: extract store/brand name from URL
     const getSupplierFromUrl = (url?: string): string => {
@@ -87,31 +90,31 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
     }
 
     // Helper: infer category from product title
-    const inferCategory = (title: string, specs?: any, attrs?: any): string => {
+    const inferCategory = (title: string, specs?: Record<string, unknown>, attrs?: Record<string, unknown>): string => {
         const rawCat = specs?.category || attrs?.category || specs?.type || attrs?.type || ''
         if (rawCat && typeof rawCat === 'string' && !rawCat.includes('{') && !rawCat.includes(':') && rawCat.length < 50) return rawCat
         const t = title.toLowerCase()
-        if (t.includes('mesa') || t.includes('table')) return 'Tables'
-        if (t.includes('silla') || t.includes('chair')) return 'Seating'
-        if (t.includes('sofá') || t.includes('sofa')) return 'Seating'
-        if (t.includes('butaca') || t.includes('armchair')) return 'Seating'
-        if (t.includes('taburete') || t.includes('stool')) return 'Seating'
-        if (t.includes('lámpara') || t.includes('lampara') || t.includes('lamp')) return 'Lighting'
-        if (t.includes('estantería') || t.includes('estanteria') || t.includes('shelf')) return 'Shelving'
-        if (t.includes('armario') || t.includes('cabinet') || t.includes('wardrobe')) return 'Cabinets/Sideboards'
-        if (t.includes('cama') || t.includes('bed')) return 'Beds'
-        if (t.includes('escritorio') || t.includes('desk')) return 'Desks'
-        if (t.includes('alfombra') || t.includes('rug')) return 'Rugs'
-        if (t.includes('espejo') || t.includes('mirror')) return 'Mirrors'
+        if (t.includes('mesa') || t.includes('table')) return 'Mesas'
+        if (t.includes('silla') || t.includes('chair')) return 'Asientos'
+        if (t.includes('sofá') || t.includes('sofa')) return 'Asientos'
+        if (t.includes('butaca') || t.includes('armchair')) return 'Asientos'
+        if (t.includes('taburete') || t.includes('stool')) return 'Asientos'
+        if (t.includes('lámpara') || t.includes('lampara') || t.includes('lamp')) return 'Iluminación'
+        if (t.includes('estantería') || t.includes('estanteria') || t.includes('shelf')) return 'Estanterías'
+        if (t.includes('armario') || t.includes('cabinet') || t.includes('wardrobe')) return 'Armarios/Aparadores'
+        if (t.includes('cama') || t.includes('bed')) return 'Camas'
+        if (t.includes('escritorio') || t.includes('desk')) return 'Escritorios'
+        if (t.includes('alfombra') || t.includes('rug')) return 'Alfombras'
+        if (t.includes('espejo') || t.includes('mirror')) return 'Espejos'
         if (t.includes('cojín') || t.includes('cushion') || t.includes('pillow')) return 'Textiles'
         if (t.includes('cortina') || t.includes('curtain')) return 'Textiles'
-        if (t.includes('jarrón') || t.includes('vase')) return 'Accessories'
-        if (t.includes('maceta') || t.includes('planter')) return 'Accessories'
+        if (t.includes('jarrón') || t.includes('vase')) return 'Accesorios'
+        if (t.includes('maceta') || t.includes('planter')) return 'Accesorios'
         return ''
     }
 
     // Helper: parse price from a string like "149,99 €", "€149.99", "2.220€"
-    const parseSpecPrice = (specPrice: any): number => {
+    const parseSpecPrice = (specPrice: unknown): number => {
         if (!specPrice) return 0
         const s = String(specPrice).trim()
         const match = s.match(/(\d[\d.,]*\d|\d)/g)
@@ -143,7 +146,7 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
     }
 
     // Helper: extract price robustly
-    const extractPrice = (product: any): number => {
+    const extractPrice = (product: Product): number => {
         if (product.price && product.price > 0) return product.price
         const specPrice = product.specifications?.price || product.attributes?.price
         if (specPrice) {
@@ -271,7 +274,7 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
         }
     }, [isOpen, products])
 
-    const updateLineItem = (index: number, field: keyof EditableLineItem, value: any) => {
+    const updateLineItem = (index: number, field: keyof EditableLineItem, value: string | number) => {
         setLineItems(prev => {
             const copy = [...prev]
             copy[index] = { ...copy[index], [field]: value }
@@ -324,7 +327,7 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                 projectName: budgetName,
                 sectionTitle,
                 currency: '€',
-                revisionDate: new Date().toLocaleDateString('en-GB')
+                revisionDate: new Date().toLocaleDateString('es-ES')
             })
 
             setGenerationProgress(70)
@@ -379,44 +382,44 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-[95vw] w-[1400px] max-h-[90vh] flex flex-col p-0 gap-0 rounded-sm">
+            <DialogContent className="max-w-[95vw] w-[1400px] max-h-[90vh] flex flex-col p-0 gap-0 rounded-lg">
                 {/* Header */}
                 <DialogHeader className="px-8 py-6 border-b border-slate-100 shrink-0">
-                    <DialogTitle className="text-[12px] font-bold tracking-[0.2em] uppercase text-foreground flex items-center gap-3">
+                    <DialogTitle className="text-sm font-bold text-foreground flex items-center gap-3">
                         <FileSpreadsheet className="w-5 h-5" />
-                        Generate Budget
+                        Generar Presupuesto
                     </DialogTitle>
                 </DialogHeader>
 
                 {/* Settings Bar */}
                 <div className="px-8 py-4 bg-slate-50/50 border-b border-slate-100 flex flex-wrap items-center gap-6 shrink-0">
                     <div className="flex items-center gap-2">
-                        <label className="text-[9px] font-bold tracking-[0.15em] uppercase text-slate-400">Name:</label>
+                        <label className="text-xs font-medium text-slate-400">Nombre:</label>
                         <Input
                             value={budgetName}
                             onChange={(e) => setBudgetName(e.target.value)}
-                            className="w-48 h-8 text-sm rounded-sm"
+                            className="w-48 h-8 text-sm rounded-lg"
                         />
                     </div>
                     <div className="flex items-center gap-2">
-                        <label className="text-[9px] font-bold tracking-[0.15em] uppercase text-slate-400">Studio:</label>
+                        <label className="text-xs font-medium text-slate-400">Estudio:</label>
                         <Input
                             value={studioName}
                             onChange={(e) => setStudioName(e.target.value)}
-                            className="w-40 h-8 text-sm rounded-sm"
+                            className="w-40 h-8 text-sm rounded-lg"
                         />
                     </div>
                     <div className="flex items-center gap-2">
-                        <label className="text-[9px] font-bold tracking-[0.15em] uppercase text-slate-400">Section:</label>
+                        <label className="text-xs font-medium text-slate-400">Sección:</label>
                         <Input
                             value={sectionTitle}
                             onChange={(e) => setSectionTitle(e.target.value)}
-                            className="w-32 h-8 text-sm rounded-sm"
+                            className="w-32 h-8 text-sm rounded-lg"
                         />
                     </div>
                     <div className="flex-1" />
-                    <div className="bg-white border border-slate-200 rounded-sm px-4 py-2">
-                        <span className="text-[9px] font-bold tracking-[0.15em] uppercase text-slate-400 mr-3">Total:</span>
+                    <div className="bg-white border border-slate-200 rounded-lg px-4 py-2">
+                        <span className="text-xs font-medium text-slate-400 mr-3">Total:</span>
                         <span className="text-lg font-bold text-foreground">{formatCurrency(total)}</span>
                     </div>
                 </div>
@@ -424,19 +427,24 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                 {/* Editable Table */}
                 <div className="flex-1 overflow-auto relative">
                     {enriching && (
-                        <div className="sticky top-0 z-20 bg-white border-b border-slate-100 px-6 py-3 flex items-center gap-4">
-                            <Loader2 className="w-4 h-4 animate-spin text-slate-400 shrink-0" />
-                            <Progress value={enrichProgress} className="flex-1 h-1.5" />
-                            <span className="text-[9px] font-bold tracking-[0.1em] uppercase text-slate-400 shrink-0">{enrichProgress}%</span>
+                        <div className="sticky top-0 z-20 bg-white border-b border-slate-100 px-6 py-4 flex flex-col items-center gap-2">
+                            {quip && (
+                                <p className="text-sm text-foreground font-medium italic text-center max-w-sm animate-in fade-in duration-500">{quip}</p>
+                            )}
+                            <div className="w-full flex items-center gap-3">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground/40 shrink-0" />
+                                <Progress value={enrichProgress} className="flex-1 h-1" />
+                                <span className="text-xs text-muted-foreground/50 shrink-0">{enrichProgress}%</span>
+                            </div>
                         </div>
                     )}
                     <table className="w-full text-sm">
                         <thead className="sticky top-0 bg-white z-10">
                             <tr className="border-b border-slate-200">
-                                {['Image', 'Product', 'CAD Ref', 'Category', 'Area', 'Supplier',
-                                    'Dimensions', 'Colour', 'Material', 'Status', 'Lead Time',
-                                    'Qty', 'Unit Cost', 'Total', 'Notes'].map(header => (
-                                        <th key={header} className="px-3 py-3 text-left text-[8px] font-bold tracking-[0.15em] uppercase text-slate-400 whitespace-nowrap">
+                                {['Imagen', 'Producto', 'Ref CAD', 'Categoría', 'Área', 'Proveedor',
+                                    'Dimensiones', 'Color', 'Material', 'Estado', 'Plazo',
+                                    'Cant.', 'Coste Ud.', 'Total', 'Notas'].map(header => (
+                                        <th key={header} className="px-3 py-3 text-left text-xs font-medium text-slate-400 whitespace-nowrap">
                                             {header}
                                         </th>
                                     ))}
@@ -448,11 +456,11 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                                     {/* Image */}
                                     <td className="px-3 py-2 w-16">
                                         {item.imageUrl ? (
-                                            <div className="w-12 h-12 rounded-sm overflow-hidden bg-slate-100">
+                                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-100">
                                                 <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
                                             </div>
                                         ) : (
-                                            <div className="w-12 h-12 rounded-sm bg-slate-100" />
+                                            <div className="w-12 h-12 rounded-lg bg-slate-100" />
                                         )}
                                     </td>
                                     {/* Product (read-only) */}
@@ -464,7 +472,7 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                                         <Input
                                             value={item.cadRef}
                                             onChange={(e) => updateLineItem(idx, 'cadRef', e.target.value)}
-                                            className="h-7 text-xs w-20 rounded-sm border-slate-200"
+                                            className="h-7 text-xs w-20 rounded-lg border-slate-200"
                                             placeholder="F11"
                                         />
                                     </td>
@@ -473,8 +481,8 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                                         <Input
                                             value={item.category}
                                             onChange={(e) => updateLineItem(idx, 'category', e.target.value)}
-                                            className="h-7 text-xs w-24 rounded-sm border-slate-200"
-                                            placeholder="Seating"
+                                            className="h-7 text-xs w-24 rounded-lg border-slate-200"
+                                            placeholder="Asientos"
                                         />
                                     </td>
                                     {/* Area */}
@@ -482,8 +490,8 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                                         <Input
                                             value={item.area}
                                             onChange={(e) => updateLineItem(idx, 'area', e.target.value)}
-                                            className="h-7 text-xs w-24 rounded-sm border-slate-200"
-                                            placeholder="Lounge"
+                                            className="h-7 text-xs w-24 rounded-lg border-slate-200"
+                                            placeholder="Salón"
                                         />
                                     </td>
                                     {/* Supplier */}
@@ -491,7 +499,7 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                                         <Input
                                             value={item.supplier}
                                             onChange={(e) => updateLineItem(idx, 'supplier', e.target.value)}
-                                            className="h-7 text-xs w-28 rounded-sm border-slate-200"
+                                            className="h-7 text-xs w-28 rounded-lg border-slate-200"
                                         />
                                     </td>
                                     {/* Dimensions */}
@@ -499,7 +507,7 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                                         <Input
                                             value={item.dimensions}
                                             onChange={(e) => updateLineItem(idx, 'dimensions', e.target.value)}
-                                            className="h-7 text-xs w-36 rounded-sm border-slate-200"
+                                            className="h-7 text-xs w-36 rounded-lg border-slate-200"
                                         />
                                     </td>
                                     {/* Colour */}
@@ -507,7 +515,7 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                                         <Input
                                             value={item.colour}
                                             onChange={(e) => updateLineItem(idx, 'colour', e.target.value)}
-                                            className="h-7 text-xs w-24 rounded-sm border-slate-200"
+                                            className="h-7 text-xs w-24 rounded-lg border-slate-200"
                                         />
                                     </td>
                                     {/* Material */}
@@ -515,7 +523,7 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                                         <Input
                                             value={item.material}
                                             onChange={(e) => updateLineItem(idx, 'material', e.target.value)}
-                                            className="h-7 text-xs w-28 rounded-sm border-slate-200"
+                                            className="h-7 text-xs w-28 rounded-lg border-slate-200"
                                         />
                                     </td>
                                     {/* Status */}
@@ -524,13 +532,13 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                                             value={item.status}
                                             onValueChange={(v) => updateLineItem(idx, 'status', v)}
                                         >
-                                            <SelectTrigger className="h-7 text-xs w-32 rounded-sm border-slate-200">
-                                                <SelectValue placeholder="Select..." />
+                                            <SelectTrigger className="h-7 text-xs w-32 rounded-lg border-slate-200">
+                                                <SelectValue placeholder="Selecciona..." />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {STATUS_OPTIONS.map(s => (
                                                     <SelectItem key={s || '__empty'} value={s || ' '} className="text-xs">
-                                                        {s || '(None)'}
+                                                        {s || '(Ninguno)'}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -542,13 +550,13 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                                             value={item.leadTime}
                                             onValueChange={(v) => updateLineItem(idx, 'leadTime', v)}
                                         >
-                                            <SelectTrigger className="h-7 text-xs w-28 rounded-sm border-slate-200">
-                                                <SelectValue placeholder="Select..." />
+                                            <SelectTrigger className="h-7 text-xs w-28 rounded-lg border-slate-200">
+                                                <SelectValue placeholder="Selecciona..." />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {LEAD_TIME_OPTIONS.map(lt => (
                                                     <SelectItem key={lt || '__empty'} value={lt || ' '} className="text-xs">
-                                                        {lt || '(None)'}
+                                                        {lt || '(Ninguno)'}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -559,7 +567,7 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                                         <div className="flex items-center gap-1">
                                             <button
                                                 onClick={() => updateLineItem(idx, 'quantity', Math.max(0, item.quantity - 1))}
-                                                className="w-6 h-6 rounded-sm border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition-colors"
+                                                className="w-6 h-6 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition-colors"
                                             >
                                                 <Minus className="w-3 h-3" />
                                             </button>
@@ -567,12 +575,12 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                                                 type="number"
                                                 value={item.quantity}
                                                 onChange={(e) => updateLineItem(idx, 'quantity', parseInt(e.target.value) || 0)}
-                                                className="h-7 text-xs w-12 text-center rounded-sm border-slate-200"
+                                                className="h-7 text-xs w-12 text-center rounded-lg border-slate-200"
                                                 min="0"
                                             />
                                             <button
                                                 onClick={() => updateLineItem(idx, 'quantity', item.quantity + 1)}
-                                                className="w-6 h-6 rounded-sm border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition-colors"
+                                                className="w-6 h-6 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition-colors"
                                             >
                                                 <Plus className="w-3 h-3" />
                                             </button>
@@ -584,7 +592,7 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                                             type="number"
                                             value={item.unitCost}
                                             onChange={(e) => updateLineItem(idx, 'unitCost', parseFloat(e.target.value) || 0)}
-                                            className="h-7 text-xs w-24 rounded-sm border-slate-200"
+                                            className="h-7 text-xs w-24 rounded-lg border-slate-200"
                                             step="0.01"
                                         />
                                     </td>
@@ -599,8 +607,8 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                                         <Input
                                             value={item.notes}
                                             onChange={(e) => updateLineItem(idx, 'notes', e.target.value)}
-                                            className="h-7 text-xs w-40 rounded-sm border-slate-200"
-                                            placeholder="Add notes..."
+                                            className="h-7 text-xs w-40 rounded-lg border-slate-200"
+                                            placeholder="Añade notas..."
                                         />
                                     </td>
                                 </tr>
@@ -612,27 +620,27 @@ export function BudgetCreatorModal({ isOpen, onClose, projectId, products }: Bud
                 {/* Footer */}
                 <DialogFooter className="px-8 py-5 border-t border-slate-100 shrink-0">
                     <div className="flex items-center justify-between w-full">
-                        <span className="text-[10px] font-bold tracking-[0.1em] uppercase text-slate-400">
-                            {lineItems.length} products · Total: {formatCurrency(total)}
+                        <span className="text-xs font-medium text-slate-400">
+                            {lineItems.length} productos · Total: {formatCurrency(total)}
                         </span>
                         <div className="flex gap-3">
-                            <Button variant="outline" onClick={onClose} className="h-10 px-6 text-[10px] font-bold uppercase tracking-[0.15em] rounded-sm">
-                                Cancel
+                            <Button variant="outline" onClick={onClose} className="h-10 px-6 text-xs font-medium rounded-lg">
+                                Cancelar
                             </Button>
                             <Button
                                 onClick={handleGenerate}
                                 disabled={generating || lineItems.length === 0}
-                                className="h-10 px-8 bg-foreground text-background hover:bg-foreground/90 text-[10px] font-bold uppercase tracking-[0.2em] rounded-sm"
+                                className="h-10 px-8 bg-foreground text-background hover:bg-foreground/90 text-xs font-medium rounded-lg"
                             >
                                 {generating ? (
                                     <>
                                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                        Generating... {generationProgress}%
+                                        Generando... {generationProgress}%
                                     </>
                                 ) : (
                                     <>
                                         <Download className="w-4 h-4 mr-2" />
-                                        Generate Budget
+                                        Generar Presupuesto
                                     </>
                                 )}
                             </Button>
